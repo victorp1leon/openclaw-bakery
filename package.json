@@ -1,0 +1,37 @@
+{
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "healthcheck": "npx ts-node --transpile-only src/healthcheck.ts",
+    "test": "vitest",
+    "security:scan": "node scripts/security/scan-secrets.js",
+    "verify:security": "npm run security:scan && npm test",
+    "smoke:expense": "npx ts-node --transpile-only scripts/smoke/expense-smoke.ts",
+    "smoke:order": "npx ts-node --transpile-only scripts/smoke/order-smoke.ts",
+    "smoke:web": "npx ts-node --transpile-only scripts/smoke/web-smoke.ts",
+    "smoke:web:ui": "npm run web:build && npx ts-node --transpile-only scripts/smoke/web-ui-playwright-smoke.ts",
+    "web:build": "npx ts-node --transpile-only scripts/web/build-site-from-content.ts",
+    "web:publish": "npm run web:build && npx ts-node --transpile-only scripts/web/publish-site-from-content.ts",
+    "web:publish:webhook:local": "npx ts-node --transpile-only scripts/web/local-publish-webhook.ts",
+    "web:publish:webhook:netlify": "WEB_LOCAL_PUBLISH_TARGET=netlify npx ts-node --transpile-only scripts/web/local-publish-webhook.ts",
+    "web:rollback:drill": "npx ts-node --transpile-only scripts/web/netlify-rollback-drill.ts",
+    "web:live:local": "bash -lc 'set -euo pipefail; npm run web:build; echo \"Site ready at http://127.0.0.1:4173\"; python3 -m http.server 4173 --directory site/dist'",
+    "web:live:local:publish": "bash -lc 'set -euo pipefail; trap \"kill 0\" EXIT; npm run web:publish:webhook:local >/tmp/web-local-webhook.log 2>&1 & for i in $(seq 1 40); do if curl -fsS http://127.0.0.1:8787/health >/dev/null 2>&1; then break; fi; sleep 0.25; done; if ! curl -fsS http://127.0.0.1:8787/health >/dev/null 2>&1; then echo \"local webhook did not start\"; exit 1; fi; WEB_PUBLISH_DRY_RUN=0 npm run web:publish; echo \"Site ready at http://127.0.0.1:4173\"; python3 -m http.server 4173 --directory site/dist'",
+    "web:import:facebook": "npx ts-node --transpile-only scripts/web/import-facebook-images.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "dotenv": "^17.3.1",
+    "openclaw": "^2026.2.19-2",
+    "pino": "^10.3.1",
+    "uuid": "^13.0.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.3.0",
+    "@types/uuid": "^10.0.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

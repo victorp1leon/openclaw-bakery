@@ -1,0 +1,180 @@
+{
+  "businessName": "Hadi Cakes",
+  "whatsapp": "+5215512345678",
+  "zones": [
+    "Colima Centro",
+    "Villa de Álvarez",
+    "Norte",
+    "Sur"
+  ],
+  "menuItems": [
+    {
+      "nombre": "Cupcake clásico",
+      "descripcion": "Vainilla o chocolate",
+      "precio": 45
+    },
+    {
+      "nombre": "Caja 6 cupcakes",
+      "descripcion": "Sabores mixtos",
+      "precio": 250
+    },
+    {
+      "nombre": "Caja 12 cupcakes",
+      "descripcion": "Decoración personalizada",
+      "precio": 480
+    },
+    {
+      "nombre": "Pastel mediano",
+      "descripcion": "8 a 12 porciones",
+      "precio": 650
+    }
+  ],
+  "catalogItems": [
+    {
+      "id": "producto_01",
+      "nombre": "Pastel Fitness Cumple",
+      "descripcion": "Pastel temático con pesas y topper de cumpleaños.",
+      "precio": 920,
+      "categoria": "pastel personalizado",
+      "imageUrl": "/assets/catalog/producto_01.jpg",
+      "imageSource": "manual"
+    },
+    {
+      "id": "producto_02",
+      "nombre": "Launchbox One Piece & Cupcakes",
+      "descripcion": "Mini pastel tipo launchbox con cupcakes de personajes variados.",
+      "precio": 920,
+      "categoria": "launchbox & cupcakes",
+      "imageUrl": "/assets/catalog/producto_02.jpg",
+      "imageSource": "manual"
+    },
+    {
+      "id": "producto_03",
+      "nombre": "Cupcakes ThunderCats",
+      "descripcion": "Set de cupcakes personalizados con temática ThunderCats.",
+      "precio": 920,
+      "categoria": "cupackes personalizados",
+      "imageUrl": "/assets/catalog/producto_03.jpg",
+      "imageSource": "manual"
+    },
+    {
+      "id": "producto_04",
+      "nombre": "Pastel Corona Extra",
+      "descripcion": "Pastel personalizado con decoración estilo Corona para cumpleaños.",
+      "precio": 920,
+      "categoria": "pastel personalizado",
+      "imageUrl": "/assets/catalog/producto_04.jpg",
+      "imageSource": "manual"
+    },
+    {
+      "id": "producto_05",
+      "nombre": "Mini Pastel Zanahoria",
+      "descripcion": "Pastel pequeño con decoración de zanahorias y cobertura cremosa.",
+      "precio": 920,
+      "categoria": "pastel",
+      "imageUrl": "/assets/catalog/producto_05.jpg",
+      "imageSource": "manual"
+    },
+    {
+      "id": "producto_06",
+      "nombre": "Pastel Dragon Ball",
+      "descripcion": "Pastel personalizado con personaje, esferas y detalles en fondant.",
+      "precio": 920,
+      "categoria": "pastel personalizado",
+      "imageUrl": "/assets/catalog/producto_06.jpg",
+      "imageSource": "manual"
+    },
+    {
+      "id": "producto_07",
+      "nombre": "Pastel Happy Birthday Listón",
+      "descripcion": "Pastel clásico de cumpleaños con listón rojo y detalles de corazón.",
+      "precio": 920,
+      "categoria": "pastel",
+      "imageUrl": "/assets/catalog/producto_07.jpg",
+      "imageSource": "manual"
+    },
+    {
+      "id": "producto_08",
+      "nombre": "Mini Pastel Arcoiris",
+      "descripcion": "Mini pastel personalizado con detalles de colores y mensaje central.",
+      "precio": 920,
+      "categoria": "pastel personalizado",
+      "imageUrl": "/assets/catalog/producto_08.jpg",
+      "imageSource": "manual"
+    },
+    {
+      "id": "producto_09",
+      "nombre": "Pastel Anime Ilustrado",
+      "descripcion": "Pastel personalizado con ilustración estilo anime hecha a mano.",
+      "precio": 920,
+      "categoria": "pastel personalizado",
+      "imageUrl": "/assets/catalog/producto_09.jpg",
+      "imageSource": "manual"
+    },
+    {
+      "id": "producto_10",
+      "nombre": "Pastel One Piece",
+      "descripcion": "Pastel personalizado con toppers de One Piece para celebración temática.",
+      "precio": 920,
+      "categoria": "pastel personalizado",
+      "imageUrl": "/assets/catalog/producto_10.jpg",
+      "imageSource": "manual"
+    }
+  ],
+  "cta": "Ordenar por WhatsApp",
+  "gallery": [
+    "/assets/catalog/producto_01.jpg",
+    "/assets/catalog/producto_03.jpg",
+    "/assets/catalog/producto_05.jpg",
+    "/assets/catalog/producto_07.jpg",
+    "/assets/catalog/producto_10.jpg"
+  ],
+  "facebookPageUrl": "https://www.facebook.com/HadiCakess/",
+  "instagramUrl": "https://www.instagram.com/",
+  "heroImageUrl": "/assets/catalog/producto_03.jpg",
+  "howToOrderSteps": [
+    "Escríbenos por WhatsApp con el producto y cantidad.",
+    "Te confirmamos disponibilidad, precio final y horario.",
+    "Recoge en tienda o recibe en zona de cobertura."
+  ],
+  "testimonials": [
+    {
+      "text": "El pastel quedó hermoso y delicioso.",
+      "author": "Ana, Colima"
+    },
+    {
+      "text": "Puntuales y súper atentos en todo momento.",
+      "author": "Luis, Villa de Álvarez"
+    },
+    {
+      "text": "Los cupcakes personalizados fueron un éxito.",
+      "author": "Mariana, Colima"
+    }
+  ],
+  "promoBar": {
+    "text": "Pedidos en Colima • Entrega o recogida • Agenda con anticipación",
+    "linkLabel": "Cómo ordenar",
+    "linkHref": "#como-ordenar"
+  },
+  "customOrder": {
+    "title": "Pasteles personalizados",
+    "description": "Creamos pasteles para cumpleaños, baby shower, bodas y eventos especiales.",
+    "occasions": [
+      "Cumpleaños",
+      "Baby shower",
+      "Bodas",
+      "Eventos"
+    ],
+    "ctaLabel": "Solicitar pastel personalizado",
+    "ctaMessage": "Hola 👋 Quiero cotizar un pastel personalizado. Fecha, porciones y tema:"
+  },
+  "contact": {
+    "address": "Colima, Colima",
+    "mapEmbedUrl": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14744.74148606395!2d-103.7304444!3d19.2433333"
+  },
+  "brandAssets": {
+    "logoUrl": "/assets/logo.jpg",
+    "businessCardImageUrl": "/assets/tarjeta.jpg",
+    "businessCardNote": "Atención por WhatsApp todos los días"
+  }
+}

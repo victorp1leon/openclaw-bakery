@@ -1,0 +1,504 @@
+<mxfile host="app.diagrams.net" modified="2026-02-26T00:00:00.000Z" agent="codex-gpt-5" version="22.1.0" type="device" compressed="false">
+  <diagram id="lvl1-context" name="Level 1 - Context">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="2" value="Bakery Owner / Operator&#xa;[Person]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="180" width="190" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="3" value="Admin / Developer&#xa;[Person]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="300" width="190" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="4" value="OpenClaw Bakery Bot&#xa;[System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="410" y="200" width="290" height="170" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="5" value="Telegram Bot API&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="860" y="70" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="6" value="OpenClaw CLI&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="860" y="170" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="7" value="LM Studio OpenAI-Compatible API&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="860" y="270" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="8" value="Google Sheets via Apps Script&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="860" y="370" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="9" value="Trello REST API&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="860" y="470" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="10" value="Hosting Target (e.g., Netlify)&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="860" y="570" width="230" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="11" value="SQLite bot.db&#xa;[Data Store]" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="460" y="470" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="12" value="File Config (.env + profiles)&#xa;[Data Store]" style="shape=document;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="460" y="570" width="180" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="13" value="Security Note:&#xa;LLM interprets only; runtime validates and authorizes.&#xa;No external action without confirmar/cancelar." style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="300" y="60" width="460" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="14" value="Legend&#xa;Blue: Core system&#xa;Gray: External&#xa;Green: Data store&#xa;Yellow note: Security gate&#xa;Dashed: Optional actor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="560" width="260" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="20" value="Sends commands/confirmations [Telegram text / console text]" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=#ffffff" edge="1" parent="1" source="2" target="4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="21" value="Operates and reviews logs/config [Local/Admin]" style="endArrow=block;html=1;rounded=0;dashed=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="3" target="4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="22" value="Polls updates / sends replies [HTTP/JSON]" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="23" value="Invokes agent runtime [CLI/JSON]" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="24" value="Requests model inference [HTTP/JSON]" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=#ffffff" edge="1" parent="1" source="6" target="7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="25" value="Appends expense/order rows [HTTP/JSON]" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="8">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="26" value="Creates/updates order cards [HTTP/JSON]" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="9">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="27" value="Publishes static site [HTTP/JSON]" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="10">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="28" value="Reads/writes state and operations [SQLite]" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="11">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="29" value="Loads runtime config [File I/O]" style="endArrow=block;html=1;rounded=0;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="12">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="lvl2-container" name="Level 2 - Container">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="2" value="Bakery Owner / Operator&#xa;[Person]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="250" width="190" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="3" value="OpenClaw Bakery Bot&#xa;[System Boundary]" style="swimlane;whiteSpace=wrap;html=1;rounded=0;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="60" width="860" height="650" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="4" value="Channel Adapters&#xa;[Container]&#xa;(console, telegram)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="300" y="130" width="220" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="5" value="Conversation Runtime&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="560" y="130" width="240" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="6" value="OpenClaw Adapter&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="840" y="130" width="220" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="7" value="State &amp; Persistence&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="560" y="280" width="240" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="8" value="Tool Adapters&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="840" y="280" width="220" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="9" value="Config &amp; Healthcheck&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="300" y="280" width="220" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="10" value="SQLite bot.db&#xa;[Data Store]" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="560" y="430" width="240" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="11" value="File Config (.env + profiles)&#xa;[Data Store]" style="shape=document;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="300" y="430" width="220" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="12" value="Telegram Bot API&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="120" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="13" value="OpenClaw CLI&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="230" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="14" value="LM Studio API&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="330" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="15" value="Google Sheets Apps Script&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="430" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="16" value="Trello REST API&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="520" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="17" value="Hosting Target&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="610" width="230" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="18" value="Legend&#xa;Blue: Core containers&#xa;Green: Datastore&#xa;Gray: External&#xa;Yellow: Config/Security concerns" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="30" y="560" width="200" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="30" value="Sends messages [Telegram text / console text]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="2" target="4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="31" value="Receives inbound and routes to runtime [In-process]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="32" value="Runs parse/intent path [In-process]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="5" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="33" value="Reads/writes state and operations [SQLite]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="5" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="34" value="Stores records [SQLite]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="7" target="10"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="35" value="Executes confirmed actions [HTTP/JSON]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="5" target="8"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="36" value="Provides runtime config and health checks [In-process]" style="endArrow=block;html=1;dashed=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="9" target="5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="37" value="Loads .env/profile data [File I/O]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="9" target="11"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="38" value="Polls updates / sends replies [HTTP/JSON]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="12"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="39" value="Invokes runtime [CLI/JSON]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="6" target="13"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="40" value="Requests inference [HTTP/JSON]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="13" target="14"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="41" value="Append expense/order [HTTP/JSON]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="8" target="15"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="42" value="Create/update cards [HTTP/JSON]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="8" target="16"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="43" value="Publish website [HTTP/JSON]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="8" target="17"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="lvl3-component" name="Level 3 - Component (Conversation Runtime)">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="2" value="Conversation Runtime [Container Boundary]" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="180" y="40" width="1180" height="760" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="3" value="Ingress Layer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="220" y="90" width="1120" height="60" as="geometry"/></mxCell>
+        <mxCell id="4" value="Orchestration Layer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="220" y="180" width="1120" height="120" as="geometry"/></mxCell>
+        <mxCell id="5" value="Interpretation Layer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="220" y="330" width="1120" height="140" as="geometry"/></mxCell>
+        <mxCell id="6" value="Persistence Layer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="220" y="500" width="1120" height="110" as="geometry"/></mxCell>
+        <mxCell id="7" value="Integration Layer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="220" y="640" width="1120" height="120" as="geometry"/></mxCell>
+
+        <mxCell id="10" value="Channel Adapter&#xa;(telegram/console)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1"><mxGeometry x="20" y="90" width="150" height="80" as="geometry"/></mxCell>
+        <mxCell id="11" value="conversationProcessor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="260" y="200" width="170" height="70" as="geometry"/></mxCell>
+        <mxCell id="12" value="allowlistGuard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="460" y="200" width="150" height="60" as="geometry"/></mxCell>
+        <mxCell id="13" value="confirmationGuard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="640" y="200" width="160" height="60" as="geometry"/></mxCell>
+
+        <mxCell id="14" value="intentRouter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="260" y="360" width="140" height="60" as="geometry"/></mxCell>
+        <mxCell id="15" value="parser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="430" y="360" width="120" height="60" as="geometry"/></mxCell>
+        <mxCell id="16" value="validationGuard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="580" y="360" width="150" height="60" as="geometry"/></mxCell>
+        <mxCell id="17" value="missingFieldPicker" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="760" y="360" width="170" height="60" as="geometry"/></mxCell>
+
+        <mxCell id="18" value="OpenClawRuntimeAdapter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1"><mxGeometry x="970" y="340" width="180" height="50" as="geometry"/></mxCell>
+        <mxCell id="19" value="jsonExtract" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1"><mxGeometry x="970" y="400" width="130" height="45" as="geometry"/></mxCell>
+        <mxCell id="20" value="failoverClassifier" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1"><mxGeometry x="1120" y="400" width="170" height="45" as="geometry"/></mxCell>
+
+        <mxCell id="21" value="stateStore" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="320" y="530" width="130" height="55" as="geometry"/></mxCell>
+        <mxCell id="22" value="operationsStore" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="480" y="530" width="150" height="55" as="geometry"/></mxCell>
+        <mxCell id="23" value="idempotencyStore" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="660" y="530" width="150" height="55" as="geometry"/></mxCell>
+        <mxCell id="24" value="SQLite bot.db&#xa;[Data Store]" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="860" y="525" width="220" height="65" as="geometry"/></mxCell>
+
+        <mxCell id="25" value="dedupeGuard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1"><mxGeometry x="260" y="670" width="130" height="60" as="geometry"/></mxCell>
+        <mxCell id="26" value="toolExecutor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="420" y="670" width="130" height="60" as="geometry"/></mxCell>
+        <mxCell id="27" value="Tool Adapters&#xa;(expense/order/web)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1"><mxGeometry x="590" y="670" width="190" height="60" as="geometry"/></mxCell>
+        <mxCell id="28" value="External Systems&#xa;Sheets / Trello / Hosting" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1"><mxGeometry x="820" y="665" width="230" height="70" as="geometry"/></mxCell>
+
+        <mxCell id="29" value="Security Gate:&#xa;confirmar/cancelar required&#xa;operation_id enforced" style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="1090" y="650" width="240" height="90" as="geometry"/></mxCell>
+        <mxCell id="30" value="Legend&#xa;Core components: white&#xa;Layer bands: colored&#xa;External/dependency: gray&#xa;Data store: green&#xa;Security note: yellow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="1"><mxGeometry x="20" y="680" width="150" height="120" as="geometry"/></mxCell>
+
+        <mxCell id="40" value="Inbound message [chat_id,text]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="10" target="11"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="41" value="Authorize by chat_id" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="11" target="12"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="42" value="Route/parse request" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="12" target="14"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="43" value="Classify intent" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="14" target="15"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="44" value="Validate and normalize" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="15" target="16"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="45" value="Ask one missing field" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="16" target="17"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="46" value="Confirm/cancel command" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="17" target="13"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="47" value="Check duplicates / idempotency" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="13" target="25"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="48" value="Execute only after confirm" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="25" target="26"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="49" value="Dispatch confirmed action" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="26" target="27"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="50" value="Calls integrations [HTTP/JSON]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="27" target="28"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="51" value="Invokes [CLI/JSON]" style="endArrow=block;html=1;dashed=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="15" target="18"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="52" value="Extracts payload JSON" style="endArrow=block;html=1;dashed=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="18" target="19"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="53" value="Classifies transient errors" style="endArrow=block;html=1;dashed=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="18" target="20"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="54" value="Load/update chat state" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="11" target="21"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="55" value="Write operation lifecycle" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="11" target="22"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="56" value="Build idempotency key" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="25" target="23"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="57" value="Persist/read [SQLite]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="21" target="24"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="58" value="Persist/read [SQLite]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="22" target="24"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="59" value="Persist/read [SQLite]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="23" target="24"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="lvl3-channel-adapters" name="Level 3 - Component (Channel Adapters)">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="2" value="Channel Adapters [Container Boundary]" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="210" y="70" width="980" height="640" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="3" value="channelFactory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="140" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="4" value="telegramChannel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="500" y="130" width="190" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="5" value="consoleChannel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="500" y="250" width="190" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="6" value="ChannelAdapter Contract&#xa;(start/onMessage/sendMessage/stop)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="760" y="185" width="290" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="7" value="Conversation Runtime&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="260" y="430" width="230" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="8" value="Telegram Bot API&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="120" width="240" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="9" value="Bakery Owner / Operator&#xa;[Person]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="220" width="170" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="10" value="Security Note:&#xa;Normalize chat.id -&gt; chat_id string&#xa;for allowlist consistency." style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="260" width="260" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="11" value="Legend&#xa;White: Components&#xa;Yellow: Shared contract/note&#xa;Gray: External container/system&#xa;Orange: Actor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="550" width="240" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="20" value="Build adapter by CHANNEL_MODE" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="3" target="4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="21" value="Build adapter by CHANNEL_MODE" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="3" target="5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="22" value="Implements contract" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="23" value="Implements contract" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="5" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="24" value="Calls start/sendMessage/stop" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="7" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="25" value="Long polling getUpdates + sendMessage [HTTPS]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="8"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="26" value="Uses Telegram chat" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="9" target="8"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="27" value="Local stdin/stdout" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="9" target="5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="28" value="Emit {chat_id,text}" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="29" value="Emit {chat_id,text}" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="5" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="lvl3-config-healthcheck" name="Level 3 - Component (Config &amp; Healthcheck)">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="2" value="Config &amp; Healthcheck [Container Boundary]" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="90" width="980" height="620" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="3" value="appConfig&#xa;(parse env -&gt; typed AppConfig)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="180" width="300" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="4" value="healthcheck&#xa;(aggregate readiness ok|warn|fail)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="720" y="180" width="320" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="5" value="File Config (.env + profiles)&#xa;[Data Store]" style="shape=document;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="180" width="200" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="6" value="Channel Adapters&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="330" y="360" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="7" value="Conversation Runtime&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="530" y="360" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="8" value="OpenClaw Adapter&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="730" y="360" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="9" value="Tool Adapters&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="930" y="360" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="10" value="State &amp; Persistence&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="360" width="180" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="11" value="Admin / Developer&#xa;[Person]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="170" width="180" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="12" value="Security Note:&#xa;Status precedence fail &gt; warn &gt; ok.&#xa;Do not leak secrets in health output." style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="500" width="280" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="13" value="Legend&#xa;White: Components&#xa;Gray: Other containers&#xa;Green: Data store&#xa;Orange: Actor&#xa;Yellow note: Security policy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="40" y="560" width="260" height="130" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="20" value="Load raw env/profile values" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="5" target="3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="21" value="Provide typed config (sanitized snapshot)" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="3" target="4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="22" value="Provide channel settings" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="3" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="23" value="Provide runtime policy" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="3" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="24" value="Provide OpenClaw flags/timeouts" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="3" target="8"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="25" value="Provide tool configuration" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="3" target="9"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="26" value="Read DB readiness signals" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="10" target="4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="27" value="Expose startup/readiness report" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="11"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="lvl3-openclaw-adapter" name="Level 3 - Component (OpenClaw Adapter)">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="2" value="OpenClaw Adapter [Container Boundary]" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="90" width="920" height="620" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="3" value="runtime&#xa;(invokes openclaw agent --local --json)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="190" width="270" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="4" value="jsonExtract&#xa;(extract JSON from mixed output)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="640" y="190" width="240" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="5" value="failoverClassifier&#xa;(classify transient/non-transient)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="910" y="190" width="240" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="6" value="Conversation Runtime&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="20" y="190" width="200" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="7" value="OpenClaw CLI&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="170" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="8" value="LM Studio API&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="300" width="220" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="9" value="Security Note:&#xa;Strict mode + softfail only for&#xa;transient failures." style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="460" width="230" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="10" value="Legend&#xa;White: Components&#xa;Gray: External/container dependency&#xa;Yellow note: Failover policy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="40" y="550" width="240" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="20" value="Parse/classification request" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="6" target="3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="21" value="Executes agent [CLI/JSON]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="3" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="22" value="Inference [HTTP/JSON]" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="7" target="8"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="23" value="Extract candidate JSON" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="3" target="4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="24" value="Classify failure mode" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="3" target="5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="25" value="Parsed payload / parse error" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="26" value="Transient vs non-transient" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="5" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="lvl3-tool-adapters" name="Level 3 - Component (Tool Adapters)">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="2" value="Tool Adapters [Container Boundary]" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="90" width="1000" height="640" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="3" value="append-expense" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="190" width="190" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="4" value="append-order" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="530" y="190" width="180" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="5" value="create-card" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="740" y="190" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="6" value="publish-site" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="940" y="190" width="170" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="7" value="Conversation Runtime&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="20" y="190" width="190" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="8" value="State &amp; Persistence&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="20" y="340" width="190" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="9" value="Google Sheets (Apps Script)&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="150" width="260" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="10" value="Trello REST API&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="260" width="260" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="11" value="Web Hosting / Deploy Target&#xa;[External System]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="370" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="12" value="Security Note:&#xa;Execution requires prior confirmation.&#xa;Propagate operation_id in every tool call.&#xa;MVP can run in dry-run mode." style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="510" width="260" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="13" value="Legend&#xa;White: Tool components&#xa;Gray: External/container dependency&#xa;Yellow note: Confirmation + idempotency gate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="20" y="560" width="270" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="20" value="execute(expense) + operation_id" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="7" target="3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="21" value="execute(order append) + operation_id" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="7" target="4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="22" value="execute(order card) + operation_id" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="7" target="5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="23" value="execute(web publish) + operation_id" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="7" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="24" value="Append row" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="3" target="9"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="25" value="Append/export order" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="9"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="26" value="Create/update card" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="5" target="10"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="27" value="Deploy/publish" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="6" target="11"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="28" value="Persist operation status/result" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="7" target="8"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="lvl3-state-persistence" name="Level 3 - Component (State &amp; Persistence)">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="2" value="State &amp; Persistence [Container Boundary]" style="swimlane;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="230" y="90" width="960" height="640" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="3" value="database&#xa;(SQLite init + schema/index management)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="290" y="180" width="270" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="4" value="stateStore&#xa;(chat-scoped conversation state)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="600" y="180" width="250" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="5" value="operationsStore&#xa;(operation lifecycle records)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="880" y="180" width="270" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="6" value="idempotency&#xa;(dedupe + replay primitives)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="600" y="320" width="250" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="7" value="SQLite bot.db&#xa;[Data Store]" style="shape=datastore;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="910" y="330" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="8" value="Conversation Runtime&#xa;[Container]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="20" y="220" width="180" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="9" value="Security/Behavior Note:&#xa;Lifecycle states: pending_confirm -&gt; confirmed/canceled -&gt; executed.&#xa;Idempotency key + dedupe window are distinct controls." style="shape=note;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="500" width="300" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="10" value="Legend&#xa;White: Components&#xa;Green boundary/datastore: persistence scope&#xa;Gray: External container&#xa;Yellow note: Lifecycle/idempotency policy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="30" y="560" width="290" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="20" value="Uses persistence adapters" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="8" target="4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="21" value="Writes operation records" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="8" target="5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="22" value="Checks/records dedupe/idempotency" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="8" target="6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="23" value="Ensure schema/indexes" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="3" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="24" value="Persist/read chat state" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="4" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="25" value="Persist/read operation lifecycle" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="5" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="26" value="Persist/read dedupe keys" style="endArrow=block;html=1;labelBackgroundColor=#ffffff" edge="1" parent="1" source="6" target="7"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,39 @@
+
+> web:rollback:drill
+> npx ts-node --transpile-only scripts/web/netlify-rollback-drill.ts
+
+[dotenv@17.3.1] injecting env (59) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+{
+  "event": "web_rollback_drill_start",
+  "siteId": "3b8c6720-2b65-49ca-b24d-d958f2d80e10",
+  "apiBaseUrl": "https://api.netlify.com/api/v1",
+  "perPage": 10,
+  "restoreMode": "original",
+  "requestedTargetId": null
+}
+{
+  "event": "web_rollback_drill_result",
+  "ok": true,
+  "site": {
+    "id": "3b8c6720-2b65-49ca-b24d-d958f2d80e10",
+    "name": "subtle-pithivier-ac1828",
+    "url": "https://subtle-pithivier-ac1828.netlify.app"
+  },
+  "before": {
+    "publishedDeployId": "69aa01524b7572e328109d41"
+  },
+  "rollback": {
+    "targetDeployId": "69aa0150e001f0b3e27d81c9",
+    "publishedDeployId": "69aa0150e001f0b3e27d81c9",
+    "elapsedMs": 615,
+    "publishedAt": "2026-03-06T00:09:51.080Z",
+    "deployUrl": "https://69aa0150e001f0b3e27d81c9--subtle-pithivier-ac1828.netlify.app"
+  },
+  "rollforward": {
+    "targetDeployId": "69aa01524b7572e328109d41",
+    "publishedDeployId": "69aa01524b7572e328109d41",
+    "elapsedMs": 548,
+    "publishedAt": "2026-03-06T00:09:51.806Z",
+    "deployUrl": "https://69aa01524b7572e328109d41--subtle-pithivier-ac1828.netlify.app"
+  }
+}
