@@ -150,6 +150,18 @@ describe("conversation processor security flow", () => {
     expect(traces.find((t) => t.event === "allowlist_reject")?.detail).toBe("chat_id_not_allowed");
   });
 
+  it("muestra ayuda ampliada con ejemplos y flujo de confirmacion", async () => {
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-help"]),
+      routeIntentFn: async () => "ayuda"
+    });
+
+    const replies = await processor.handleMessage({ chat_id: "chat-help", text: "ayuda" });
+    expect(replies[0]).toContain("Guía rápida");
+    expect(replies[0]).toContain("recoger en tienda");
+    expect(replies[0]).toContain("confirmar | cancelar");
+  });
+
   it("pregunta solo 1 faltante por turno y luego confirma", async () => {
     const processor = createConversationProcessor({
       allowedChatIds: new Set(["chat-missing"]),
@@ -261,6 +273,31 @@ describe("conversation processor security flow", () => {
     expect(executeCreateCardFn).toHaveBeenCalledTimes(1);
     expect(executeAppendOrderFn).toHaveBeenCalledTimes(1);
     expect(getOperation("op-order")?.status).toBe("executed");
+  });
+
+  it("acepta 'recoger en tienda' al completar tipo_envio faltante", async () => {
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-missing-shipping"]),
+      nowMs: () => Date.parse("2026-02-19T12:00:00.000Z"),
+      newOperationId: () => "op-order-missing-shipping",
+      routeIntentFn: async () => "pedido",
+      parseOrderFn: async () => ({
+        ok: true,
+        payload: {
+          nombre_cliente: "Victor",
+          producto: "cupcakes",
+          cantidad: 12,
+          fecha_hora_entrega: "2026-02-20 14:00"
+        }
+      })
+    });
+
+    const ask = await processor.handleMessage({ chat_id: "chat-order-missing-shipping", text: "pedido Victor 12 cupcakes" });
+    expect(ask[0]).toContain("Tipo de envío");
+
+    const summary = await processor.handleMessage({ chat_id: "chat-order-missing-shipping", text: "recoger en tienda" });
+    expect(summary[0]).toContain("Resumen");
+    expect(summary[0]).toContain("recoger_en_tienda");
   });
 
   it("mantiene pendiente y marca failed cuando falla append-order", async () => {

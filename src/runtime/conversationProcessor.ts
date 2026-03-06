@@ -72,7 +72,7 @@ function askFor(field: string) {
     nombre_cliente: "¿Nombre del cliente?",
     producto: "¿Qué producto es?",
     cantidad: "¿Cantidad?",
-    tipo_envio: "¿Tipo de envío? (envio_domicilio | recoger_en_tienda)",
+    tipo_envio: "¿Tipo de envío? (envio_domicilio | recoger_en_tienda). También puedes escribir: envío a domicilio / recoger en tienda.",
     fecha_hora_entrega: "¿Fecha/hora de entrega? (ej. 2026-02-20 14:00)",
     direccion: "¿Dirección de entrega?",
     "content.businessName": "¿Cuál es el nombre del negocio para el sitio?",
@@ -81,6 +81,25 @@ function askFor(field: string) {
       "Comparte un JSON de catálogo (array) con al menos un item: [{\"id\":\"item-1\",\"nombre\":\"Cupcake\",\"precio\":45,\"imageUrl\":\"https://...\",\"imageSource\":\"manual\"}]"
   };
   return map[field] ?? `Falta: ${field}. ¿Cuál es el valor?`;
+}
+
+function normalizeTipoEnvioInput(raw: string): string {
+  const value = raw.trim();
+  const normalized = value.toLowerCase();
+
+  if (normalized === "envio_domicilio" || normalized === "recoger_en_tienda") {
+    return normalized;
+  }
+
+  if (/\b(dom(icilio)?|a domicilio|env[ií]o(?:\s+a)?\s+domicilio)\b/i.test(normalized)) {
+    return "envio_domicilio";
+  }
+
+  if (/\b(recoger|recoge|retiro|en tienda|tienda)\b/i.test(normalized)) {
+    return "recoger_en_tienda";
+  }
+
+  return value;
 }
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
@@ -209,6 +228,7 @@ function validateWebPayloadDraft(payload: Record<string, unknown>):
 function mergeField(payload: Record<string, unknown>, field: string, userText: string): Record<string, unknown> {
   const t = userText.trim();
   if (field === "monto" || field === "cantidad" || field === "total") return { ...payload, [field]: Number(t) };
+  if (field === "tipo_envio") return { ...payload, [field]: normalizeTipoEnvioInput(t) };
   if (field === "content.catalogItemsJson") {
     try {
       const parsed = JSON.parse(t);
@@ -670,10 +690,12 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     if (intent === "ayuda") {
       return [
         [
-          "Comandos ejemplo:",
-          "- gasto 380 harina y azúcar",
-          "- pedido Victor 12 cupcakes red velvet entrega: 2026-02-20 14:00 recoger pagado total: 480",
-          "Luego: confirmar | cancelar"
+          "Guía rápida:",
+          "- gasto 380 harina y azúcar en Costco",
+          "- pedido Victor 12 cupcakes red velvet para mañana 2pm recoger en tienda pagado total 480",
+          "Notas:",
+          "- Para tipo de envío puedes escribir: envío a domicilio o recoger en tienda",
+          "- Después del resumen responde: confirmar | cancelar"
         ].join("\n")
       ];
     }
