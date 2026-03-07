@@ -1,6 +1,7 @@
 import type { Order } from "../../schemas/order";
 import type { ToolExecutionResult } from "../types";
 import { runGwsCommand, type GwsCommandRunner } from "../googleWorkspace/runGwsCommand";
+import { normalizeDeliveryDateTime } from "./deliveryDateTime";
 
 type FetchLike = (input: string | URL, init?: RequestInit) => Promise<{
   ok: boolean;
@@ -24,6 +25,8 @@ export type AppendOrderToolConfig = {
   gwsSpreadsheetId?: string;
   gwsRange?: string;
   gwsValueInputOption?: "RAW" | "USER_ENTERED";
+  timezone?: string;
+  now?: () => Date;
   gwsRunner?: GwsCommandRunner;
 };
 
@@ -36,6 +39,7 @@ type AppendOrderWebhookPayload = {
     fecha_registro: string;
     folio: string;
     fecha_hora_entrega: string;
+    fecha_hora_entrega_iso?: string;
     nombre_cliente: string;
     telefono?: string;
     producto: string;
@@ -129,16 +133,25 @@ function toWebhookPayload(args: {
   operation_id: string;
   chat_id: string;
   payload: Order;
+  now: Date;
+  timezone: string;
 }): AppendOrderWebhookPayload {
+  const fecha_hora_entrega_iso = normalizeDeliveryDateTime({
+    value: args.payload.fecha_hora_entrega,
+    timezone: args.timezone,
+    now: args.now
+  });
+
   return {
     operation_id: args.operation_id,
     chat_id: args.chat_id,
     intent: "pedido",
     order: args.payload,
     row: {
-      fecha_registro: new Date().toISOString(),
+      fecha_registro: args.now.toISOString(),
       folio: args.operation_id,
       fecha_hora_entrega: args.payload.fecha_hora_entrega,
+      fecha_hora_entrega_iso,
       nombre_cliente: args.payload.nombre_cliente,
       telefono: args.payload.telefono,
       producto: args.payload.producto,
@@ -158,9 +171,21 @@ function toWebhookPayload(args: {
   };
 }
 
-function toGwsValues(args: { operation_id: string; chat_id: string; payload: Order }): Array<string | number> {
+function toGwsValues(args: {
+  operation_id: string;
+  chat_id: string;
+  payload: Order;
+  now: Date;
+  timezone: string;
+}): Array<string | number> {
+  const fecha_hora_entrega_iso = normalizeDeliveryDateTime({
+    value: args.payload.fecha_hora_entrega,
+    timezone: args.timezone,
+    now: args.now
+  });
+
   return [
-    new Date().toISOString(),
+    args.now.toISOString(),
     args.operation_id,
     args.payload.fecha_hora_entrega,
     args.payload.nombre_cliente,
@@ -177,7 +202,8 @@ function toGwsValues(args: { operation_id: string; chat_id: string; payload: Ord
     args.payload.moneda,
     args.payload.notas ?? "",
     args.chat_id,
-    args.operation_id
+    args.operation_id,
+    fecha_hora_entrega_iso ?? ""
   ];
 }
 
@@ -251,6 +277,8 @@ export function createAppendOrderTool(config: AppendOrderToolConfig = {}) {
   const gwsSpreadsheetId = config.gwsSpreadsheetId?.trim() || undefined;
   const gwsRange = config.gwsRange?.trim() || undefined;
   const gwsValueInputOption = config.gwsValueInputOption ?? "USER_ENTERED";
+  const timezone = config.timezone?.trim() || "America/Mexico_City";
+  const now = config.now ?? (() => new Date());
   const gwsRunner = config.gwsRunner ?? runGwsCommand;
 
   return async function appendOrder(args: {
@@ -283,7 +311,11 @@ export function createAppendOrderTool(config: AppendOrderToolConfig = {}) {
         throw new Error("order_connector_api_key_missing");
       }
 
-      const webhookPayload = toWebhookPayload(args);
+      const webhookPayload = toWebhookPayload({
+        ...args,
+        now: now(),
+        timezone
+      });
       const attempts = maxRetries + 1;
       let lastError: Error | undefined;
 
@@ -358,7 +390,13 @@ export function createAppendOrderTool(config: AppendOrderToolConfig = {}) {
       valueInputOption: gwsValueInputOption
     };
     const body = {
-      values: [toGwsValues(args)]
+      values: [
+        toGwsValues({
+          ...args,
+          now: now(),
+          timezone
+        })
+      ]
     };
 
     const attempts = maxRetries + 1;

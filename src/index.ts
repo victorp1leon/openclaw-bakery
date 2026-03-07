@@ -10,6 +10,7 @@ import { createConversationProcessor } from "./runtime/conversationProcessor";
 import { createAppendExpenseTool } from "./tools/expense/appendExpense";
 import { createAppendOrderTool } from "./tools/order/appendOrder";
 import { createCreateCardTool } from "./tools/order/createCard";
+import { createReportOrdersTool } from "./tools/order/reportOrders";
 import { createPublishSiteTool } from "./tools/web/publishSite";
 
 dotenv.config();
@@ -150,7 +151,18 @@ const executeAppendOrder = createAppendOrderTool({
   gwsCommandArgs: appConfig.orderTool.sheets.gws.commandArgs,
   gwsSpreadsheetId: appConfig.orderTool.sheets.gws.spreadsheetId,
   gwsRange: appConfig.orderTool.sheets.gws.range,
-  gwsValueInputOption: appConfig.orderTool.sheets.gws.valueInputOption
+  gwsValueInputOption: appConfig.orderTool.sheets.gws.valueInputOption,
+  timezone: appConfig.timezone
+});
+
+const executeOrderReport = createReportOrdersTool({
+  gwsCommand: appConfig.orderTool.sheets.gws.command,
+  gwsCommandArgs: appConfig.orderTool.sheets.gws.commandArgs,
+  gwsSpreadsheetId: appConfig.orderTool.sheets.gws.spreadsheetId,
+  gwsRange: appConfig.orderTool.sheets.gws.range,
+  timeoutMs: appConfig.orderTool.sheets.timeoutMs,
+  maxRetries: appConfig.orderTool.sheets.maxRetries,
+  timezone: appConfig.timezone
 });
 
 const executeWebPublish = createPublishSiteTool({
@@ -170,6 +182,7 @@ const tracedProcessor = createConversationProcessor({
   executeExpenseFn: executeExpense,
   executeCreateCardFn: executeCreateCard,
   executeAppendOrderFn: executeAppendOrder,
+  executeOrderReportFn: executeOrderReport,
   executeWebPublishFn: executeWebPublish,
   webChatEnabled: appConfig.webTool.chatEnabled,
   rateLimiter: createRateLimitGuard({

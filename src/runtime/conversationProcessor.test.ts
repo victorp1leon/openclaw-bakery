@@ -100,6 +100,27 @@ let createConversationProcessor: (args: {
     };
     dryRun?: boolean;
   }) => Promise<{ ok: boolean; dry_run: boolean; operation_id: string; detail: string }>;
+  executeOrderReportFn?: (args: {
+    chat_id: string;
+    period: "today" | "tomorrow" | "week";
+  }) => Promise<{
+    period: "today" | "tomorrow" | "week";
+    timezone: string;
+    total: number;
+    orders: Array<{
+      folio: string;
+      fecha_hora_entrega: string;
+      nombre_cliente: string;
+      producto: string;
+      cantidad?: number;
+      tipo_envio?: string;
+      estado_pago?: string;
+      total?: number;
+      moneda?: string;
+      operation_id?: string;
+    }>;
+    detail: string;
+  }>;
   botPersona?: "neutral" | "bakery_warm" | "concise";
   webChatEnabled?: boolean;
   onTrace?: (event: {
@@ -171,8 +192,77 @@ describe("conversation processor security flow", () => {
     });
 
     const replies = await processor.handleMessage({ chat_id: "chat-help-warm", text: "ayuda" });
-    expect(replies[0]).toContain("Horno rápido");
+    expect(replies[0]).toContain("Guía rápida");
     expect(replies[0]).toContain("confirmar | cancelar");
+  });
+
+  it("resuelve consulta de pedidos por periodo sin pasar por intent router", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+    const executeOrderReportFn = vi.fn(async () => ({
+      period: "today" as const,
+      timezone: "America/Mexico_City",
+      total: 1,
+      orders: [
+        {
+          folio: "op-report-1",
+          fecha_hora_entrega: "2026-03-07 14:00",
+          nombre_cliente: "Ana",
+          producto: "cupcakes",
+          cantidad: 12,
+          tipo_envio: "recoger_en_tienda",
+          estado_pago: "pagado",
+          total: 480,
+          moneda: "MXN",
+          operation_id: "op-report-1"
+        }
+      ],
+      detail: "report-orders executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-report"]),
+      routeIntentFn,
+      executeOrderReportFn
+    });
+
+    const replies = await processor.handleMessage({ chat_id: "chat-report", text: "que pedidos tengo hoy" });
+    expect(replies[0]).toContain("Pedidos para hoy");
+    expect(replies[0]).toContain("Ana");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+    expect(executeOrderReportFn).toHaveBeenCalledWith({ chat_id: "chat-report", period: "today" });
+  });
+
+  it("no confunde alta de pedido con consulta de reporte", async () => {
+    const executeOrderReportFn = vi.fn();
+    const parseOrderFn = vi.fn(async () => ({
+      ok: true as const,
+      payload: {
+        nombre_cliente: "Victor",
+        producto: "cupcakes",
+        cantidad: 12,
+        tipo_envio: "recoger_en_tienda" as const,
+        fecha_hora_entrega: "2026-03-08 14:00",
+        moneda: "MXN"
+      }
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-create"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      newOperationId: () => "op-order-create",
+      routeIntentFn: async () => "pedido",
+      parseOrderFn,
+      executeOrderReportFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-order-create",
+      text: "pedido Victor 12 cupcakes para mañana 2pm recoger"
+    });
+
+    expect(replies[0]).toContain("Resumen");
+    expect(parseOrderFn).toHaveBeenCalledTimes(1);
+    expect(executeOrderReportFn).not.toHaveBeenCalled();
   });
 
   it("pregunta solo 1 faltante por turno y luego confirma", async () => {

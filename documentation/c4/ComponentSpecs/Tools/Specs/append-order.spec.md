@@ -1,7 +1,7 @@
 # Spec - append-order (Phase 3 connector-ready + multi-provider sheets)
 
 Status: MVP
-Last Updated: 2026-03-05
+Last Updated: 2026-03-07
 
 ## Objective
 Append a confirmed order row to Google Sheets.
@@ -24,6 +24,7 @@ The adapter supports provider routing:
 - Include `operation_id` in outbound payload and result for traceability.
 - Include `chat_id` in emitted payload/result for downstream auditing.
 - Map order payload to stable external row schema/column order.
+- Keep `fecha_hora_entrega` as free-text source and also emit `fecha_hora_entrega_iso` (normalized local datetime) when inferable.
 - In live mode (`dryRun=false`), require provider-specific configuration:
   - `apps_script`: webhook URL and API key.
   - `gws`: command, spreadsheet id, and target range.

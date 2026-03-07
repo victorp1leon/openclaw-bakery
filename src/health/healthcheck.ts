@@ -208,10 +208,11 @@ export function runHealthcheck(args: {
       skillPathExists("src/tools/expense/appendExpense.ts") &&
       skillPathExists("src/tools/order/createCard.ts") &&
       skillPathExists("src/tools/order/appendOrder.ts") &&
+      skillPathExists("src/tools/order/reportOrders.ts") &&
       skillPathExists("src/tools/web/publishSite.ts")
         ? "ok"
         : "warn",
-    detail: "tools base disponibles (expense/order/web)"
+    detail: "tools base disponibles (expense/order/report/web)"
   });
 
   return {

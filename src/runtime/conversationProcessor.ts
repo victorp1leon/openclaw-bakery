@@ -14,6 +14,7 @@ import { clearPending, getState, setState } from "../state/stateStore";
 import { appendExpenseTool } from "../tools/expense/appendExpense";
 import { appendOrderTool } from "../tools/order/appendOrder";
 import { createCardTool } from "../tools/order/createCard";
+import { createReportOrdersTool, type OrderReportPeriod, type OrderReportResult } from "../tools/order/reportOrders";
 import { type WebPublishPayload, createPublishSiteTool } from "../tools/web/publishSite";
 import { createBotCopy, type BotPersona } from "./persona";
 
@@ -54,6 +55,10 @@ type ProcessorDeps = {
     payload: WebPublishPayload;
     dryRun?: boolean;
   }) => Promise<{ ok: boolean; dry_run: boolean; operation_id: string; detail: string }>;
+  executeOrderReportFn?: (args: {
+    chat_id: string;
+    period: OrderReportPeriod;
+  }) => Promise<OrderReportResult>;
   botPersona?: BotPersona;
   webChatEnabled?: boolean;
   onTrace?: (event: {
@@ -66,6 +71,59 @@ type ProcessorDeps = {
     detail?: string;
   }) => void;
 };
+
+function normalizeForMatch(text: string): string {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function detectOrderReportPeriod(text: string): OrderReportPeriod | undefined {
+  const normalized = normalizeForMatch(text);
+  const hasOrderWord = /\bpedidos?\b/.test(normalized);
+  if (!hasOrderWord) return undefined;
+
+  const hasPeriodHint = /\b(hoy|manana|esta semana|semana)\b/.test(normalized);
+  if (!hasPeriodHint) return undefined;
+
+  const hasQueryVerb = /\b(que|cuales|dame|mostrar|muestrame|ver|lista|listar|tengo|recuerdame|consulta|consultar)\b/.test(
+    normalized
+  );
+  const hasPlural = /\bpedidos\b/.test(normalized);
+  const startsAsCreateOrder = /^\s*pedido\b/.test(normalized);
+
+  if (startsAsCreateOrder && !hasQueryVerb && !hasPlural) return undefined;
+  if (!hasQueryVerb && !hasPlural) return undefined;
+
+  if (/\b(esta semana|semana)\b/.test(normalized)) return "week";
+  if (/\bmanana\b/.test(normalized)) return "tomorrow";
+  if (/\bhoy\b/.test(normalized)) return "today";
+  return undefined;
+}
+
+function formatOrderReportLabel(period: OrderReportPeriod): string {
+  if (period === "today") return "hoy";
+  if (period === "tomorrow") return "mañana";
+  return "esta semana";
+}
+
+function formatOrderReportReply(report: OrderReportResult): string {
+  const label = formatOrderReportLabel(report.period);
+  if (report.total === 0) {
+    return `No encontré pedidos para ${label}.`;
+  }
+
+  const maxRows = 20;
+  const shown = report.orders.slice(0, maxRows);
+  const lines = shown.map((order, idx) => {
+    const qty = order.cantidad != null ? `x${order.cantidad}` : "x?";
+    const total = order.total != null ? `${order.total}${order.moneda ? ` ${order.moneda}` : ""}` : "-";
+    const shipping = order.tipo_envio ?? "-";
+    const payment = order.estado_pago ?? "-";
+    return `${idx + 1}. ${order.fecha_hora_entrega} | ${order.nombre_cliente} | ${order.producto} ${qty} | ${shipping} | ${payment} | ${total}`;
+  });
+
+  const extra = report.total > shown.length ? `\n... y ${report.total - shown.length} más` : "";
+  return `Pedidos para ${label} (${report.total}):\n${lines.join("\n")}${extra}`;
+}
 
 function normalizeTipoEnvioInput(raw: string): string {
   const value = raw.trim();
@@ -250,6 +308,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeCreateCardFn = deps.executeCreateCardFn ?? createCardTool;
   const executeAppendOrderFn = deps.executeAppendOrderFn ?? appendOrderTool;
   const executeWebPublishFn = deps.executeWebPublishFn ?? createPublishSiteTool();
+  const executeOrderReportFn = deps.executeOrderReportFn ?? createReportOrdersTool();
   const copy = createBotCopy(deps.botPersona);
   const webChatEnabled = deps.webChatEnabled ?? true;
   const rateLimiter = deps.rateLimiter;
@@ -637,6 +696,40 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       }
 
       return [copy.pendingOperation(st.pending.operation_id)];
+    }
+
+    const reportPeriod = detectOrderReportPeriod(msg.text);
+    if (reportPeriod) {
+      try {
+        const report = await executeOrderReportFn({
+          chat_id: msg.chat_id,
+          period: reportPeriod
+        });
+
+        deps.onTrace?.({
+          event: "order_report_succeeded",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "reporte",
+          intent_source: "fallback",
+          detail: `period=${report.period};total=${report.total}`
+        });
+
+        return [formatOrderReportReply(report)];
+      } catch (err) {
+        const safeDetail = err instanceof Error ? err.message : String(err);
+
+        deps.onTrace?.({
+          event: "order_report_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "reporte",
+          intent_source: "fallback",
+          detail: safeDetail
+        });
+
+        return ["No pude consultar pedidos en este momento. Intenta de nuevo en unos minutos."];
+      }
     }
 
     let intent: Intent;

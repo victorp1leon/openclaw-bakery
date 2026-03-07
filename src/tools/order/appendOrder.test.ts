@@ -105,6 +105,35 @@ describe("appendOrderTool", () => {
     expect(row.chat_id).toBe("chat-4");
     expect(row.folio).toBe("op-4");
     expect(row.producto).toBe("cupcakes");
+    expect(typeof row.fecha_hora_entrega_iso).toBe("string");
+  });
+
+  it("normalizes relative delivery datetime into fecha_hora_entrega_iso", async () => {
+    const fetchFn = vi.fn(async () => ({ ok: true, status: 200 }));
+    const tool = createAppendOrderTool({
+      fetchFn,
+      webhookUrl: "https://example.com/order",
+      apiKey: "top-secret",
+      dryRunDefault: false,
+      timeoutMs: 2000,
+      maxRetries: 0,
+      timezone: "America/Mexico_City",
+      now: () => new Date("2026-03-07T12:00:00.000Z")
+    });
+
+    await tool({
+      operation_id: "op-4b",
+      chat_id: "chat-4b",
+      payload: {
+        ...buildOrder(),
+        fecha_hora_entrega: "hoy, a las 6pm"
+      }
+    });
+
+    const [, init] = fetchFn.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+    const row = body.row as Record<string, unknown>;
+    expect(row.fecha_hora_entrega_iso).toBe("2026-03-07T18:00:00");
   });
 
   it("retries once on retriable 5xx status", async () => {
@@ -254,6 +283,11 @@ describe("appendOrderTool", () => {
     const call = gwsRunner.mock.calls[0]?.[0] as { commandArgs: string[] };
     expect(call.commandArgs).toContain("spreadsheets");
     expect(call.commandArgs).toContain("append");
+
+    const jsonIndex = call.commandArgs.indexOf("--json");
+    const body = JSON.parse(call.commandArgs[jsonIndex + 1]) as { values: unknown[][] };
+    const row = body.values[0] as unknown[];
+    expect(row[18]).toBeTypeOf("string");
   });
 
   it("retries gws call on timeout and then succeeds", async () => {

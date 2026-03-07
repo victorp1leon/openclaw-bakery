@@ -184,6 +184,7 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 - `ORDER_SHEETS_WEBHOOK_URL` can reuse the same Apps Script `/exec` URL as `EXPENSE_SHEETS_WEBHOOK_URL` when the endpoint routes by `intent` (`gasto` / `pedido`).
 - Order/expense adapters send API key both in header and `api_key` body field to handle Apps Script header propagation limitations.
 - `gws` provider invokes `googleworkspace/cli` Sheets append command; ensure host auth/session is configured before live mode.
+- `report.orders` reads Google Sheets via `gws` (`values.get`) using `ORDER_SHEETS_GWS_SPREADSHEET_ID` and a read range derived from `ORDER_SHEETS_GWS_RANGE` (`Pedidos!A1` -> `Pedidos!A:R`), preferring `fecha_hora_entrega_iso` for filtering when that column exists.
 - Web publish adapter sanitizes media URLs by removing query/hash and only accepts `https` image URLs from approved domains.
 - Chat-based `web` flow is disabled by default (`WEB_CHAT_ENABLE=0`); preferred operation mode is content-driven via repository + terminal/CI.
 - Facebook import helper (`web:import:facebook`) only reads public page HTML and can fail due to anti-bot restrictions; manual image curation remains fallback.

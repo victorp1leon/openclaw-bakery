@@ -10,6 +10,8 @@ Last Updated: 2026-03-07
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `runtime/implementation/phase3-order-delivery-datetime-iso.md` | Implementation | Complete | 2026-03-07 |
+| `runtime/implementation/phase3-report-orders-gws-v1.md` | Implementation | Complete | 2026-03-07 |
 | `runtime/implementation/phase2-bot-persona-and-telegram-ux.md` | Implementation | Complete | 2026-03-07 |
 | `runtime/implementation/phase1-help-message-and-tipo-envio-normalization.md` | Implementation | Complete | 2026-03-06 |
 | `platform/implementation/phase4-web-rollback-drill-automation.md` | Implementation | Complete | 2026-03-06 |

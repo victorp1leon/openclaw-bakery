@@ -1,7 +1,7 @@
 # Component Description - Tool Adapters
 
 Status: MVP
-Last Updated: 2026-03-05
+Last Updated: 2026-03-07
 
 ## Responsibility
 Execute external integrations based on actions that were already confirmed by the user.
@@ -10,6 +10,7 @@ Execute external integrations based on actions that were already confirmed by th
 - `append-expense`
 - `create-card`
 - `append-order`
+- `report-orders`
 - `publish-site`
 
 ## Design Rules

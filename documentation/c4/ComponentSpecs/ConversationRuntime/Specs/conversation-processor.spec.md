@@ -1,7 +1,7 @@
 # Spec - conversationProcessor
 
 Status: MVP
-Last Updated: 2026-03-03
+Last Updated: 2026-03-07
 
 ## Objective
 Orchestrate the conversation flow for each message and produce a safe, consistent response.
@@ -39,6 +39,7 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - Register `operation_id` and prevent duplicates with idempotency/dedupe guards.
 - For `gasto`, execute `append-expense` adapter on confirm path.
 - For `pedido`, execute `create-card` + `append-order` adapters on confirm path.
+- For order reporting queries (e.g. `pedidos hoy/mañana/esta semana`), route deterministically to `report-orders` without entering confirm flow.
 - For `web`, execute `publish-site` adapter on confirm path.
 - `web` conversational flow may be feature-gated; when disabled, runtime must return a controlled message and suggest content-driven terminal/CI publish path.
 
@@ -81,5 +82,6 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - `executes_expense_tool_on_confirm`
 - `persists_failed_status_on_expense_tool_error`
 - `cancels_pending_operation`
+- `returns_orders_report_for_supported_period_queries`
 - `emits_allowlist_reject_trace`
 - `rejects_message_when_rate_limited`
