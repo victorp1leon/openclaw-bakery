@@ -131,4 +131,46 @@ describe("telegram channel", () => {
       }
     });
   });
+
+  it("envia chat action typing mientras procesa un mensaje", async () => {
+    let servedFirstUpdate = false;
+    const onMessage = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1300));
+    });
+    const fetchFn = vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.includes("/getUpdates")) {
+        if (!servedFirstUpdate) {
+          servedFirstUpdate = true;
+          return okJson([
+            {
+              update_id: 1,
+              message: { message_id: 10, chat: { id: 123 }, text: "hola bot" }
+            }
+          ]);
+        }
+
+        return okJson([]);
+      }
+
+      return okJson(true);
+    });
+
+    const channel = createTelegramChannel({
+      botToken: "dummy",
+      pollIntervalMs: 50,
+      longPollTimeoutSeconds: 1,
+      apiBaseUrl: "https://api.telegram.org",
+      typingHeartbeatMs: 500,
+      fetchFn
+    });
+
+    channel.start(onMessage);
+    await new Promise((resolve) => setTimeout(resolve, 1800));
+    await channel.stop?.();
+
+    const typingCalls = fetchFn.mock.calls.filter(([url]) => String(url).includes("/sendChatAction"));
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(typingCalls.length).toBeGreaterThanOrEqual(2);
+  });
 });

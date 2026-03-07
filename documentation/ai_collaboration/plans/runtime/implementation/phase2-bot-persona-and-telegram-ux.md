@@ -3,7 +3,7 @@
 > **Type:** `Implementation`
 > **Status:** `Complete`
 > **Created:** `2026-03-06`
-> **Last Updated:** `2026-03-06`
+> **Last Updated:** `2026-03-07`
 
 ## Cross-References
 | Documento | Ruta | Uso |
@@ -41,6 +41,7 @@ Se necesita cambiar la personalidad del bot sin romper la seguridad ni los flujo
 | 6 | Hotfix de `ayuda` en modo estricto | Completed | Bypass local determinista antes de OpenClaw |
 | 7 | Hotfix parseo `pedido` con strings vacios | Completed | Sanitizado previo a schema en parse OpenClaw |
 | 8 | Hotfix coercion numerica en payload OpenClaw | Completed | `monto/cantidad/total` string -> number |
+| 9 | Indicador de escritura en Telegram | Completed | `sendChatAction(typing)` durante procesamiento largo |
 
 ## Decisions & Trade-offs
 | Decision | Rationale | Date |
@@ -51,13 +52,15 @@ Se necesita cambiar la personalidad del bot sin romper la seguridad ni los flujo
 | Priorizar `ayuda/help` local antes de OpenClaw | Evita falsos `unknown` cuando OpenClaw clasifica mal en `OPENCLAW_STRICT=1` | 2026-03-06 |
 | Limpiar strings vacios en payload OpenClaw antes del schema | Evita rechazos estrictos por `""` en campos opcionales como `sabor_relleno` | 2026-03-06 |
 | Coercer numeric strings en campos numericos conocidos | Evita errores estrictos `expected number, received string` para payloads OpenClaw | 2026-03-06 |
+| Heartbeat de `typing` cada 4s por defecto (min 500ms) | Hace visible que el bot sigue procesando en esperas de 40s sin saturar la API de Telegram | 2026-03-07 |
 
 ## Validation
 - `npm test -- src/runtime/conversationProcessor.test.ts src/guards/confirmationGuard.test.ts src/config/appConfig.test.ts src/channel/telegramChannel.test.ts src/health/healthcheck.test.ts`
 - `npm test -- src/skills/intentRouter.test.ts src/runtime/conversationProcessor.test.ts`
 - `npm test -- src/skills/parser.test.ts`
+- `npm test -- src/channel/telegramChannel.test.ts src/runtime/channelRuntimeState.integration.test.ts`
 - `npm run -s healthcheck`
-- Resultado: `46 passed` (suite focal inicial), `26 passed` (hotfix router), `14 passed` (parser focal) y `144 passed` en suite completa. Healthcheck `status=warn` esperado por `web_publish_connector` en dry-run.
+- Resultado: `46 passed` (suite focal inicial), `26 passed` (hotfix router), `14 passed` (parser focal), `7 passed` (telegram + runtime integration) y `144 passed` en suite completa. Healthcheck `status=warn` esperado por `web_publish_connector` en dry-run.
 
 ## Outcome
 Se habilito una capa de personalidad configurable y una mejora visual para Telegram sin afectar reglas de negocio:
@@ -68,3 +71,4 @@ Se habilito una capa de personalidad configurable y una mejora visual para Teleg
 - `ayuda/help` queda determinista en modo estricto, sin depender de la clasificación de OpenClaw.
 - Parseo de `pedido` en estricto ahora tolera payloads OpenClaw con campos opcionales vacios sin romper el flujo.
 - Parseo en estricto ahora convierte `monto/cantidad/total` cuando OpenClaw los entrega como string.
+- Telegram ahora muestra estado de "escribiendo..." mientras el bot procesa cada mensaje.

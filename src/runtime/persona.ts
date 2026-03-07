@@ -93,7 +93,7 @@ function bakeryWarmMessages(): MessageBuilder {
       `Tienes una operación pendiente (${operationId}). Primero responde confirmar o cancelar.`,
     help: () =>
       [
-        "Horno rápido:",
+        "Guía rápida:",
         "- gasto 380 harina y azúcar en Costco",
         "- pedido Victor 12 cupcakes red velvet para mañana 2pm recoger en tienda pagado total 480",
         "Tips:",

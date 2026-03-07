@@ -32,6 +32,7 @@ export type TelegramChannelConfig = {
   pollIntervalMs: number;
   longPollTimeoutSeconds: number;
   apiBaseUrl: string;
+  typingHeartbeatMs?: number;
   logger?: LoggerLike;
   fetchFn?: FetchLike;
 };
@@ -48,6 +49,8 @@ function jsonHeaders() {
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+const DEFAULT_TYPING_HEARTBEAT_MS = 4000;
 
 function shouldOfferDecisionKeyboard(text: string): boolean {
   return /\bconfirmar\s*\|\s*cancelar\b/i.test(text);
@@ -90,6 +93,7 @@ function toSendBody(msg: OutboundMessage): Record<string, unknown> {
 
 export function createTelegramChannel(config: TelegramChannelConfig): ChannelAdapter {
   const fetchFn: FetchLike = config.fetchFn ?? ((globalThis.fetch as unknown) as FetchLike);
+  const typingHeartbeatMs = Math.max(500, config.typingHeartbeatMs ?? DEFAULT_TYPING_HEARTBEAT_MS);
   let running = false;
   let offset = 0;
   let loopPromise: Promise<void> | undefined;
@@ -114,6 +118,40 @@ export function createTelegramChannel(config: TelegramChannelConfig): ChannelAda
     return payload.result;
   }
 
+  function startTypingHeartbeat(chatId: string): () => void {
+    let inFlight = false;
+    let stopped = false;
+
+    const tick = () => {
+      if (stopped || inFlight) return;
+      inFlight = true;
+
+      void callTelegram<boolean>("sendChatAction", {
+        chat_id: chatId,
+        action: "typing"
+      }).catch((err) => {
+        config.logger?.warn(
+          {
+            channel: "telegram",
+            chat_id: chatId,
+            err: err instanceof Error ? err.message : String(err)
+          },
+          "Telegram chat action error"
+        );
+      }).finally(() => {
+        inFlight = false;
+      });
+    };
+
+    tick();
+    const timer = setInterval(tick, typingHeartbeatMs);
+
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }
+
   async function processUpdates(updates: TelegramUpdate[]): Promise<void> {
     for (const update of updates) {
       offset = Math.max(offset, update.update_id + 1);
@@ -133,10 +171,17 @@ export function createTelegramChannel(config: TelegramChannelConfig): ChannelAda
       }
 
       if (!onMessageHandler) continue;
-      await onMessageHandler({
-        chat_id: String(msg.chat.id),
-        text: msg.text
-      });
+      const chatId = String(msg.chat.id);
+      const stopTyping = startTypingHeartbeat(chatId);
+
+      try {
+        await onMessageHandler({
+          chat_id: chatId,
+          text: msg.text
+        });
+      } finally {
+        stopTyping();
+      }
     }
   }
 
