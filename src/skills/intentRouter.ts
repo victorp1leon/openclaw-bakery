@@ -45,6 +45,12 @@ export async function routeIntentDetailed(
 ): Promise<RoutedIntent> {
   const strict_mode = isStrictMode();
   const heuristic = heuristicRouteIntent(text);
+
+  // Command-like help messages should remain deterministic even in strict mode.
+  if (heuristic === "ayuda") {
+    return { intent: "ayuda", source: "fallback", strict_mode };
+  }
+
   const prompt = [
     "Clasifica el mensaje del usuario en una intención del bot.",
     "Opciones válidas: gasto, pedido, web, ayuda, unknown.",

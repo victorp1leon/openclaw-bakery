@@ -37,7 +37,7 @@ export function runHealthcheck(args: {
   checks.push({
     name: "env",
     status: "ok",
-    detail: `NODE_ENV=${args.config.nodeEnv}, TZ=${args.config.timezone}, currency=${args.config.defaultCurrency}`
+    detail: `NODE_ENV=${args.config.nodeEnv}, TZ=${args.config.timezone}, currency=${args.config.defaultCurrency}, persona=${args.config.botPersona}`
   });
 
   checks.push({

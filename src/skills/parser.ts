@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { isStrictSoftfailEnabled, isTransientOpenClawError } from "../openclaw/failover";
 import { createOpenClawJsonRuntime, type OpenClawJsonRuntime } from "../openclaw/runtime";
-import { firstOpenClawPayloadText, unwrapOpenClawPayloadJson } from "../openclaw/jsonExtract";
+import { firstOpenClawPayloadText, parseJsonFromText, unwrapOpenClawPayloadJson } from "../openclaw/jsonExtract";
 import { ExpenseDraftSchema, type ExpenseDraft } from "../schemas/expense";
 import { OrderDraftSchema, type OrderDraft } from "../schemas/order";
 
@@ -234,6 +234,44 @@ function extractPayload<T>(raw: unknown): unknown {
   return raw;
 }
 
+const NUMERIC_FIELDS = new Set(["monto", "cantidad", "total", "precio"]);
+
+function coerceNumericString(value: string): number | null {
+  const normalized = value.replace(",", ".").trim();
+  if (!/^[-+]?\d+(?:\.\d+)?$/.test(normalized)) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function sanitizeOpenClawDraft(value: unknown, key?: string): unknown {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) return undefined;
+
+    if (key && NUMERIC_FIELDS.has(key)) {
+      const numeric = coerceNumericString(trimmed);
+      if (numeric != null) return numeric;
+    }
+
+    return trimmed;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeOpenClawDraft(item));
+  }
+
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, inner] of Object.entries(value as Record<string, unknown>)) {
+      const normalized = sanitizeOpenClawDraft(inner, key);
+      if (normalized !== undefined) out[key] = normalized;
+    }
+    return out;
+  }
+
+  return value;
+}
+
 async function parseWithOpenClaw<T>(args: {
   prompt: string;
   schema: z.ZodType<T>;
@@ -243,16 +281,26 @@ async function parseWithOpenClaw<T>(args: {
     const raw = await args.runtime.completeJson(args.prompt);
     const payloadText = firstOpenClawPayloadText(raw);
     const normalized = unwrapOpenClawPayloadJson(raw);
-    const candidate = extractPayload(normalized);
+    const candidate = sanitizeOpenClawDraft(extractPayload(normalized));
     const parsed = args.schema.safeParse(candidate);
 
     if (!parsed.success) {
+      if (payloadText) {
+        try {
+          parseJsonFromText(payloadText);
+        } catch {
+          return {
+            ok: false,
+            source: "openclaw",
+            error: `openclaw_non_json_payload:${payloadText}`
+          };
+        }
+      }
+
       return {
         ok: false,
         source: "openclaw",
-        error: payloadText
-          ? `openclaw_non_json_payload:${payloadText}`
-          : `openclaw_parse_invalid_json:${parsed.error.issues[0]?.message ?? "invalid"}`
+        error: `openclaw_parse_invalid_json:${parsed.error.issues[0]?.message ?? "invalid"}`
       };
     }
 

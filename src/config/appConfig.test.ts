@@ -6,6 +6,7 @@ describe("appConfig", () => {
   it("loads defaults when env is missing", () => {
     const config = loadAppConfig({});
 
+    expect(config.botPersona).toBe("neutral");
     expect(config.channelMode).toBe("console");
     expect(config.openclaw.timeoutSeconds).toBe(30);
     expect(config.rateLimit.enabled).toBe(true);
@@ -73,6 +74,14 @@ describe("appConfig", () => {
     expect(config.openclaw.strict).toBe(true);
     expect(config.openclaw.strictSoftfail).toBe(true);
     expect(config.openclaw.thinking).toBe("medium");
+  });
+
+  it("parses bot persona and falls back on unknown values", () => {
+    const configured = loadAppConfig({ BOT_PERSONA: "bakery_warm" } as NodeJS.ProcessEnv);
+    const fallback = loadAppConfig({ BOT_PERSONA: "retro" } as NodeJS.ProcessEnv);
+
+    expect(configured.botPersona).toBe("bakery_warm");
+    expect(fallback.botPersona).toBe("neutral");
   });
 
   it("falls back to console on unknown channel mode", () => {

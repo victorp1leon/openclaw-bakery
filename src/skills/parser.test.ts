@@ -202,6 +202,30 @@ describe("parseExpense heuristic fallback", () => {
       else process.env.OPENCLAW_STRICT_SOFTFAIL = prevSoftfail;
     }
   });
+
+  it("en modo estricto convierte monto string a número cuando OpenClaw devuelve JSON", async () => {
+    const prev = process.env.OPENCLAW_STRICT;
+    process.env.OPENCLAW_STRICT = "1";
+
+    try {
+      const runtime = {
+        completeJson: async () => ({
+          payloads: [{ text: "{\"payload\":{\"monto\":\"380\",\"concepto\":\"harina\"}}" }]
+        })
+      };
+
+      const parsed = await parseExpense("gasto 380 harina", runtime);
+      expect(parsed.ok).toBe(true);
+
+      if (parsed.ok) {
+        expect(parsed.source).toBe("openclaw");
+        expect(parsed.payload.monto).toBe(380);
+      }
+    } finally {
+      if (prev == null) delete process.env.OPENCLAW_STRICT;
+      else process.env.OPENCLAW_STRICT = prev;
+    }
+  });
 });
 
 describe("parseOrder hardening", () => {
@@ -262,6 +286,95 @@ describe("parseOrder hardening", () => {
       expect(parsed.payload.notas).toBeUndefined();
       expect(parsed.payload.direccion).toBeUndefined();
       expect(parsed.payload.fecha_hora_entrega).toBeUndefined();
+    }
+  });
+
+  it("en modo estricto tolera payload OpenClaw con strings vacíos y mantiene campos válidos", async () => {
+    const prev = process.env.OPENCLAW_STRICT;
+    process.env.OPENCLAW_STRICT = "1";
+
+    try {
+      const runtime = {
+        completeJson: async () => ({
+          payloads: [{
+            text: JSON.stringify({
+              payload: {
+                nombre_cliente: "Victor",
+                producto: "cupcakes",
+                cantidad: 12,
+                tipo_envio: "recoger_en_tienda",
+                fecha_hora_entrega: "mañana 2pm",
+                direccion: "",
+                telefono: "",
+                descripcion_producto: "red velvet",
+                sabor_pan: "red_velvet",
+                sabor_relleno: "",
+                estado_pago: "pagado",
+                total: 480,
+                moneda: "pesos",
+                notas: ""
+              }
+            })
+          }]
+        })
+      };
+
+      const parsed = await parseOrder(
+        "pedido Victor 12 cupcakes red velvet para mañana 2pm recoger en tienda pagado total 480",
+        runtime
+      );
+      expect(parsed.ok).toBe(true);
+
+      if (parsed.ok) {
+        expect(parsed.source).toBe("openclaw");
+        expect(parsed.payload.nombre_cliente).toBe("Victor");
+        expect(parsed.payload.tipo_envio).toBe("recoger_en_tienda");
+        expect(parsed.payload.estado_pago).toBe("pagado");
+        expect(parsed.payload.sabor_relleno).toBeUndefined();
+      }
+    } finally {
+      if (prev == null) delete process.env.OPENCLAW_STRICT;
+      else process.env.OPENCLAW_STRICT = prev;
+    }
+  });
+
+  it("en modo estricto convierte cantidad/total string a número", async () => {
+    const prev = process.env.OPENCLAW_STRICT;
+    process.env.OPENCLAW_STRICT = "1";
+
+    try {
+      const runtime = {
+        completeJson: async () => ({
+          payloads: [{
+            text: JSON.stringify({
+              payload: {
+                nombre_cliente: "Victor",
+                producto: "cupcakes",
+                cantidad: "12",
+                tipo_envio: "recoger_en_tienda",
+                fecha_hora_entrega: "mañana 2pm",
+                estado_pago: "pagado",
+                total: "480"
+              }
+            })
+          }]
+        })
+      };
+
+      const parsed = await parseOrder(
+        "pedido Victor 12 cupcakes para mañana 2pm recoger en tienda pagado total 480",
+        runtime
+      );
+      expect(parsed.ok).toBe(true);
+
+      if (parsed.ok) {
+        expect(parsed.source).toBe("openclaw");
+        expect(parsed.payload.cantidad).toBe(12);
+        expect(parsed.payload.total).toBe(480);
+      }
+    } finally {
+      if (prev == null) delete process.env.OPENCLAW_STRICT;
+      else process.env.OPENCLAW_STRICT = prev;
     }
   });
 });

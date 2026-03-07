@@ -27,6 +27,7 @@ if (allowedChatIds.size === 0) {
 
 logger.info(
   {
+    bot_persona: appConfig.botPersona,
     channel_mode: appConfig.channelMode,
     allowlist_chat_ids: [...allowedChatIds],
     local_chat_id: appConfig.localChatId,
@@ -165,6 +166,7 @@ const executeWebPublish = createPublishSiteTool({
 
 const tracedProcessor = createConversationProcessor({
   allowedChatIds,
+  botPersona: appConfig.botPersona,
   executeExpenseFn: executeExpense,
   executeCreateCardFn: executeCreateCard,
   executeAppendOrderFn: executeAppendOrder,

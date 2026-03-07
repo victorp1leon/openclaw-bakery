@@ -15,6 +15,7 @@ import { appendExpenseTool } from "../tools/expense/appendExpense";
 import { appendOrderTool } from "../tools/order/appendOrder";
 import { createCardTool } from "../tools/order/createCard";
 import { type WebPublishPayload, createPublishSiteTool } from "../tools/web/publishSite";
+import { createBotCopy, type BotPersona } from "./persona";
 
 type ParseResult =
   | { ok: true; payload: Record<string, unknown>; source?: ParseSource }
@@ -53,6 +54,7 @@ type ProcessorDeps = {
     payload: WebPublishPayload;
     dryRun?: boolean;
   }) => Promise<{ ok: boolean; dry_run: boolean; operation_id: string; detail: string }>;
+  botPersona?: BotPersona;
   webChatEnabled?: boolean;
   onTrace?: (event: {
     event: string;
@@ -64,24 +66,6 @@ type ProcessorDeps = {
     detail?: string;
   }) => void;
 };
-
-function askFor(field: string) {
-  const map: Record<string, string> = {
-    monto: "¿Cuál es el monto? (ej. 380)",
-    concepto: "¿Cuál es el concepto? (ej. harina y azúcar)",
-    nombre_cliente: "¿Nombre del cliente?",
-    producto: "¿Qué producto es?",
-    cantidad: "¿Cantidad?",
-    tipo_envio: "¿Tipo de envío? (envio_domicilio | recoger_en_tienda). También puedes escribir: envío a domicilio / recoger en tienda.",
-    fecha_hora_entrega: "¿Fecha/hora de entrega? (ej. 2026-02-20 14:00)",
-    direccion: "¿Dirección de entrega?",
-    "content.businessName": "¿Cuál es el nombre del negocio para el sitio?",
-    "content.whatsapp": "¿Cuál es el WhatsApp del negocio? (ej. +5215512345678)",
-    "content.catalogItemsJson":
-      "Comparte un JSON de catálogo (array) con al menos un item: [{\"id\":\"item-1\",\"nombre\":\"Cupcake\",\"precio\":45,\"imageUrl\":\"https://...\",\"imageSource\":\"manual\"}]"
-  };
-  return map[field] ?? `Falta: ${field}. ¿Cuál es el valor?`;
-}
 
 function normalizeTipoEnvioInput(raw: string): string {
   const value = raw.trim();
@@ -253,15 +237,6 @@ function mergeField(payload: Record<string, unknown>, field: string, userText: s
   return { ...payload, [field]: t };
 }
 
-function summaryText(intent: string, payload: Record<string, unknown>, operation_id: string): string {
-  return `Resumen:\n${JSON.stringify({ intent, operation_id, ...payload }, null, 2)}\n\nEscribe: confirmar | cancelar`;
-}
-
-function ensureAllowlist(chat_id: string, allowedChatIds: Set<string>): string[] | null {
-  if (allowedChatIds.has(chat_id)) return null;
-  return ["No autorizado para usar este bot."];
-}
-
 export function createConversationProcessor(deps: ProcessorDeps) {
   const strict_mode = process.env.OPENCLAW_STRICT === "1";
   const nowMs = deps.nowMs ?? (() => Date.now());
@@ -275,19 +250,19 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeCreateCardFn = deps.executeCreateCardFn ?? createCardTool;
   const executeAppendOrderFn = deps.executeAppendOrderFn ?? appendOrderTool;
   const executeWebPublishFn = deps.executeWebPublishFn ?? createPublishSiteTool();
+  const copy = createBotCopy(deps.botPersona);
   const webChatEnabled = deps.webChatEnabled ?? true;
   const rateLimiter = deps.rateLimiter;
 
   async function handleMessage(msg: { chat_id: string; text: string }): Promise<string[]> {
-    const allowlistFailure = ensureAllowlist(msg.chat_id, deps.allowedChatIds);
-    if (allowlistFailure) {
+    if (!deps.allowedChatIds.has(msg.chat_id)) {
       deps.onTrace?.({
         event: "allowlist_reject",
         chat_id: msg.chat_id,
         strict_mode,
         detail: "chat_id_not_allowed"
       });
-      return allowlistFailure;
+      return [copy.unauthorized()];
     }
 
     const rateLimit = rateLimiter?.check(msg.chat_id);
@@ -298,7 +273,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         strict_mode,
         detail: `${rateLimit.reason};retry_after=${rateLimit.retryAfterSeconds}s`
       });
-      return [`Demasiados mensajes en poco tiempo. Intenta de nuevo en ${rateLimit.retryAfterSeconds}s.`];
+      return [copy.rateLimited(rateLimit.retryAfterSeconds)];
     }
 
     const st = getState(msg.chat_id);
@@ -337,7 +312,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             });
 
             return [
-              `No se pudo ejecutar el gasto. operation_id: ${st.pending.operation_id}. Responde confirmar para reintentar o cancelar.`
+              copy.expenseFailed(st.pending.operation_id)
             ];
           }
 
@@ -370,7 +345,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             });
 
             clearPending(msg.chat_id);
-            return [`Ejecutado${execution.dry_run ? " (dry-run)" : ""}. operation_id: ${st.pending.operation_id}`];
+            return [copy.executed(st.pending.operation_id, execution.dry_run)];
           } catch (err) {
             const safeDetail = err instanceof Error ? err.message : String(err);
 
@@ -392,7 +367,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             });
 
             return [
-              `No se pudo ejecutar el gasto. operation_id: ${st.pending.operation_id}. Responde confirmar para reintentar o cancelar.`
+              copy.expenseFailed(st.pending.operation_id)
             ];
           }
         }
@@ -418,7 +393,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             });
 
             return [
-              `No se pudo ejecutar el pedido. operation_id: ${st.pending.operation_id}. Responde confirmar para reintentar o cancelar.`
+              copy.orderFailed(st.pending.operation_id)
             ];
           }
 
@@ -460,7 +435,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
 
             clearPending(msg.chat_id);
             const isDryRun = cardExecution.dry_run && appendExecution.dry_run;
-            return [`Ejecutado${isDryRun ? " (dry-run)" : ""}. operation_id: ${st.pending.operation_id}`];
+            return [copy.executed(st.pending.operation_id, isDryRun)];
           } catch (err) {
             const safeDetail = err instanceof Error ? err.message : String(err);
 
@@ -482,7 +457,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             });
 
             return [
-              `No se pudo ejecutar el pedido. operation_id: ${st.pending.operation_id}. Responde confirmar para reintentar o cancelar.`
+              copy.orderFailed(st.pending.operation_id)
             ];
           }
         }
@@ -502,7 +477,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
               idempotency_key: idempotencyKey
             });
             setState(msg.chat_id, st);
-            return [askFor(st.pending.asked ?? "unknown")];
+            return [copy.askFor(st.pending.asked ?? "unknown")];
           }
 
           try {
@@ -533,7 +508,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             });
 
             clearPending(msg.chat_id);
-            return [`Ejecutado${execution.dry_run ? " (dry-run)" : ""}. operation_id: ${st.pending.operation_id}`];
+            return [copy.executed(st.pending.operation_id, execution.dry_run)];
           } catch (err) {
             const safeDetail = err instanceof Error ? err.message : String(err);
 
@@ -555,7 +530,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             });
 
             return [
-              `No se pudo ejecutar la publicación web. operation_id: ${st.pending.operation_id}. Responde confirmar para reintentar o cancelar.`
+              copy.webFailed(st.pending.operation_id)
             ];
           }
         }
@@ -570,7 +545,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         });
 
         clearPending(msg.chat_id);
-        return [`Ejecutado (simulado). operation_id: ${st.pending.operation_id}`];
+        return [copy.executedSimulated(st.pending.operation_id)];
       }
 
       if (isCancel(msg.text)) {
@@ -584,7 +559,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         });
 
         clearPending(msg.chat_id);
-        return [`Cancelado. operation_id: ${st.pending.operation_id}`];
+        return [copy.canceled(st.pending.operation_id)];
       }
 
       if (st.pending.asked) {
@@ -605,7 +580,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             if (!register.inserted) {
               clearPending(msg.chat_id);
               return [
-                `Operación duplicada detectada. operation_id: ${register.operation.operation_id}, status: ${register.operation.status}`
+                copy.duplicate(register.operation.operation_id, register.operation.status)
               ];
             }
 
@@ -614,14 +589,14 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             st.pending.missing = [];
             st.pending.asked = undefined;
             setState(msg.chat_id, st);
-            return [summaryText(st.pending.action.intent, st.pending.action.payload, st.pending.operation_id)];
+            return [copy.summary(st.pending.action.intent, st.pending.action.payload, st.pending.operation_id)];
           }
 
           st.pending.missing = vWeb.missing;
           const next = pickOneMissing(vWeb.missing, st.pending.asked);
           st.pending.asked = next ?? undefined;
           setState(msg.chat_id, st);
-          return [askFor(st.pending.asked ?? "unknown")];
+          return [copy.askFor(st.pending.asked ?? "unknown")];
         }
 
         const schema = st.pending.action.intent === "gasto" ? ExpenseSchema : OrderSchema;
@@ -640,7 +615,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           if (!dedupe.ok) {
             clearPending(msg.chat_id);
             return [
-              `Operación duplicada detectada. operation_id: ${dedupe.duplicate_of.operation_id}, status: ${dedupe.duplicate_of.status}`
+              copy.duplicate(dedupe.duplicate_of.operation_id, dedupe.duplicate_of.status)
             ];
           }
 
@@ -650,7 +625,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           st.pending.asked = undefined;
           setState(msg.chat_id, st);
 
-          return [summaryText(st.pending.action.intent, st.pending.action.payload, st.pending.operation_id)];
+          return [copy.summary(st.pending.action.intent, st.pending.action.payload, st.pending.operation_id)];
         }
 
         st.pending.missing = v.missing;
@@ -658,12 +633,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         st.pending.asked = next ?? undefined;
         setState(msg.chat_id, st);
 
-        return [askFor(st.pending.asked ?? "unknown")];
+        return [copy.askFor(st.pending.asked ?? "unknown")];
       }
 
-      return [
-        `Hay una operación pendiente (${st.pending.operation_id}). Responde confirmar o cancelar antes de iniciar otra.`
-      ];
+      return [copy.pendingOperation(st.pending.operation_id)];
     }
 
     let intent: Intent;
@@ -688,29 +661,18 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     }
 
     if (intent === "ayuda") {
-      return [
-        [
-          "Guía rápida:",
-          "- gasto 380 harina y azúcar en Costco",
-          "- pedido Victor 12 cupcakes red velvet para mañana 2pm recoger en tienda pagado total 480",
-          "Notas:",
-          "- Para tipo de envío puedes escribir: envío a domicilio o recoger en tienda",
-          "- Después del resumen responde: confirmar | cancelar"
-        ].join("\n")
-      ];
+      return [copy.help()];
     }
 
     if (intent === "unknown") {
-      return ["No entendí. Escribe 'ayuda' para ejemplos."];
+      return [copy.unknown()];
     }
 
     const operation_id = newOperationId();
 
     if (intent === "web") {
       if (!webChatEnabled) {
-        return [
-          "La operación web por chat está deshabilitada. Usa publicación content-driven por terminal/CI (`npm run web:publish`)."
-        ];
+        return [copy.webDisabled()];
       }
 
       const parsed = await parseWebFn(msg.text);
@@ -724,7 +686,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           parse_source: parsed.source ?? "unknown",
           detail: parsed.error
         });
-        return [`Error parse: ${parsed.error}`];
+        return [copy.parseError(parsed.error)];
       }
 
       deps.onTrace?.({
@@ -758,7 +720,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         if (!register.inserted) {
           clearPending(msg.chat_id);
           return [
-            `Operación duplicada detectada. operation_id: ${register.operation.operation_id}, status: ${register.operation.status}`
+            copy.duplicate(register.operation.operation_id, register.operation.status)
           ];
         }
 
@@ -772,10 +734,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           }
         });
 
-        return [summaryText(intent, vWeb.data as unknown as Record<string, unknown>, operation_id)];
+        return [copy.summary(intent, vWeb.data as unknown as Record<string, unknown>, operation_id)];
       }
 
-      return [askFor(pending.asked ?? "unknown")];
+      return [copy.askFor(pending.asked ?? "unknown")];
     }
 
     if (intent === "gasto") {
@@ -790,7 +752,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           parse_source: parsed.source ?? "unknown",
           detail: parsed.error
         });
-        return [`Error parse: ${parsed.error}`];
+        return [copy.parseError(parsed.error)];
       }
 
       deps.onTrace?.({
@@ -824,7 +786,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         if (!dedupe.ok) {
           clearPending(msg.chat_id);
           return [
-            `Operación duplicada detectada. operation_id: ${dedupe.duplicate_of.operation_id}, status: ${dedupe.duplicate_of.status}`
+            copy.duplicate(dedupe.duplicate_of.operation_id, dedupe.duplicate_of.status)
           ];
         }
 
@@ -839,10 +801,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           }
         });
 
-        return [summaryText(intent, full, operation_id)];
+        return [copy.summary(intent, full, operation_id)];
       }
 
-      return [askFor(pending.asked ?? "unknown")];
+      return [copy.askFor(pending.asked ?? "unknown")];
     }
 
     const parsed = await parseOrderFn(msg.text);
@@ -856,7 +818,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         parse_source: parsed.source ?? "unknown",
         detail: parsed.error
       });
-      return [`Error parse: ${parsed.error}`];
+      return [copy.parseError(parsed.error)];
     }
 
     deps.onTrace?.({
@@ -890,7 +852,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       if (!dedupe.ok) {
         clearPending(msg.chat_id);
         return [
-          `Operación duplicada detectada. operation_id: ${dedupe.duplicate_of.operation_id}, status: ${dedupe.duplicate_of.status}`
+          copy.duplicate(dedupe.duplicate_of.operation_id, dedupe.duplicate_of.status)
         ];
       }
 
@@ -905,10 +867,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         }
       });
 
-      return [summaryText(intent, full, operation_id)];
+      return [copy.summary(intent, full, operation_id)];
     }
 
-    return [askFor(pending.asked ?? "unknown")];
+    return [copy.askFor(pending.asked ?? "unknown")];
   }
 
   return { handleMessage };

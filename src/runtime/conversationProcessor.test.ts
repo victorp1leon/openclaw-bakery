@@ -100,6 +100,7 @@ let createConversationProcessor: (args: {
     };
     dryRun?: boolean;
   }) => Promise<{ ok: boolean; dry_run: boolean; operation_id: string; detail: string }>;
+  botPersona?: "neutral" | "bakery_warm" | "concise";
   webChatEnabled?: boolean;
   onTrace?: (event: {
     event: string;
@@ -159,6 +160,18 @@ describe("conversation processor security flow", () => {
     const replies = await processor.handleMessage({ chat_id: "chat-help", text: "ayuda" });
     expect(replies[0]).toContain("Guía rápida");
     expect(replies[0]).toContain("recoger en tienda");
+    expect(replies[0]).toContain("confirmar | cancelar");
+  });
+
+  it("permite cambiar la personalidad a bakery_warm", async () => {
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-help-warm"]),
+      routeIntentFn: async () => "ayuda",
+      botPersona: "bakery_warm"
+    });
+
+    const replies = await processor.handleMessage({ chat_id: "chat-help-warm", text: "ayuda" });
+    expect(replies[0]).toContain("Horno rápido");
     expect(replies[0]).toContain("confirmar | cancelar");
   });
 
@@ -522,5 +535,26 @@ describe("conversation processor security flow", () => {
     expect(replies[0]).toContain("12s");
     expect(parseCalls).toBe(0);
     expect(traces.find((t) => t.event === "rate_limit_reject")?.detail).toContain("retry_after=12s");
+  });
+
+  it("acepta atajos de confirmacion y cancelacion", async () => {
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-shortcuts"]),
+      nowMs: () => Date.parse("2026-02-19T12:00:00.000Z"),
+      newOperationId: () => "op-shortcuts",
+      routeIntentFn: async () => "gasto",
+      parseExpenseFn: async (text) =>
+        text.includes("120")
+          ? { ok: true, payload: { monto: 120, concepto: "azucar" } }
+          : { ok: true, payload: { monto: 100, concepto: "harina" } }
+    });
+
+    await processor.handleMessage({ chat_id: "chat-shortcuts", text: "gasto 100 harina" });
+    const confirmed = await processor.handleMessage({ chat_id: "chat-shortcuts", text: "sí" });
+    expect(confirmed[0]).toContain("Ejecutado");
+
+    await processor.handleMessage({ chat_id: "chat-shortcuts", text: "gasto 120 azucar" });
+    const canceled = await processor.handleMessage({ chat_id: "chat-shortcuts", text: "no" });
+    expect(canceled[0]).toContain("Cancelado");
   });
 });

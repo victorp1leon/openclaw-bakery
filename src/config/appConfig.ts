@@ -1,8 +1,11 @@
+import { parseBotPersona, type BotPersona } from "../runtime/persona";
+
 export type ChannelMode = "console" | "telegram";
 export type SheetsProvider = "apps_script" | "gws";
 export type GwsValueInputOption = "RAW" | "USER_ENTERED";
 
 export type AppConfig = {
+  botPersona: BotPersona;
   nodeEnv: string;
   logLevel: string;
   timezone: string;
@@ -136,6 +139,7 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const webAllowedImageDomains = parseCsv(env.WEB_PUBLISH_ALLOWED_IMAGE_DOMAINS).map((domain) => domain.toLowerCase());
 
   return {
+    botPersona: parseBotPersona(env.BOT_PERSONA),
     nodeEnv: env.NODE_ENV ?? "development",
     logLevel: env.LOG_LEVEL ?? "info",
     timezone: env.TIMEZONE ?? "America/Mexico_City",

@@ -49,6 +49,45 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function shouldOfferDecisionKeyboard(text: string): boolean {
+  return /\bconfirmar\s*\|\s*cancelar\b/i.test(text);
+}
+
+function shouldRemoveKeyboard(text: string): boolean {
+  const normalized = text.trim().toLowerCase();
+  return normalized.startsWith("ejecutado") || normalized.startsWith("listo") || normalized.startsWith("hecho") ||
+    normalized.startsWith("cancelado") || normalized.startsWith("operación cancelada");
+}
+
+function toSendBody(msg: OutboundMessage): Record<string, unknown> {
+  if (shouldOfferDecisionKeyboard(msg.text)) {
+    return {
+      chat_id: msg.chat_id,
+      text: msg.text,
+      reply_markup: {
+        keyboard: [[{ text: "confirmar" }, { text: "cancelar" }]],
+        resize_keyboard: true,
+        one_time_keyboard: false
+      }
+    };
+  }
+
+  if (shouldRemoveKeyboard(msg.text)) {
+    return {
+      chat_id: msg.chat_id,
+      text: msg.text,
+      reply_markup: {
+        remove_keyboard: true
+      }
+    };
+  }
+
+  return {
+    chat_id: msg.chat_id,
+    text: msg.text
+  };
+}
+
 export function createTelegramChannel(config: TelegramChannelConfig): ChannelAdapter {
   const fetchFn: FetchLike = config.fetchFn ?? ((globalThis.fetch as unknown) as FetchLike);
   let running = false;
@@ -158,10 +197,7 @@ export function createTelegramChannel(config: TelegramChannelConfig): ChannelAda
       });
     },
     async send(msg: OutboundMessage) {
-      await callTelegram("sendMessage", {
-        chat_id: msg.chat_id,
-        text: msg.text
-      });
+      await callTelegram("sendMessage", toSendBody(msg));
     },
     async stop() {
       running = false;
@@ -175,4 +211,3 @@ export function createTelegramChannel(config: TelegramChannelConfig): ChannelAda
     }
   };
 }
-

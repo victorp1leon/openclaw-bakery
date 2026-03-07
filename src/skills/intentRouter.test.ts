@@ -74,6 +74,24 @@ describe("routeIntent strict mode", () => {
     }
   });
 
+  it("en modo estricto prioriza ayuda local aunque OpenClaw responda unknown", async () => {
+    const prev = process.env.OPENCLAW_STRICT;
+    process.env.OPENCLAW_STRICT = "1";
+
+    try {
+      const runtime = {
+        completeJson: async () => ({ intent: "unknown" })
+      };
+
+      const routed = await routeIntentDetailed("ayuda", runtime);
+      expect(routed.intent).toBe("ayuda");
+      expect(routed.source).toBe("fallback");
+    } finally {
+      if (prev == null) delete process.env.OPENCLAW_STRICT;
+      else process.env.OPENCLAW_STRICT = prev;
+    }
+  });
+
   it("en modo estricto expone payload no-JSON de OpenClaw (ej. rate limit)", async () => {
     const prev = process.env.OPENCLAW_STRICT;
     process.env.OPENCLAW_STRICT = "1";

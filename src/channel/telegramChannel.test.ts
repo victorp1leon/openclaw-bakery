@@ -79,5 +79,56 @@ describe("telegram channel", () => {
       text: "respuesta"
     });
   });
-});
 
+  it("adjunta teclado de decision cuando el mensaje pide confirmar/cancelar", async () => {
+    const fetchFn = vi.fn(async () => okJson({ message_id: 99 }));
+    const channel = createTelegramChannel({
+      botToken: "dummy",
+      pollIntervalMs: 1,
+      longPollTimeoutSeconds: 1,
+      apiBaseUrl: "https://api.telegram.org",
+      fetchFn
+    });
+
+    await channel.send({
+      chat_id: "123",
+      text: "Resumen:\n{}\n\nEscribe: confirmar | cancelar"
+    });
+
+    const [, init] = fetchFn.mock.calls[0];
+    expect(JSON.parse(String((init as RequestInit).body))).toEqual({
+      chat_id: "123",
+      text: "Resumen:\n{}\n\nEscribe: confirmar | cancelar",
+      reply_markup: {
+        keyboard: [[{ text: "confirmar" }, { text: "cancelar" }]],
+        resize_keyboard: true,
+        one_time_keyboard: false
+      }
+    });
+  });
+
+  it("remueve teclado al finalizar una operacion", async () => {
+    const fetchFn = vi.fn(async () => okJson({ message_id: 99 }));
+    const channel = createTelegramChannel({
+      botToken: "dummy",
+      pollIntervalMs: 1,
+      longPollTimeoutSeconds: 1,
+      apiBaseUrl: "https://api.telegram.org",
+      fetchFn
+    });
+
+    await channel.send({
+      chat_id: "123",
+      text: "Ejecutado. operation_id: op-123"
+    });
+
+    const [, init] = fetchFn.mock.calls[0];
+    expect(JSON.parse(String((init as RequestInit).body))).toEqual({
+      chat_id: "123",
+      text: "Ejecutado. operation_id: op-123",
+      reply_markup: {
+        remove_keyboard: true
+      }
+    });
+  });
+});
