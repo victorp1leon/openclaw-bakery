@@ -10,6 +10,7 @@ Last Updated: 2026-03-09
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `runtime/implementation/phase3-report-year-and-lookup-smoke.md` | Implementation | Complete | 2026-03-09 |
 | `runtime/implementation/phase3-order-lookup-skill-and-report-smokes.md` | Implementation | Complete | 2026-03-09 |
 | `runtime/implementation/phase3-report-orders-flexible-periods-v2.md` | Implementation | Complete | 2026-03-09 |
 | `platform/implementation/meta-governance-instructions-adoption.md` | Implementation | Complete | 2026-03-09 |

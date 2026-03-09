@@ -41,7 +41,7 @@ describe("report-orders tool", () => {
     expect(params.range).toBe("Pedidos!A:R");
   });
 
-  it("filters orders by day/week/month", async () => {
+  it("filters orders by day/week/month/year", async () => {
     const rows = [
       [
         "fecha_registro",
@@ -67,7 +67,8 @@ describe("report-orders tool", () => {
       ["2026-03-07", "op-1", "2026-03-07 14:00", "Ana", "", "cupcakes", "", "12", "", "", "recoger_en_tienda", "", "pagado", "480", "MXN", "", "chat-1", "op-1", "2026-03-07T14:00:00"],
       ["2026-03-07", "op-2", "2026-03-08 09:00", "Luis", "", "pastel", "", "1", "", "", "envio_domicilio", "", "pendiente", "900", "MXN", "", "chat-1", "op-2", "2026-03-08T09:00:00"],
       ["2026-03-14", "op-3", "2026-03-15 09:00", "Eva", "", "galletas", "", "20", "", "", "recoger_en_tienda", "", "pagado", "300", "MXN", "", "chat-1", "op-3", "2026-03-15T09:00:00"],
-      ["2026-04-01", "op-4", "2026-04-01 08:00", "Iris", "", "brownie", "", "6", "", "", "recoger_en_tienda", "", "pagado", "240", "MXN", "", "chat-1", "op-4", "2026-04-01T08:00:00"]
+      ["2026-04-01", "op-4", "2026-04-01 08:00", "Iris", "", "brownie", "", "6", "", "", "recoger_en_tienda", "", "pagado", "240", "MXN", "", "chat-1", "op-4", "2026-04-01T08:00:00"],
+      ["2025-12-31", "op-5", "2025-12-31 08:00", "Leo", "", "donas", "", "8", "", "", "recoger_en_tienda", "", "pagado", "160", "MXN", "", "chat-1", "op-5", "2025-12-31T08:00:00"]
     ];
 
     const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: rows }));
@@ -83,6 +84,7 @@ describe("report-orders tool", () => {
     const week = await tool({ chat_id: "chat-1", period: { type: "week", anchorDateKey: "2026-03-07", label: "esta semana" } });
     const nextWeek = await tool({ chat_id: "chat-1", period: { type: "week", anchorDateKey: "2026-03-14", label: "la siguiente semana" } });
     const month = await tool({ chat_id: "chat-1", period: { type: "month", year: 2026, month: 3, label: "este mes" } });
+    const year = await tool({ chat_id: "chat-1", period: { type: "year", year: 2026, label: "este año" } });
 
     expect(day.total).toBe(1);
     expect(day.orders[0]?.folio).toBe("op-2");
@@ -92,6 +94,8 @@ describe("report-orders tool", () => {
     expect(nextWeek.orders[0]?.folio).toBe("op-3");
     expect(month.total).toBe(3);
     expect(month.orders.map((order) => order.folio)).toEqual(["op-1", "op-2", "op-3"]);
+    expect(year.total).toBe(4);
+    expect(year.orders.map((order) => order.folio)).toEqual(["op-1", "op-2", "op-3", "op-4"]);
   });
 
   it("uses fecha_hora_entrega_iso when free text field is relative", async () => {

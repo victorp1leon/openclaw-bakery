@@ -39,7 +39,7 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - Register `operation_id` and prevent duplicates with idempotency/dedupe guards.
 - For `gasto`, execute `append-expense` adapter on confirm path.
 - For `pedido`, execute `create-card` + `append-order` adapters on confirm path.
-- For order reporting queries (e.g. `pedidos hoy`, `pedidos del 28 de abril`, `pedidos esta semana`, `pedidos del mes de mayo`), route deterministically to `report-orders` without entering confirm flow.
+- For order reporting queries (e.g. `pedidos hoy`, `pedidos del 28 de abril`, `pedidos esta semana`, `pedidos del mes de mayo`, `pedidos de este año`), route deterministically to `report-orders` without entering confirm flow.
 - For order lookup queries (e.g. `consulta pedido de ana`, `buscar pedido op-123`), route deterministically to `lookup-order` without entering confirm flow.
 - For `web`, execute `publish-site` adapter on confirm path.
 - `web` conversational flow may be feature-gated; when disabled, runtime must return a controlled message and suggest content-driven terminal/CI publish path.

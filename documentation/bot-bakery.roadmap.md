@@ -233,14 +233,14 @@ Current coverage (status):
 - Conversational base covered: intent detection, parsing, missing-field prompts, confirmation/cancellation.
 - Security baseline covered: allowlist, dedupe/idempotency, per-chat rate limiting with burst block.
 - `order.create`: end-to-end completed (Trello + Sheets) with live smoke validated.
-- `report.orders` v2: queries by dia/semana/mes (including explicit date and month references) reading Google Sheets (`Pedidos`) via `gws`.
+- `report.orders` v3: queries by dia/semana/mes/año (including explicit date and month references) reading Google Sheets (`Pedidos`) via `gws`.
 - `order.lookup` v1: read-only query by folio/nombre/producto over Google Sheets (`Pedidos`) via `gws`.
 - `expense.add`: end-to-end completed (HTTP Apps Script live validated) with API key hardening and smoke validation.
 - `web.publish`: adapter + runtime flow integrated, with chat path behind feature flag and content-driven terminal/CI publish path enabled.
 - Static site scaffold generated from repository content (`site/CONTENT.json` -> `site/dist`) via `npm run web:build`.
 - Branding-ready scaffold (`logo` + `tarjeta`) and Facebook gallery import helper available (`npm run web:import:facebook`).
 - UI smoke coverage for conversion-critical flows available via Playwright-core (`npm run smoke:web:ui`), including desktop/mobile checks and WhatsApp CTA validation.
-- Pending: reportes avanzados (filtros anuales, reminders), scheduling, customers, costing/profitability, and inventory.
+- Pending: reportes avanzados (reminders), scheduling, customers, costing/profitability, and inventory.
 
 Execution tracking source of truth:
 - `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md`

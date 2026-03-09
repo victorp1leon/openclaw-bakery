@@ -311,6 +311,24 @@ function parseOrderReportMonthPeriod(args: {
   return undefined;
 }
 
+function parseOrderReportYearPeriod(args: {
+  normalized: string;
+  now: Date;
+  timezone: string;
+}): OrderReportPeriod | undefined {
+  const current = currentDatePartsInTimezone(args.now, args.timezone);
+
+  if (/\beste\s+ano\b/.test(args.normalized)) {
+    return {
+      type: "year",
+      year: current.year,
+      label: "este año"
+    };
+  }
+
+  return undefined;
+}
+
 function detectOrderReportPeriod(args: {
   text: string;
   now: Date;
@@ -320,7 +338,7 @@ function detectOrderReportPeriod(args: {
   const hasOrderWord = /\bpedidos?\b/.test(normalized);
   if (!hasOrderWord) return undefined;
 
-  const hasPeriodHint = /\b(hoy|manana|semana|mes)\b/.test(normalized) || /\b\d{1,2}\s+de\s+[a-z]+\b/.test(normalized);
+  const hasPeriodHint = /\b(hoy|manana|semana|mes|ano)\b/.test(normalized) || /\b\d{1,2}\s+de\s+[a-z]+\b/.test(normalized);
   if (!hasPeriodHint) return undefined;
 
   const hasQueryVerb = /\b(que|cuales|dame|mostrar|muestrame|ver|lista|listar|tengo|recuerdame|consulta|consultar)\b/.test(
@@ -353,6 +371,13 @@ function detectOrderReportPeriod(args: {
   });
   if (monthPeriod) return monthPeriod;
 
+  const yearPeriod = parseOrderReportYearPeriod({
+    normalized,
+    now: args.now,
+    timezone: args.timezone
+  });
+  if (yearPeriod) return yearPeriod;
+
   return undefined;
 }
 
@@ -361,7 +386,7 @@ function detectOrderLookupQuery(text: string): string | undefined {
   const hasOrderWord = /\bpedidos?\b/.test(normalized);
   if (!hasOrderWord) return undefined;
 
-  const hasPeriodHint = /\b(hoy|manana|semana|mes)\b/.test(normalized) || /\b\d{1,2}\s+de\s+[a-z]+\b/.test(normalized);
+  const hasPeriodHint = /\b(hoy|manana|semana|mes|ano)\b/.test(normalized) || /\b\d{1,2}\s+de\s+[a-z]+\b/.test(normalized);
   if (hasPeriodHint) return undefined;
 
   const hasLookupVerb = /\b(busca|buscar|consulta|consultar|estado|estatus|status|folio|id|detalle|ver|muestrame|dame)\b/.test(

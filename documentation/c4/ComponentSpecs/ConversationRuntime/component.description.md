@@ -11,7 +11,7 @@ Coordinate the end-to-end conversation flow and apply security/UX rules:
 - one missing field per turn
 - action summary
 - tool execution (when applicable)
-- report query responses (`pedidos` por dia/semana/mes) via read-only adapter
+- report query responses (`pedidos` por dia/semana/mes/año) via read-only adapter
 - order lookup query responses (`pedido por folio/nombre/producto`) via read-only adapter
 
 ## Internal Components

@@ -23,7 +23,8 @@ const scenarios = [
   "que pedidos tengo el 28 de abril",
   "que pedidos tengo la siguiente semana",
   "que pedidos tengo este mes",
-  "que pedidos tengo el mes de mayo"
+  "que pedidos tengo el mes de mayo",
+  "que pedidos tengo este año"
 ];
 
 const executeOrderReport = liveMode
@@ -40,7 +41,8 @@ const executeOrderReport = liveMode
     chat_id: string;
     period: { type: "day"; dateKey: string; label: string }
       | { type: "week"; anchorDateKey: string; label: string }
-      | { type: "month"; year: number; month: number; label: string };
+      | { type: "month"; year: number; month: number; label: string }
+      | { type: "year"; year: number; label: string };
   }) => ({
     period: args.period,
     timezone: config.timezone,

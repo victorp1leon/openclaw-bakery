@@ -105,12 +105,14 @@ let createConversationProcessor: (args: {
     period:
       | { type: "day"; dateKey: string; label: string }
       | { type: "week"; anchorDateKey: string; label: string }
-      | { type: "month"; year: number; month: number; label: string };
+      | { type: "month"; year: number; month: number; label: string }
+      | { type: "year"; year: number; label: string };
   }) => Promise<{
     period:
       | { type: "day"; dateKey: string; label: string }
       | { type: "week"; anchorDateKey: string; label: string }
-      | { type: "month"; year: number; month: number; label: string };
+      | { type: "month"; year: number; month: number; label: string }
+      | { type: "year"; year: number; label: string };
     timezone: string;
     total: number;
     orders: Array<{
@@ -359,6 +361,34 @@ describe("conversation processor security flow", () => {
     expect(executeOrderReportFn).toHaveBeenNthCalledWith(2, {
       chat_id: "chat-report-month",
       period: { type: "month", year: 2026, month: 5, label: "mes de mayo" }
+    });
+  });
+
+  it("resuelve consulta de pedidos para este año", async () => {
+    const executeOrderReportFn = vi.fn(async () => ({
+      period: { type: "year", year: 2026, label: "este año" } as const,
+      timezone: "America/Mexico_City",
+      total: 0,
+      orders: [],
+      detail: "report-orders executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-report-year"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn: async () => "pedido",
+      executeOrderReportFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-report-year",
+      text: "dame los pedidos de este año"
+    });
+
+    expect(replies[0]).toContain("No encontré pedidos para este año");
+    expect(executeOrderReportFn).toHaveBeenCalledWith({
+      chat_id: "chat-report-year",
+      period: { type: "year", year: 2026, label: "este año" }
     });
   });
 

@@ -1,10 +1,10 @@
-# Spec - report-orders (Phase 3 reporting v2)
+# Spec - report-orders (Phase 3 reporting v3)
 
 Status: MVP
 Last Updated: 2026-03-09
 
 ## Objective
-Read order rows from Google Sheets and return operational summaries filtered by day/week/month periods.
+Read order rows from Google Sheets and return operational summaries filtered by day/week/month/year periods.
 It must query data only and must not mutate orders or confirmation state.
 
 ## Inputs
@@ -12,6 +12,7 @@ It must query data only and must not mutate orders or confirmation state.
   - `day`: exact `dateKey` (`YYYY-MM-DD`) + user-facing label
   - `week`: week containing an anchor date (`anchorDateKey`) + label
   - `month`: exact `year` + `month` + label
+  - `year`: exact `year` + label
 - Backward-compatible legacy period shortcuts supported internally:
   - `today`
   - `tomorrow`
@@ -39,6 +40,7 @@ It must query data only and must not mutate orders or confirmation state.
 - Day filter matches exact `dateKey`.
 - Week filter matches Monday-Sunday window from `anchorDateKey` in configured timezone.
 - Month filter matches exact `year` + `month`.
+- Year filter matches exact `year`.
 - Return rows sorted by delivery date/time (best effort).
 - Never include secrets/tokens in user-facing errors.
 
@@ -65,5 +67,6 @@ It must query data only and must not mutate orders or confirmation state.
 - `filters_orders_for_day`
 - `filters_orders_for_week`
 - `filters_orders_for_month`
+- `filters_orders_for_year`
 - `retries_on_transient_gws_failure_then_succeeds`
 - `fails_when_gws_command_unavailable`

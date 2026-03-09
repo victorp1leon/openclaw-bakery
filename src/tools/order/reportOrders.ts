@@ -16,6 +16,11 @@ export type OrderReportPeriodFilter =
     year: number;
     month: number;
     label: string;
+  }
+  | {
+    type: "year";
+    year: number;
+    label: string;
   };
 
 export type OrderReportPeriod = "today" | "tomorrow" | "week" | OrderReportPeriodFilter;
@@ -266,7 +271,14 @@ function normalizePeriod(args: {
     return args.period;
   }
 
-  if (!Number.isInteger(args.period.year) || !Number.isInteger(args.period.month)) {
+  if (!Number.isInteger(args.period.year)) {
+    throw new Error("order_report_period_invalid");
+  }
+  if (args.period.type === "year") {
+    return args.period;
+  }
+
+  if (!Number.isInteger(args.period.month)) {
     throw new Error("order_report_period_invalid");
   }
   if (args.period.month < 1 || args.period.month > 12) {
@@ -356,6 +368,9 @@ function matchesPeriod(args: {
 
   const rowMonth = monthFromDateKey(args.row._dateKey);
   if (!rowMonth) return false;
+  if (args.period.type === "year") {
+    return rowMonth.year === args.period.year;
+  }
   return rowMonth.year === args.period.year && rowMonth.month === args.period.month;
 }
 
