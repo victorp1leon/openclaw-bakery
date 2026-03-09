@@ -1,6 +1,6 @@
 # Plans Index (AI Collaboration)
 
-Last Updated: 2026-03-07
+Last Updated: 2026-03-09
 
 ## Active Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
@@ -10,6 +10,8 @@ Last Updated: 2026-03-07
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `platform/implementation/agents-scaffolding-foundation.md` | Implementation | Complete | 2026-03-09 |
+| `platform/implementation/copilot-instructions-adaptation-foundation.md` | Implementation | Complete | 2026-03-09 |
 | `runtime/implementation/phase3-order-delivery-datetime-iso.md` | Implementation | Complete | 2026-03-07 |
 | `runtime/implementation/phase3-report-orders-gws-v1.md` | Implementation | Complete | 2026-03-07 |
 | `runtime/implementation/phase2-bot-persona-and-telegram-ux.md` | Implementation | Complete | 2026-03-07 |

@@ -1,17 +1,31 @@
+---
+name: expense.add
+description: Use when parsing a Spanish free-text expense request into structured JSON for local confirmation flow without external side effects.
+---
+
 # skill: expense.add
 
-## Objetivo
-Capturar un gasto desde lenguaje natural y producir JSON estructurado para validación local (sin APIs externas).
+## Overview
+Captura un gasto desde lenguaje natural y produce JSON estructurado para validacion local. Esta skill no ejecuta APIs externas.
 
-## Entrada esperada
-Texto libre en español con intención de gasto.
+## When To Use
+- El usuario quiere registrar un gasto nuevo.
+- El mensaje llega en texto libre y se requiere extraccion estructurada.
+- Se necesita flujo de confirmacion explicita antes de ejecutar.
 
-Ejemplos:
-- `gasto 380 harina y azucar en Costco`
-- `registrar gasto de 1200 luz`
+## When Not To Use
+- Editar o eliminar gastos ya registrados.
+- Ejecutar escritura directa a conectores externos.
+- Procesar intents distintos a `gasto`.
 
-## Salida obligatoria (JSON)
-Responder solo JSON válido con esta forma:
+## Input Contract
+- Texto libre en espanol con intencion de gasto.
+- Ejemplos:
+  - `gasto 380 harina y azucar en Costco`
+  - `registrar gasto de 1200 luz`
+
+## Output Contract
+Responder solo JSON valido con esta forma:
 
 ```json
 {
@@ -33,17 +47,29 @@ Responder solo JSON válido con esta forma:
   },
   "missing": ["concepto"],
   "asked": "concepto",
-  "reply": "¿Cuál es el concepto?"
+  "reply": "Cual es el concepto?"
 }
 ```
 
-## Reglas conversacionales
-- Si faltan datos, preguntar exactamente 1 campo por turno.
-- Nunca ejecutar acciones externas directamente.
-- Cuando no haya faltantes, mostrar resumen y pedir explícitamente `confirmar` o `cancelar`.
-- Si el usuario responde `confirmar`, mover estado a `executed` solo en runtime local/simulado.
-- Si responde `cancelar`, mover estado a `canceled`.
+## Workflow
+1. Detectar intencion `gasto`.
+2. Extraer y normalizar campos del payload.
+3. Si faltan datos, preguntar exactamente un campo por turno.
+4. Cuando no haya faltantes, mostrar resumen y pedir `confirmar` o `cancelar`.
+5. Si el usuario responde:
+   - `confirmar` -> mover estado a `executed` solo en runtime local/simulado.
+   - `cancelar` -> mover estado a `canceled`.
 
-## Campos mínimos
-- Obligatorios: `monto`, `concepto`
-- Opcionales: `moneda` (default `MXN`), `categoria`, `metodo_pago`, `proveedor`, `fecha`, `notas`
+## Required And Optional Fields
+- Obligatorios: `monto`, `concepto`.
+- Opcionales: `moneda` (default `MXN`), `categoria`, `metodo_pago`, `proveedor`, `fecha`, `notas`.
+
+## Safety Constraints
+- Nunca ejecutar acciones externas directamente.
+- Mantener salida estrictamente en JSON valido.
+- No preguntar mas de un faltante por turno.
+
+## Common Mistakes
+- Devolver mezcla de JSON y texto explicativo.
+- Marcar `executed` sin confirmacion explicita.
+- Omitir `monto` o `concepto` en payload final.

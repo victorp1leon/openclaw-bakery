@@ -1,17 +1,31 @@
+---
+name: order.create
+description: Use when parsing a Spanish free-text bakery order request into structured JSON for local confirmation flow without external side effects.
+---
+
 # skill: order.create
 
-## Objetivo
-Capturar un pedido desde lenguaje natural y producir JSON estructurado para validación local (sin APIs externas).
+## Overview
+Captura un pedido desde lenguaje natural y produce JSON estructurado para validacion local. Esta skill no ejecuta APIs externas.
 
-## Entrada esperada
-Texto libre en español con intención de pedido.
+## When To Use
+- El usuario quiere registrar un pedido nuevo.
+- El mensaje llega en texto libre y requiere extraccion de campos.
+- Se necesita mantener flujo de confirmacion (`confirmar` o `cancelar`) antes de ejecutar.
 
-Ejemplos:
-- `pedido 12 cupcakes red velvet manana 2pm recoger 480 pagado`
-- `pedido Ana 1 pastel chocolate entrega: 2026-02-21 17:00 envio: domicilio`
+## When Not To Use
+- Actualizar o cancelar un pedido existente.
+- Ejecutar acciones externas directas (Sheets/Trello/API).
+- Responder consultas analiticas o reportes.
 
-## Salida obligatoria (JSON)
-Responder solo JSON válido con esta forma:
+## Input Contract
+- Texto libre en espanol con intencion de pedido.
+- Ejemplos:
+  - `pedido 12 cupcakes red velvet manana 2pm recoger 480 pagado`
+  - `pedido Ana 1 pastel chocolate entrega: 2026-02-21 17:00 envio: domicilio`
+
+## Output Contract
+Responder solo JSON valido con esta forma:
 
 ```json
 {
@@ -39,19 +53,32 @@ Responder solo JSON válido con esta forma:
   },
   "missing": ["direccion"],
   "asked": "direccion",
-  "reply": "¿Dirección de entrega?"
+  "reply": "Direccion de entrega?"
 }
 ```
 
-## Reglas conversacionales
-- Si faltan datos, preguntar exactamente 1 campo por turno.
-- `direccion` es obligatoria cuando `tipo_envio = envio_domicilio`.
-- Nunca ejecutar acciones externas directamente.
-- Cuando el payload esté completo, mostrar resumen y pedir `confirmar` o `cancelar`.
-- Si el usuario responde `confirmar`, mover estado a `executed` solo en runtime local/simulado.
-- Si responde `cancelar`, mover estado a `canceled`.
+## Workflow
+1. Detectar intencion `pedido`.
+2. Extraer campos del payload y normalizar formato.
+3. Validar faltantes:
+   - Preguntar exactamente un campo por turno.
+   - `direccion` es obligatoria cuando `tipo_envio = envio_domicilio`.
+4. Cuando no haya faltantes, presentar resumen y pedir `confirmar` o `cancelar`.
+5. Si el usuario responde:
+   - `confirmar` -> mover estado a `executed` solo en runtime local/simulado.
+   - `cancelar` -> mover estado a `canceled`.
 
-## Campos mínimos
-- Obligatorios: `nombre_cliente`, `producto`, `cantidad`, `tipo_envio`, `fecha_hora_entrega`
-- Condicional: `direccion` si hay envío a domicilio
-- Opcionales: `telefono`, `descripcion_producto`, `sabor_pan`, `sabor_relleno`, `estado_pago`, `total`, `moneda`, `notas`
+## Required And Optional Fields
+- Obligatorios: `nombre_cliente`, `producto`, `cantidad`, `tipo_envio`, `fecha_hora_entrega`.
+- Condicional: `direccion` si `tipo_envio = envio_domicilio`.
+- Opcionales: `telefono`, `descripcion_producto`, `sabor_pan`, `sabor_relleno`, `estado_pago`, `total`, `moneda`, `notas`.
+
+## Safety Constraints
+- Nunca ejecutar acciones externas directamente.
+- Mantener salida estrictamente en JSON valido.
+- No preguntar mas de un faltante por turno.
+
+## Common Mistakes
+- Devolver texto libre junto con el JSON.
+- Marcar `executed` sin confirmacion explicita.
+- Omitir `direccion` cuando hay envio a domicilio.

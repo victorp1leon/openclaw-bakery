@@ -31,3 +31,4 @@ coverage/
 .DS_Store
 .vscode/
 .idea/
+openclaw-bakery.code-workspace
