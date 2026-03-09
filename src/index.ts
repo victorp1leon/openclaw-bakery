@@ -10,6 +10,7 @@ import { createConversationProcessor } from "./runtime/conversationProcessor";
 import { createAppendExpenseTool } from "./tools/expense/appendExpense";
 import { createAppendOrderTool } from "./tools/order/appendOrder";
 import { createCreateCardTool } from "./tools/order/createCard";
+import { createLookupOrderTool } from "./tools/order/lookupOrder";
 import { createReportOrdersTool } from "./tools/order/reportOrders";
 import { createPublishSiteTool } from "./tools/web/publishSite";
 
@@ -165,6 +166,16 @@ const executeOrderReport = createReportOrdersTool({
   timezone: appConfig.timezone
 });
 
+const executeOrderLookup = createLookupOrderTool({
+  gwsCommand: appConfig.orderTool.sheets.gws.command,
+  gwsCommandArgs: appConfig.orderTool.sheets.gws.commandArgs,
+  gwsSpreadsheetId: appConfig.orderTool.sheets.gws.spreadsheetId,
+  gwsRange: appConfig.orderTool.sheets.gws.range,
+  timeoutMs: appConfig.orderTool.sheets.timeoutMs,
+  maxRetries: appConfig.orderTool.sheets.maxRetries,
+  timezone: appConfig.timezone
+});
+
 const executeWebPublish = createPublishSiteTool({
   webhookUrl: appConfig.webTool.publish.webhookUrl,
   apiKey: appConfig.webTool.publish.apiKey,
@@ -183,6 +194,8 @@ const tracedProcessor = createConversationProcessor({
   executeCreateCardFn: executeCreateCard,
   executeAppendOrderFn: executeAppendOrder,
   executeOrderReportFn: executeOrderReport,
+  executeOrderLookupFn: executeOrderLookup,
+  orderReportTimezone: appConfig.timezone,
   executeWebPublishFn: executeWebPublish,
   webChatEnabled: appConfig.webTool.chatEnabled,
   rateLimiter: createRateLimitGuard({

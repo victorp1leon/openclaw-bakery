@@ -1,7 +1,7 @@
 # DDD Roadmap Coverage Matrix
 
 Status: In Progress
-Last Updated: 2026-03-07
+Last Updated: 2026-03-09
 
 ## Purpose
 Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
@@ -47,12 +47,13 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 | 3 | `order.update` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
 | 3 | `order.cancel` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
 | 3 | `order.status` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
+| 3 | `order.lookup` | `.../Tools/Specs/lookup-order.spec.md` | `src/tools/order/lookupOrder.test.ts` + `src/runtime/conversationProcessor.test.ts` | Lectura read-only de `Pedidos` via `gws` + lookup por folio/nombre/producto | Done | Extender a estado enriquecido de pedido si se prioriza |
 | 3 | `payment.record` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
 | 3 | `quote.order` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
 | 3 | `shopping.list.generate` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
 | 3 | `inventory.consume` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
 | 3 | `schedule.day_view` / `schedule.week_view` | Roadmap only | No | No | Planned | Crear specs de reporting/scheduling |
-| 3/5 | `report.orders` | `.../Tools/Specs/report-orders.spec.md` | `src/tools/order/reportOrders.test.ts` + `src/runtime/conversationProcessor.test.ts` | Lectura real de `Pedidos` via `gws` + filtros `today/tomorrow/week` + respuesta en runtime | Partial | Extender a `este mes` y filtros por fecha explicita |
+| 3/5 | `report.orders` | `.../Tools/Specs/report-orders.spec.md` | `src/tools/order/reportOrders.test.ts` + `src/runtime/conversationProcessor.test.ts` | Lectura real de `Pedidos` via `gws` + filtros dia/semana/mes (incluye fechas y meses explicitos) + respuesta en runtime | Done | Evaluar filtros anuales si se prioriza |
 | 3/5 | `report.reminders` | Roadmap only | No | No | Planned | Crear spec + ventana de proximidad y reglas de recordatorio |
 | 5 | `costing.recipe_cost` | Roadmap only | No | No | Planned | Crear spec de catalogo/recetas |
 | 5 | `profit.order` | Roadmap only | No | No | Planned | Crear spec de calculo de utilidad |

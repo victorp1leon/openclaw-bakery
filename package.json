@@ -7,6 +7,7 @@
     "verify:security": "npm run security:scan && npm test",
     "smoke:expense": "npx ts-node --transpile-only scripts/smoke/expense-smoke.ts",
     "smoke:order": "npx ts-node --transpile-only scripts/smoke/order-smoke.ts",
+    "smoke:report": "npx ts-node --transpile-only scripts/smoke/report-smoke.ts",
     "smoke:web": "npx ts-node --transpile-only scripts/smoke/web-smoke.ts",
     "smoke:web:ui": "npm run web:build && npx ts-node --transpile-only scripts/smoke/web-ui-playwright-smoke.ts",
     "web:build": "npx ts-node --transpile-only scripts/web/build-site-from-content.ts",

@@ -1,26 +1,6 @@
 import { runGwsCommand, type GwsCommandRunner } from "../googleWorkspace/runGwsCommand";
 
-export type OrderReportPeriodFilter =
-  | {
-    type: "day";
-    dateKey: string;
-    label: string;
-  }
-  | {
-    type: "week";
-    anchorDateKey: string;
-    label: string;
-  }
-  | {
-    type: "month";
-    year: number;
-    month: number;
-    label: string;
-  };
-
-export type OrderReportPeriod = "today" | "tomorrow" | "week" | OrderReportPeriodFilter;
-
-export type OrderReportItem = {
+export type OrderLookupItem = {
   folio: string;
   fecha_hora_entrega: string;
   fecha_hora_entrega_iso?: string;
@@ -34,15 +14,15 @@ export type OrderReportItem = {
   operation_id?: string;
 };
 
-export type OrderReportResult = {
-  period: OrderReportPeriodFilter;
+export type OrderLookupResult = {
+  query: string;
   timezone: string;
   total: number;
-  orders: OrderReportItem[];
+  orders: OrderLookupItem[];
   detail: string;
 };
 
-export type ReportOrdersToolConfig = {
+export type LookupOrderToolConfig = {
   gwsCommand?: string;
   gwsCommandArgs?: string[];
   gwsSpreadsheetId?: string;
@@ -51,16 +31,14 @@ export type ReportOrdersToolConfig = {
   maxRetries?: number;
   retryBackoffMs?: number;
   timezone?: string;
-  now?: () => Date;
+  limit?: number;
   gwsRunner?: GwsCommandRunner;
 };
 
-type ParsedOrderRow = OrderReportItem & {
+type ParsedOrderRow = OrderLookupItem & {
   _dateKey?: string;
+  _matchKey: string;
 };
-
-const DAY_MS = 86_400_000;
-const DATE_KEY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 function sleep(ms: number): Promise<void> {
   if (ms <= 0) return Promise.resolve();
@@ -71,6 +49,10 @@ function sanitizeErrorToken(value: unknown): string {
   if (typeof value !== "string") return "unknown";
   const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return normalized || "unknown";
+}
+
+function normalizeForMatch(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
 function parseJsonText(text: string): unknown {
@@ -154,6 +136,14 @@ function readValuesFromGwsPayload(value: unknown): string[][] | undefined {
   return undefined;
 }
 
+function toNumberMaybe(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().replace(",", ".");
+  if (!/^[-+]?\d+(?:\.\d+)?$/.test(normalized)) return undefined;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function toDateKeyFromDate(date: Date, timezone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
@@ -166,113 +156,6 @@ function toDateKeyFromDate(date: Date, timezone: string): string {
   const m = parts.find((part) => part.type === "month")?.value ?? "01";
   const d = parts.find((part) => part.type === "day")?.value ?? "01";
   return `${y}-${m}-${d}`;
-}
-
-function weekdayIndex(date: Date, timezone: string): number {
-  const wd = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    weekday: "short"
-  }).format(date);
-
-  if (wd === "Sun") return 0;
-  if (wd === "Mon") return 1;
-  if (wd === "Tue") return 2;
-  if (wd === "Wed") return 3;
-  if (wd === "Thu") return 4;
-  if (wd === "Fri") return 5;
-  return 6;
-}
-
-function buildWeekDateKeys(anchor: Date, timezone: string): Set<string> {
-  const weekday = weekdayIndex(anchor, timezone);
-  const offsetToMonday = (weekday + 6) % 7;
-  const out = new Set<string>();
-
-  for (let i = -offsetToMonday; i <= 6 - offsetToMonday; i += 1) {
-    out.add(toDateKeyFromDate(new Date(anchor.getTime() + i * DAY_MS), timezone));
-  }
-
-  return out;
-}
-
-function dateFromDateKey(dateKey: string): Date | undefined {
-  const match = dateKey.match(DATE_KEY_RE);
-  if (!match) return undefined;
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return undefined;
-  if (month < 1 || month > 12 || day < 1 || day > 31) return undefined;
-
-  const candidate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
-  if (
-    candidate.getUTCFullYear() !== year ||
-    candidate.getUTCMonth() !== month - 1 ||
-    candidate.getUTCDate() !== day
-  ) {
-    return undefined;
-  }
-
-  return candidate;
-}
-
-function monthFromDateKey(dateKey: string): { year: number; month: number } | undefined {
-  const match = dateKey.match(DATE_KEY_RE);
-  if (!match) return undefined;
-  return { year: Number(match[1]), month: Number(match[2]) };
-}
-
-function normalizePeriod(args: {
-  period: OrderReportPeriod;
-  timezone: string;
-  now: Date;
-}): OrderReportPeriodFilter {
-  if (args.period === "today") {
-    return {
-      type: "day",
-      dateKey: toDateKeyFromDate(args.now, args.timezone),
-      label: "hoy"
-    };
-  }
-
-  if (args.period === "tomorrow") {
-    return {
-      type: "day",
-      dateKey: toDateKeyFromDate(new Date(args.now.getTime() + DAY_MS), args.timezone),
-      label: "mañana"
-    };
-  }
-
-  if (args.period === "week") {
-    return {
-      type: "week",
-      anchorDateKey: toDateKeyFromDate(args.now, args.timezone),
-      label: "esta semana"
-    };
-  }
-
-  if (args.period.type === "day") {
-    if (!dateFromDateKey(args.period.dateKey)) {
-      throw new Error("order_report_period_invalid");
-    }
-    return args.period;
-  }
-
-  if (args.period.type === "week") {
-    if (!dateFromDateKey(args.period.anchorDateKey)) {
-      throw new Error("order_report_period_invalid");
-    }
-    return args.period;
-  }
-
-  if (!Number.isInteger(args.period.year) || !Number.isInteger(args.period.month)) {
-    throw new Error("order_report_period_invalid");
-  }
-  if (args.period.month < 1 || args.period.month > 12) {
-    throw new Error("order_report_period_invalid");
-  }
-  return args.period;
 }
 
 function extractDateKey(raw: string, timezone: string): string | undefined {
@@ -299,14 +182,6 @@ function extractDateKey(raw: string, timezone: string): string | undefined {
   return undefined;
 }
 
-function toNumberMaybe(value: string | undefined): number | undefined {
-  if (!value) return undefined;
-  const normalized = value.trim().replace(",", ".");
-  if (!/^[-+]?\d+(?:\.\d+)?$/.test(normalized)) return undefined;
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
 function isHeaderRow(row: string[]): boolean {
   const normalized = row.map((cell) => cell.trim().toLowerCase());
   return normalized.includes("fecha_hora_entrega") && normalized.includes("nombre_cliente");
@@ -319,56 +194,53 @@ function mapRows(rows: string[][], timezone: string): ParsedOrderRow[] {
     const fecha_hora_entrega = row[2] ?? "";
     const fecha_hora_entrega_iso = row[18] || undefined;
     const dateSource = fecha_hora_entrega_iso || fecha_hora_entrega;
+    const folio = row[1] ?? "";
+    const operation_id = row[17] || undefined;
+    const nombre_cliente = row[3] ?? "";
+    const producto = row[5] ?? "";
+    const searchKey = normalizeForMatch(`${folio} ${operation_id ?? ""} ${nombre_cliente} ${producto}`);
     return {
-      folio: row[1] ?? "",
+      folio,
       fecha_hora_entrega,
       fecha_hora_entrega_iso,
-      nombre_cliente: row[3] ?? "",
-      producto: row[5] ?? "",
+      nombre_cliente,
+      producto,
       cantidad: toNumberMaybe(row[7]),
       tipo_envio: row[10] || undefined,
       estado_pago: row[12] || undefined,
       total: toNumberMaybe(row[13]),
       moneda: row[14] || undefined,
-      operation_id: row[17] || undefined,
-      _dateKey: extractDateKey(dateSource, timezone)
+      operation_id,
+      _dateKey: extractDateKey(dateSource, timezone),
+      _matchKey: searchKey
     };
   }).filter((row) => row.fecha_hora_entrega && row.nombre_cliente && row.producto);
 }
 
-function matchesPeriod(args: {
-  row: ParsedOrderRow;
-  period: OrderReportPeriodFilter;
-  timezone: string;
-}): boolean {
-  if (!args.row._dateKey) return false;
+function matchesQuery(row: ParsedOrderRow, query: string): boolean {
+  const q = normalizeForMatch(query);
+  if (!q || q.length < 2) return false;
 
-  if (args.period.type === "day") {
-    return args.row._dateKey === args.period.dateKey;
-  }
+  const folio = normalizeForMatch(row.folio);
+  const operationId = normalizeForMatch(row.operation_id ?? "");
+  if (folio === q || operationId === q) return true;
 
-  if (args.period.type === "week") {
-    const anchor = dateFromDateKey(args.period.anchorDateKey);
-    if (!anchor) return false;
-    const weekKeys = buildWeekDateKeys(anchor, args.timezone);
-    return weekKeys.has(args.row._dateKey);
-  }
+  const tokens = q.split(/\s+/).filter((token) => token.length >= 2);
+  if (tokens.length === 0) return false;
 
-  const rowMonth = monthFromDateKey(args.row._dateKey);
-  if (!rowMonth) return false;
-  return rowMonth.year === args.period.year && rowMonth.month === args.period.month;
+  return tokens.every((token) => row._matchKey.includes(token));
 }
 
 function sortRows(a: ParsedOrderRow, b: ParsedOrderRow): number {
-  const keyA = a._dateKey ?? "9999-12-31";
-  const keyB = b._dateKey ?? "9999-12-31";
-  if (keyA !== keyB) return keyA.localeCompare(keyB);
-  const dateCmp = a.fecha_hora_entrega.localeCompare(b.fecha_hora_entrega);
+  const keyA = a._dateKey ?? "0000-01-01";
+  const keyB = b._dateKey ?? "0000-01-01";
+  if (keyA !== keyB) return keyB.localeCompare(keyA);
+  const dateCmp = b.fecha_hora_entrega.localeCompare(a.fecha_hora_entrega);
   if (dateCmp !== 0) return dateCmp;
   return a.folio.localeCompare(b.folio);
 }
 
-export function createReportOrdersTool(config: ReportOrdersToolConfig = {}) {
+export function createLookupOrderTool(config: LookupOrderToolConfig = {}) {
   const gwsCommand = config.gwsCommand?.trim() || "gws";
   const gwsCommandArgs = config.gwsCommandArgs ?? [];
   const gwsSpreadsheetId = config.gwsSpreadsheetId?.trim() || undefined;
@@ -379,15 +251,23 @@ export function createReportOrdersTool(config: ReportOrdersToolConfig = {}) {
     ? Math.trunc(config.retryBackoffMs!)
     : 150;
   const timezone = config.timezone?.trim() || "America/Mexico_City";
-  const now = config.now ?? (() => new Date());
+  const limit = Number.isFinite(config.limit) && (config.limit ?? -1) > 0 ? Math.trunc(config.limit!) : 20;
   const gwsRunner = config.gwsRunner ?? runGwsCommand;
 
-  return async function reportOrders(args: { chat_id: string; period: OrderReportPeriod }): Promise<OrderReportResult> {
+  return async function lookupOrder(args: {
+    chat_id: string;
+    query: string;
+    limit?: number;
+  }): Promise<OrderLookupResult> {
+    const query = args.query.trim();
+    if (query.length < 2) {
+      throw new Error("order_lookup_query_invalid");
+    }
     if (!gwsSpreadsheetId) {
-      throw new Error("order_report_gws_spreadsheet_id_missing");
+      throw new Error("order_lookup_gws_spreadsheet_id_missing");
     }
     if (!normalizedRange) {
-      throw new Error("order_report_gws_range_missing");
+      throw new Error("order_lookup_gws_range_missing");
     }
 
     const params = {
@@ -427,26 +307,23 @@ export function createReportOrdersTool(config: ReportOrdersToolConfig = {}) {
         if (!result.timedOut && result.exitCode === 0 && !errInfo) {
           const rows = readValuesFromGwsPayload(parsedStdout);
           if (!rows) {
-            throw new Error("order_report_gws_invalid_payload");
+            throw new Error("order_lookup_gws_invalid_payload");
           }
 
           const parsedRows = mapRows(rows, timezone);
-          const normalizedPeriod = normalizePeriod({
-            period: args.period,
-            timezone,
-            now: now()
-          });
+          const maxRows = Number.isFinite(args.limit) && (args.limit ?? 0) > 0 ? Math.trunc(args.limit!) : limit;
           const filtered = parsedRows
-            .filter((row) => matchesPeriod({ row, period: normalizedPeriod, timezone }))
+            .filter((row) => matchesQuery(row, query))
             .sort(sortRows)
-            .map(({ _dateKey: _ignored, ...row }) => row);
+            .slice(0, maxRows)
+            .map(({ _dateKey: _ignoredDateKey, _matchKey: _ignoredMatchKey, ...row }) => row);
 
           return {
-            period: normalizedPeriod,
+            query,
             timezone,
             total: filtered.length,
             orders: filtered,
-            detail: `report-orders executed (provider=gws, attempt=${attempt}, period=${normalizedPeriod.type})`
+            detail: `lookup-order executed (provider=gws, attempt=${attempt})`
           };
         }
 
@@ -456,7 +333,7 @@ export function createReportOrdersTool(config: ReportOrdersToolConfig = {}) {
         }
 
         const token = sanitizeErrorToken((errInfo?.message ?? result.stderr) || `exit_${result.exitCode ?? "unknown"}`);
-        throw new Error(`order_report_gws_${token}`);
+        throw new Error(`order_lookup_gws_${token}`);
       } catch (err) {
         const cls = classifyGwsSpawnError(err);
         if (cls === "network" && attempt < attempts) {
@@ -466,7 +343,7 @@ export function createReportOrdersTool(config: ReportOrdersToolConfig = {}) {
 
         const code = err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined;
         if (code === "ENOENT") {
-          lastError = new Error("order_report_gws_command_unavailable");
+          lastError = new Error("order_lookup_gws_command_unavailable");
           break;
         }
 
@@ -475,8 +352,8 @@ export function createReportOrdersTool(config: ReportOrdersToolConfig = {}) {
       }
     }
 
-    throw lastError ?? new Error("order_report_gws_failed");
+    throw lastError ?? new Error("order_lookup_gws_failed");
   };
 }
 
-export const reportOrdersTool = createReportOrdersTool();
+export const lookupOrderTool = createLookupOrderTool();

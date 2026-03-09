@@ -14,6 +14,7 @@ import { clearPending, getState, setState } from "../state/stateStore";
 import { appendExpenseTool } from "../tools/expense/appendExpense";
 import { appendOrderTool } from "../tools/order/appendOrder";
 import { createCardTool } from "../tools/order/createCard";
+import { createLookupOrderTool, type OrderLookupResult } from "../tools/order/lookupOrder";
 import { createReportOrdersTool, type OrderReportPeriod, type OrderReportResult } from "../tools/order/reportOrders";
 import { type WebPublishPayload, createPublishSiteTool } from "../tools/web/publishSite";
 import { createBotCopy, type BotPersona } from "./persona";
@@ -59,6 +60,11 @@ type ProcessorDeps = {
     chat_id: string;
     period: OrderReportPeriod;
   }) => Promise<OrderReportResult>;
+  executeOrderLookupFn?: (args: {
+    chat_id: string;
+    query: string;
+  }) => Promise<OrderLookupResult>;
+  orderReportTimezone?: string;
   botPersona?: BotPersona;
   webChatEnabled?: boolean;
   onTrace?: (event: {
@@ -76,12 +82,245 @@ function normalizeForMatch(text: string): string {
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-function detectOrderReportPeriod(text: string): OrderReportPeriod | undefined {
-  const normalized = normalizeForMatch(text);
+const DAY_MS = 86_400_000;
+const REPORT_DEFAULT_TIMEZONE = "America/Mexico_City";
+const MONTH_INDEX: Record<string, number> = {
+  enero: 1,
+  ene: 1,
+  febrero: 2,
+  feb: 2,
+  marzo: 3,
+  mar: 3,
+  abril: 4,
+  abr: 4,
+  mayo: 5,
+  may: 5,
+  junio: 6,
+  jun: 6,
+  julio: 7,
+  jul: 7,
+  agosto: 8,
+  ago: 8,
+  septiembre: 9,
+  setiembre: 9,
+  sept: 9,
+  sep: 9,
+  octubre: 10,
+  oct: 10,
+  noviembre: 11,
+  nov: 11,
+  diciembre: 12,
+  dic: 12
+};
+
+const MONTH_LABELS = [
+  "",
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre"
+];
+
+function toDateKeyFromDate(date: Date, timezone: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+
+  const year = Number(parts.find((part) => part.type === "year")?.value ?? "0");
+  const month = Number(parts.find((part) => part.type === "month")?.value ?? "1");
+  const day = Number(parts.find((part) => part.type === "day")?.value ?? "1");
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function currentDatePartsInTimezone(date: Date, timezone: string): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value ?? "0"),
+    month: Number(parts.find((part) => part.type === "month")?.value ?? "1"),
+    day: Number(parts.find((part) => part.type === "day")?.value ?? "1")
+  };
+}
+
+function isValidDateParts(year: number, month: number, day: number): boolean {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+
+  const candidate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+  return (
+    candidate.getUTCFullYear() === year &&
+    candidate.getUTCMonth() === month - 1 &&
+    candidate.getUTCDate() === day
+  );
+}
+
+function monthNameToNumber(value: string): number | undefined {
+  return MONTH_INDEX[value.trim().toLowerCase()];
+}
+
+function monthNumberToLabel(month: number): string {
+  return MONTH_LABELS[month] ?? "";
+}
+
+function parseOrderReportDayPeriod(args: {
+  normalized: string;
+  now: Date;
+  timezone: string;
+}): OrderReportPeriod | undefined {
+  if (/\bhoy\b/.test(args.normalized)) {
+    return {
+      type: "day",
+      dateKey: toDateKeyFromDate(args.now, args.timezone),
+      label: "hoy"
+    };
+  }
+
+  if (/\bmanana\b/.test(args.normalized)) {
+    return {
+      type: "day",
+      dateKey: toDateKeyFromDate(new Date(args.now.getTime() + DAY_MS), args.timezone),
+      label: "mañana"
+    };
+  }
+
+  const ymd = args.normalized.match(/\b(\d{4})[/-](\d{1,2})[/-](\d{1,2})\b/);
+  if (ymd) {
+    const year = Number(ymd[1]);
+    const month = Number(ymd[2]);
+    const day = Number(ymd[3]);
+    if (!isValidDateParts(year, month, day)) return undefined;
+    return {
+      type: "day",
+      dateKey: `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+      label: `el ${day} de ${monthNumberToLabel(month)}`
+    };
+  }
+
+  const dmy = args.normalized.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{4}))?\b/);
+  if (dmy) {
+    const day = Number(dmy[1]);
+    const month = Number(dmy[2]);
+    const fallbackYear = currentDatePartsInTimezone(args.now, args.timezone).year;
+    const year = dmy[3] ? Number(dmy[3]) : fallbackYear;
+    if (!isValidDateParts(year, month, day)) return undefined;
+    const withYear = dmy[3] ? ` de ${year}` : "";
+    return {
+      type: "day",
+      dateKey: `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+      label: `el ${day} de ${monthNumberToLabel(month)}${withYear}`
+    };
+  }
+
+  const match = args.normalized.match(/\b(?:el\s+)?(\d{1,2})\s+de\s+([a-z]+)(?:\s+de\s+(\d{4}))?\b/);
+  if (!match) return undefined;
+
+  const day = Number(match[1]);
+  const month = monthNameToNumber(match[2]);
+  if (!month) return undefined;
+
+  const fallbackYear = currentDatePartsInTimezone(args.now, args.timezone).year;
+  const year = match[3] ? Number(match[3]) : fallbackYear;
+  if (!isValidDateParts(year, month, day)) return undefined;
+  const withYear = match[3] ? ` de ${year}` : "";
+  return {
+    type: "day",
+    dateKey: `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+    label: `el ${day} de ${monthNumberToLabel(month)}${withYear}`
+  };
+}
+
+function parseOrderReportWeekPeriod(args: {
+  normalized: string;
+  now: Date;
+  timezone: string;
+}): OrderReportPeriod | undefined {
+  if (/\b(siguiente\s+semana|semana\s+siguiente|proxima\s+semana|semana\s+proxima)\b/.test(args.normalized)) {
+    return {
+      type: "week",
+      anchorDateKey: toDateKeyFromDate(new Date(args.now.getTime() + 7 * DAY_MS), args.timezone),
+      label: "la siguiente semana"
+    };
+  }
+
+  if (/\b(esta\s+semana|1\s+semana|una\s+semana|semana)\b/.test(args.normalized)) {
+    return {
+      type: "week",
+      anchorDateKey: toDateKeyFromDate(args.now, args.timezone),
+      label: "esta semana"
+    };
+  }
+
+  return undefined;
+}
+
+function parseOrderReportMonthPeriod(args: {
+  normalized: string;
+  now: Date;
+  timezone: string;
+}): OrderReportPeriod | undefined {
+  const current = currentDatePartsInTimezone(args.now, args.timezone);
+
+  const byName = args.normalized.match(/\b(?:el\s+)?(?:de(?:l)?\s+)?mes\s+de\s+([a-z]+)(?:\s+de\s+(\d{4}))?\b/);
+  if (byName) {
+    const month = monthNameToNumber(byName[1]);
+    if (!month) return undefined;
+    const year = byName[2] ? Number(byName[2]) : current.year;
+    return {
+      type: "month",
+      year,
+      month,
+      label: byName[2] ? `mes de ${monthNumberToLabel(month)} ${year}` : `mes de ${monthNumberToLabel(month)}`
+    };
+  }
+
+  if (/\b(mes\s+siguiente|siguiente\s+mes|proximo\s+mes|mes\s+proximo)\b/.test(args.normalized)) {
+    const nextMonth = current.month === 12 ? 1 : current.month + 1;
+    const year = current.month === 12 ? current.year + 1 : current.year;
+    return {
+      type: "month",
+      year,
+      month: nextMonth,
+      label: "el mes siguiente"
+    };
+  }
+
+  if (/\beste\s+mes\b/.test(args.normalized)) {
+    return {
+      type: "month",
+      year: current.year,
+      month: current.month,
+      label: "este mes"
+    };
+  }
+
+  return undefined;
+}
+
+function detectOrderReportPeriod(args: {
+  text: string;
+  now: Date;
+  timezone: string;
+}): OrderReportPeriod | undefined {
+  const normalized = normalizeForMatch(args.text);
   const hasOrderWord = /\bpedidos?\b/.test(normalized);
   if (!hasOrderWord) return undefined;
 
-  const hasPeriodHint = /\b(hoy|manana|esta semana|semana)\b/.test(normalized);
+  const hasPeriodHint = /\b(hoy|manana|semana|mes)\b/.test(normalized) || /\b\d{1,2}\s+de\s+[a-z]+\b/.test(normalized);
   if (!hasPeriodHint) return undefined;
 
   const hasQueryVerb = /\b(que|cuales|dame|mostrar|muestrame|ver|lista|listar|tengo|recuerdame|consulta|consultar)\b/.test(
@@ -93,20 +332,65 @@ function detectOrderReportPeriod(text: string): OrderReportPeriod | undefined {
   if (startsAsCreateOrder && !hasQueryVerb && !hasPlural) return undefined;
   if (!hasQueryVerb && !hasPlural) return undefined;
 
-  if (/\b(esta semana|semana)\b/.test(normalized)) return "week";
-  if (/\bmanana\b/.test(normalized)) return "tomorrow";
-  if (/\bhoy\b/.test(normalized)) return "today";
+  const dayPeriod = parseOrderReportDayPeriod({
+    normalized,
+    now: args.now,
+    timezone: args.timezone
+  });
+  if (dayPeriod) return dayPeriod;
+
+  const weekPeriod = parseOrderReportWeekPeriod({
+    normalized,
+    now: args.now,
+    timezone: args.timezone
+  });
+  if (weekPeriod) return weekPeriod;
+
+  const monthPeriod = parseOrderReportMonthPeriod({
+    normalized,
+    now: args.now,
+    timezone: args.timezone
+  });
+  if (monthPeriod) return monthPeriod;
+
   return undefined;
 }
 
-function formatOrderReportLabel(period: OrderReportPeriod): string {
-  if (period === "today") return "hoy";
-  if (period === "tomorrow") return "mañana";
-  return "esta semana";
+function detectOrderLookupQuery(text: string): string | undefined {
+  const normalized = normalizeForMatch(text);
+  const hasOrderWord = /\bpedidos?\b/.test(normalized);
+  if (!hasOrderWord) return undefined;
+
+  const hasPeriodHint = /\b(hoy|manana|semana|mes)\b/.test(normalized) || /\b\d{1,2}\s+de\s+[a-z]+\b/.test(normalized);
+  if (hasPeriodHint) return undefined;
+
+  const hasLookupVerb = /\b(busca|buscar|consulta|consultar|estado|estatus|status|folio|id|detalle|ver|muestrame|dame)\b/.test(
+    normalized
+  );
+  if (!hasLookupVerb) return undefined;
+
+  const idMatch = normalized.match(/\b(?:folio|id|operation_id|operacion)\s*[:=]?\s*([a-z0-9_-]{3,})\b/);
+  if (idMatch?.[1]) {
+    return idMatch[1];
+  }
+
+  const deMatch = normalized.match(/\bpedidos?\s+de\s+(.+?)\s*$/);
+  if (deMatch?.[1]) {
+    const value = deMatch[1].trim();
+    if (value.length >= 2) return value;
+  }
+
+  const porMatch = normalized.match(/\bpedidos?\s+por\s+(.+?)\s*$/);
+  if (porMatch?.[1]) {
+    const value = porMatch[1].trim();
+    if (value.length >= 2) return value;
+  }
+
+  return undefined;
 }
 
 function formatOrderReportReply(report: OrderReportResult): string {
-  const label = formatOrderReportLabel(report.period);
+  const label = report.period.label;
   if (report.total === 0) {
     return `No encontré pedidos para ${label}.`;
   }
@@ -123,6 +407,24 @@ function formatOrderReportReply(report: OrderReportResult): string {
 
   const extra = report.total > shown.length ? `\n... y ${report.total - shown.length} más` : "";
   return `Pedidos para ${label} (${report.total}):\n${lines.join("\n")}${extra}`;
+}
+
+function formatOrderLookupReply(result: OrderLookupResult): string {
+  if (result.total === 0) {
+    return `No encontré pedidos para "${result.query}".`;
+  }
+
+  const maxRows = 10;
+  const shown = result.orders.slice(0, maxRows);
+  const lines = shown.map((order, idx) => {
+    const qty = order.cantidad != null ? `x${order.cantidad}` : "x?";
+    const total = order.total != null ? `${order.total}${order.moneda ? ` ${order.moneda}` : ""}` : "-";
+    const payment = order.estado_pago ?? "-";
+    return `${idx + 1}. ${order.folio || "-"} | ${order.fecha_hora_entrega} | ${order.nombre_cliente} | ${order.producto} ${qty} | ${payment} | ${total}`;
+  });
+
+  const extra = result.total > shown.length ? `\n... y ${result.total - shown.length} más` : "";
+  return `Pedidos encontrados para "${result.query}" (${result.total}):\n${lines.join("\n")}${extra}`;
 }
 
 function normalizeTipoEnvioInput(raw: string): string {
@@ -309,6 +611,8 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeAppendOrderFn = deps.executeAppendOrderFn ?? appendOrderTool;
   const executeWebPublishFn = deps.executeWebPublishFn ?? createPublishSiteTool();
   const executeOrderReportFn = deps.executeOrderReportFn ?? createReportOrdersTool();
+  const executeOrderLookupFn = deps.executeOrderLookupFn ?? createLookupOrderTool();
+  const orderReportTimezone = deps.orderReportTimezone?.trim() || REPORT_DEFAULT_TIMEZONE;
   const copy = createBotCopy(deps.botPersona);
   const webChatEnabled = deps.webChatEnabled ?? true;
   const rateLimiter = deps.rateLimiter;
@@ -698,7 +1002,11 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       return [copy.pendingOperation(st.pending.operation_id)];
     }
 
-    const reportPeriod = detectOrderReportPeriod(msg.text);
+    const reportPeriod = detectOrderReportPeriod({
+      text: msg.text,
+      now: new Date(nowMs()),
+      timezone: orderReportTimezone
+    });
     if (reportPeriod) {
       try {
         const report = await executeOrderReportFn({
@@ -712,7 +1020,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           strict_mode,
           intent: "reporte",
           intent_source: "fallback",
-          detail: `period=${report.period};total=${report.total}`
+          detail: `period=${report.period.type}:${report.period.label};total=${report.total}`
         });
 
         return [formatOrderReportReply(report)];
@@ -729,6 +1037,40 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         });
 
         return ["No pude consultar pedidos en este momento. Intenta de nuevo en unos minutos."];
+      }
+    }
+
+    const lookupQuery = detectOrderLookupQuery(msg.text);
+    if (lookupQuery) {
+      try {
+        const lookup = await executeOrderLookupFn({
+          chat_id: msg.chat_id,
+          query: lookupQuery
+        });
+
+        deps.onTrace?.({
+          event: "order_lookup_succeeded",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "order.lookup",
+          intent_source: "fallback",
+          detail: `query=${lookup.query};total=${lookup.total}`
+        });
+
+        return [formatOrderLookupReply(lookup)];
+      } catch (err) {
+        const safeDetail = err instanceof Error ? err.message : String(err);
+
+        deps.onTrace?.({
+          event: "order_lookup_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "order.lookup",
+          intent_source: "fallback",
+          detail: safeDetail
+        });
+
+        return ["No pude consultar ese pedido en este momento. Intenta de nuevo en unos minutos."];
       }
     }
 

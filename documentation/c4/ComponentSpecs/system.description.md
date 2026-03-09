@@ -1,7 +1,7 @@
 # System Description (C4 - Container Level)
 
 Status: MVP
-Last Updated: 2026-03-07
+Last Updated: 2026-03-09
 
 ## System
 `OpenClaw Bakery Bot` (`bot-bakery`) is a Node.js/TypeScript application that provides a conversational assistant for bakery business operations.
@@ -29,7 +29,7 @@ Last Updated: 2026-03-07
 - Stores conversation state, operations, and idempotency records in SQLite.
 
 5. `Tool Adapters`
-- Integrates with Sheets, Trello, and web publishing targets (including read-only order reports via Sheets `gws`).
+- Integrates with Sheets, Trello, and web publishing targets (including read-only order reports and order lookup via Sheets `gws`).
 
 6. `Config & Healthcheck`
 - Loads normalized runtime configuration and emits startup readiness checks.

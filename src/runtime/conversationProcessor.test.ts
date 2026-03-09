@@ -102,9 +102,36 @@ let createConversationProcessor: (args: {
   }) => Promise<{ ok: boolean; dry_run: boolean; operation_id: string; detail: string }>;
   executeOrderReportFn?: (args: {
     chat_id: string;
-    period: "today" | "tomorrow" | "week";
+    period:
+      | { type: "day"; dateKey: string; label: string }
+      | { type: "week"; anchorDateKey: string; label: string }
+      | { type: "month"; year: number; month: number; label: string };
   }) => Promise<{
-    period: "today" | "tomorrow" | "week";
+    period:
+      | { type: "day"; dateKey: string; label: string }
+      | { type: "week"; anchorDateKey: string; label: string }
+      | { type: "month"; year: number; month: number; label: string };
+    timezone: string;
+    total: number;
+    orders: Array<{
+      folio: string;
+      fecha_hora_entrega: string;
+      nombre_cliente: string;
+      producto: string;
+      cantidad?: number;
+      tipo_envio?: string;
+      estado_pago?: string;
+      total?: number;
+      moneda?: string;
+      operation_id?: string;
+    }>;
+    detail: string;
+  }>;
+  executeOrderLookupFn?: (args: {
+    chat_id: string;
+    query: string;
+  }) => Promise<{
+    query: string;
     timezone: string;
     total: number;
     orders: Array<{
@@ -199,7 +226,7 @@ describe("conversation processor security flow", () => {
   it("resuelve consulta de pedidos por periodo sin pasar por intent router", async () => {
     const routeIntentFn = vi.fn(async () => "pedido" as const);
     const executeOrderReportFn = vi.fn(async () => ({
-      period: "today" as const,
+      period: { type: "day", dateKey: "2026-03-07", label: "hoy" } as const,
       timezone: "America/Mexico_City",
       total: 1,
       orders: [
@@ -221,6 +248,7 @@ describe("conversation processor security flow", () => {
 
     const processor = createConversationProcessor({
       allowedChatIds: new Set(["chat-report"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
       routeIntentFn,
       executeOrderReportFn
     });
@@ -229,11 +257,182 @@ describe("conversation processor security flow", () => {
     expect(replies[0]).toContain("Pedidos para hoy");
     expect(replies[0]).toContain("Ana");
     expect(routeIntentFn).not.toHaveBeenCalled();
-    expect(executeOrderReportFn).toHaveBeenCalledWith({ chat_id: "chat-report", period: "today" });
+    expect(executeOrderReportFn).toHaveBeenCalledWith({
+      chat_id: "chat-report",
+      period: { type: "day", dateKey: "2026-03-07", label: "hoy" }
+    });
+  });
+
+  it("resuelve consulta de pedidos por fecha explicita (dia)", async () => {
+    const executeOrderReportFn = vi.fn(async () => ({
+      period: { type: "day", dateKey: "2026-04-28", label: "el 28 de abril" } as const,
+      timezone: "America/Mexico_City",
+      total: 0,
+      orders: [],
+      detail: "report-orders executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-report-day"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn: async () => "pedido",
+      executeOrderReportFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-report-day",
+      text: "dame los pedidos del 28 de abril"
+    });
+
+    expect(replies[0]).toContain("No encontré pedidos para el 28 de abril");
+    expect(executeOrderReportFn).toHaveBeenCalledWith({
+      chat_id: "chat-report-day",
+      period: { type: "day", dateKey: "2026-04-28", label: "el 28 de abril" }
+    });
+  });
+
+  it("resuelve consulta de pedidos para la siguiente semana", async () => {
+    const executeOrderReportFn = vi.fn(async () => ({
+      period: { type: "week", anchorDateKey: "2026-03-14", label: "la siguiente semana" } as const,
+      timezone: "America/Mexico_City",
+      total: 0,
+      orders: [],
+      detail: "report-orders executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-report-next-week"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn: async () => "pedido",
+      executeOrderReportFn
+    });
+
+    await processor.handleMessage({
+      chat_id: "chat-report-next-week",
+      text: "dame los pedidos de la siguiente semana"
+    });
+
+    expect(executeOrderReportFn).toHaveBeenCalledWith({
+      chat_id: "chat-report-next-week",
+      period: { type: "week", anchorDateKey: "2026-03-14", label: "la siguiente semana" }
+    });
+  });
+
+  it("resuelve consulta de pedidos para mes actual y mes por nombre", async () => {
+    const executeOrderReportFn = vi
+      .fn()
+      .mockResolvedValueOnce({
+        period: { type: "month", year: 2026, month: 3, label: "este mes" } as const,
+        timezone: "America/Mexico_City",
+        total: 0,
+        orders: [],
+        detail: "report-orders executed (provider=gws, attempt=1)"
+      })
+      .mockResolvedValueOnce({
+        period: { type: "month", year: 2026, month: 5, label: "mes de mayo" } as const,
+        timezone: "America/Mexico_City",
+        total: 0,
+        orders: [],
+        detail: "report-orders executed (provider=gws, attempt=1)"
+      });
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-report-month"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn: async () => "pedido",
+      executeOrderReportFn
+    });
+
+    await processor.handleMessage({
+      chat_id: "chat-report-month",
+      text: "dame los pedidos de este mes"
+    });
+    await processor.handleMessage({
+      chat_id: "chat-report-month",
+      text: "dame los pedidos del mes de mayo"
+    });
+
+    expect(executeOrderReportFn).toHaveBeenNthCalledWith(1, {
+      chat_id: "chat-report-month",
+      period: { type: "month", year: 2026, month: 3, label: "este mes" }
+    });
+    expect(executeOrderReportFn).toHaveBeenNthCalledWith(2, {
+      chat_id: "chat-report-month",
+      period: { type: "month", year: 2026, month: 5, label: "mes de mayo" }
+    });
+  });
+
+  it("resuelve consulta de pedido por nombre sin pasar por intent router", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+    const executeOrderLookupFn = vi.fn(async () => ({
+      query: "ana",
+      timezone: "America/Mexico_City",
+      total: 1,
+      orders: [
+        {
+          folio: "op-lookup-1",
+          fecha_hora_entrega: "2026-03-07 14:00",
+          nombre_cliente: "Ana",
+          producto: "cupcakes",
+          cantidad: 12,
+          estado_pago: "pagado",
+          total: 480,
+          moneda: "MXN"
+        }
+      ],
+      detail: "lookup-order executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-lookup"]),
+      routeIntentFn,
+      executeOrderLookupFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-lookup",
+      text: "consulta pedido de Ana"
+    });
+
+    expect(replies[0]).toContain('Pedidos encontrados para "ana"');
+    expect(replies[0]).toContain("op-lookup-1");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+    expect(executeOrderLookupFn).toHaveBeenCalledWith({
+      chat_id: "chat-lookup",
+      query: "ana"
+    });
+  });
+
+  it("resuelve consulta de pedido por folio", async () => {
+    const executeOrderLookupFn = vi.fn(async () => ({
+      query: "op-xyz-123",
+      timezone: "America/Mexico_City",
+      total: 0,
+      orders: [],
+      detail: "lookup-order executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-lookup-folio"]),
+      routeIntentFn: async () => "pedido",
+      executeOrderLookupFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-lookup-folio",
+      text: "buscar pedido folio op-xyz-123"
+    });
+
+    expect(replies[0]).toContain('No encontré pedidos para "op-xyz-123"');
+    expect(executeOrderLookupFn).toHaveBeenCalledWith({
+      chat_id: "chat-lookup-folio",
+      query: "op-xyz-123"
+    });
   });
 
   it("no confunde alta de pedido con consulta de reporte", async () => {
     const executeOrderReportFn = vi.fn();
+    const executeOrderLookupFn = vi.fn();
     const parseOrderFn = vi.fn(async () => ({
       ok: true as const,
       payload: {
@@ -252,7 +451,8 @@ describe("conversation processor security flow", () => {
       newOperationId: () => "op-order-create",
       routeIntentFn: async () => "pedido",
       parseOrderFn,
-      executeOrderReportFn
+      executeOrderReportFn,
+      executeOrderLookupFn
     });
 
     const replies = await processor.handleMessage({
@@ -263,6 +463,7 @@ describe("conversation processor security flow", () => {
     expect(replies[0]).toContain("Resumen");
     expect(parseOrderFn).toHaveBeenCalledTimes(1);
     expect(executeOrderReportFn).not.toHaveBeenCalled();
+    expect(executeOrderLookupFn).not.toHaveBeenCalled();
   });
 
   it("pregunta solo 1 faltante por turno y luego confirma", async () => {

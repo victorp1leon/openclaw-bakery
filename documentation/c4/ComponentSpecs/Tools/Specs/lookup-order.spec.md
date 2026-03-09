@@ -1,22 +1,16 @@
-# Spec - report-orders (Phase 3 reporting v2)
+# Spec - lookup-order (Phase 3 query skill)
 
 Status: MVP
 Last Updated: 2026-03-09
 
 ## Objective
-Read order rows from Google Sheets and return operational summaries filtered by day/week/month periods.
+Read order rows from Google Sheets and return matches for a free-text lookup query (folio, operation id, customer name, product).
 It must query data only and must not mutate orders or confirmation state.
 
 ## Inputs
-- `period`:
-  - `day`: exact `dateKey` (`YYYY-MM-DD`) + user-facing label
-  - `week`: week containing an anchor date (`anchorDateKey`) + label
-  - `month`: exact `year` + `month` + label
-- Backward-compatible legacy period shortcuts supported internally:
-  - `today`
-  - `tomorrow`
-  - `week`
-- `timezone`: default `America/Mexico_City`
+- `query`: free-text lookup key from user request.
+- `limit`: optional max rows in response (default bounded).
+- `timezone`: default `America/Mexico_City`.
 - Google Workspace CLI configuration:
   - command + optional args
   - spreadsheet id
@@ -24,22 +18,24 @@ It must query data only and must not mutate orders or confirmation state.
   - timeout/retries
 
 ## Outputs
-- Structured report:
-  - `period`
+- Structured lookup result:
+  - `query`
   - `timezone`
   - `total`
-  - `orders[]` (minimal order preview fields)
-- Deterministic errors (`order_report_*`) on transport/config failures.
+  - `orders[]` (preview fields)
+- Deterministic errors (`order_lookup_*`) on transport/config failures.
 
 ## Rules
 - Source of truth is Google Sheets `Pedidos` rows (read-only).
 - Query via `googleworkspace/cli` (`gws`) using `sheets spreadsheets values get`.
 - Support header row in first line and ignore it in result mapping.
-- Filter orders by delivery datetime using `fecha_hora_entrega_iso` when available; fallback to `fecha_hora_entrega`.
-- Day filter matches exact `dateKey`.
-- Week filter matches Monday-Sunday window from `anchorDateKey` in configured timezone.
-- Month filter matches exact `year` + `month`.
-- Return rows sorted by delivery date/time (best effort).
+- Match should consider at least:
+  - `folio`
+  - `operation_id`
+  - `nombre_cliente`
+  - `producto`
+- Matching must be accent-insensitive and case-insensitive.
+- Return rows sorted by recency (best effort).
 - Never include secrets/tokens in user-facing errors.
 
 ## Error Handling Classification
@@ -50,9 +46,9 @@ It must query data only and must not mutate orders or confirmation state.
 - Non-retriable:
   - missing spreadsheet id
   - missing/invalid range after normalization
-  - invalid period payload
   - command unavailable (`ENOENT`)
   - malformed non-JSON CLI payload
+  - invalid lookup query
 
 ## Security Constraints
 - No write operations against Sheets in this tool.
@@ -61,9 +57,9 @@ It must query data only and must not mutate orders or confirmation state.
 
 ## Test Cases
 - `fails_when_spreadsheet_id_missing`
-- `normalizes_append_like_range_to_read_range`
-- `filters_orders_for_day`
-- `filters_orders_for_week`
-- `filters_orders_for_month`
+- `returns_matches_for_customer_name`
+- `returns_matches_for_folio`
+- `returns_matches_for_operation_id`
+- `returns_empty_when_no_match`
 - `retries_on_transient_gws_failure_then_succeeds`
 - `fails_when_gws_command_unavailable`

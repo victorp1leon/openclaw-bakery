@@ -1,7 +1,7 @@
 # Component Description - Conversation Runtime (C4 Component Level)
 
 Status: MVP
-Last Updated: 2026-03-07
+Last Updated: 2026-03-09
 
 ## Responsibility
 Coordinate the end-to-end conversation flow and apply security/UX rules:
@@ -11,7 +11,8 @@ Coordinate the end-to-end conversation flow and apply security/UX rules:
 - one missing field per turn
 - action summary
 - tool execution (when applicable)
-- report query responses (`pedidos hoy/mañana/esta semana`) via read-only adapter
+- report query responses (`pedidos` por dia/semana/mes) via read-only adapter
+- order lookup query responses (`pedido por folio/nombre/producto`) via read-only adapter
 
 ## Internal Components
 - `conversationProcessor`

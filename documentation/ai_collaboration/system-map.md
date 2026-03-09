@@ -1,7 +1,7 @@
 # OpenClaw Bakery - System Map (AI Collaboration)
 
 Status: Active
-Last Updated: 2026-03-07
+Last Updated: 2026-03-09
 
 ## Architecture Snapshot
 ```text
@@ -51,7 +51,8 @@ Last Updated: 2026-03-07
 1. `gasto`: mensaje -> parse/validacion -> confirmacion -> `appendExpense` -> persistencia/idempotencia.
 2. `pedido`: mensaje -> parse/validacion -> confirmacion -> Trello + Sheets -> persistencia/idempotencia.
 3. `web`: mensaje -> parse/validacion -> confirmacion -> generacion/publicacion -> registro operativo.
-4. `report.orders`: consulta (`hoy/mañana/semana`) -> lectura Sheets (`gws`) -> respuesta resumida (sin confirmacion ni mutacion).
+4. `report.orders`: consulta (`dia/semana/mes`, incluyendo fechas/meses explicitos) -> lectura Sheets (`gws`) -> respuesta resumida (sin confirmacion ni mutacion).
+5. `order.lookup`: consulta por folio/nombre/producto -> lectura Sheets (`gws`) -> respuesta resumida (sin confirmacion ni mutacion).
 
 ## Source Documents
 - `documentation/bot-bakery.overview.md`
