@@ -10,6 +10,7 @@ Last Updated: 2026-03-09
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `platform/implementation/meta-governance-instructions-adoption.md` | Implementation | Complete | 2026-03-09 |
 | `platform/implementation/agents-scaffolding-foundation.md` | Implementation | Complete | 2026-03-09 |
 | `platform/implementation/copilot-instructions-adaptation-foundation.md` | Implementation | Complete | 2026-03-09 |
 | `runtime/implementation/phase3-order-delivery-datetime-iso.md` | Implementation | Complete | 2026-03-07 |
