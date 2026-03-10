@@ -150,6 +150,27 @@ let createConversationProcessor: (args: {
     }>;
     detail: string;
   }>;
+  executeOrderStatusFn?: (args: {
+    chat_id: string;
+    query: string;
+  }) => Promise<{
+    query: string;
+    timezone: string;
+    total: number;
+    orders: Array<{
+      folio: string;
+      fecha_hora_entrega: string;
+      nombre_cliente: string;
+      producto: string;
+      estado_pago?: string;
+      estado_operativo: "programado" | "hoy" | "atrasado" | "cancelado";
+      total?: number;
+      moneda?: string;
+      notas?: string;
+      operation_id?: string;
+    }>;
+    detail: string;
+  }>;
   botPersona?: "neutral" | "bakery_warm" | "concise";
   webChatEnabled?: boolean;
   onTrace?: (event: {
@@ -457,6 +478,74 @@ describe("conversation processor security flow", () => {
     expect(executeOrderLookupFn).toHaveBeenCalledWith({
       chat_id: "chat-lookup-folio",
       query: "op-xyz-123"
+    });
+  });
+
+  it("resuelve consulta de estado de pedido sin pasar por intent router", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+    const executeOrderStatusFn = vi.fn(async () => ({
+      query: "op-xyz-123",
+      timezone: "America/Mexico_City",
+      total: 1,
+      orders: [
+        {
+          folio: "op-xyz-123",
+          fecha_hora_entrega: "2026-03-08 10:00",
+          nombre_cliente: "Ana",
+          producto: "pastel",
+          estado_pago: "pendiente",
+          estado_operativo: "programado" as const,
+          total: 900,
+          moneda: "MXN"
+        }
+      ],
+      detail: "order-status executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-status"]),
+      routeIntentFn,
+      executeOrderStatusFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-status",
+      text: "cual es el estado del pedido folio op-xyz-123"
+    });
+
+    expect(replies[0]).toContain('Estado de pedidos para "op-xyz-123"');
+    expect(replies[0]).toContain("estado:programado");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+    expect(executeOrderStatusFn).toHaveBeenCalledWith({
+      chat_id: "chat-status",
+      query: "op-xyz-123"
+    });
+  });
+
+  it("responde no encontrado en consulta de estado", async () => {
+    const executeOrderStatusFn = vi.fn(async () => ({
+      query: "inexistente",
+      timezone: "America/Mexico_City",
+      total: 0,
+      orders: [],
+      detail: "order-status executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-status-empty"]),
+      routeIntentFn: async () => "pedido",
+      executeOrderStatusFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-status-empty",
+      text: "dime el estado del pedido de inexistente"
+    });
+
+    expect(replies[0]).toContain('No encontré el estado para "inexistente"');
+    expect(executeOrderStatusFn).toHaveBeenCalledWith({
+      chat_id: "chat-status-empty",
+      query: "inexistente"
     });
   });
 

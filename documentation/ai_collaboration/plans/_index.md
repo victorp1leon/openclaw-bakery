@@ -5,7 +5,7 @@ Last Updated: 2026-03-09
 ## Active Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
-| _Sin planes activos_ | - | - | - |
+| `runtime/implementation/phase3-order-lifecycle-skills-spec-first.md` | Implementation | In Progress | 2026-03-09 |
 
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |

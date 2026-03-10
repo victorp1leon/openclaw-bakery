@@ -15,6 +15,7 @@ import { appendExpenseTool } from "../tools/expense/appendExpense";
 import { appendOrderTool } from "../tools/order/appendOrder";
 import { createCardTool } from "../tools/order/createCard";
 import { createLookupOrderTool, type OrderLookupResult } from "../tools/order/lookupOrder";
+import { createOrderStatusTool, type OrderStatusResult } from "../tools/order/orderStatus";
 import { createReportOrdersTool, type OrderReportPeriod, type OrderReportResult } from "../tools/order/reportOrders";
 import { type WebPublishPayload, createPublishSiteTool } from "../tools/web/publishSite";
 import { createBotCopy, type BotPersona } from "./persona";
@@ -64,6 +65,10 @@ type ProcessorDeps = {
     chat_id: string;
     query: string;
   }) => Promise<OrderLookupResult>;
+  executeOrderStatusFn?: (args: {
+    chat_id: string;
+    query: string;
+  }) => Promise<OrderStatusResult>;
   orderReportTimezone?: string;
   botPersona?: BotPersona;
   webChatEnabled?: boolean;
@@ -414,6 +419,37 @@ function detectOrderLookupQuery(text: string): string | undefined {
   return undefined;
 }
 
+function detectOrderStatusQuery(text: string): string | undefined {
+  const normalized = normalizeForMatch(text);
+  const hasOrderWord = /\bpedidos?\b/.test(normalized);
+  if (!hasOrderWord) return undefined;
+
+  const hasStatusHint = /\b(estado|estatus|status)\b/.test(normalized);
+  if (!hasStatusHint) return undefined;
+
+  const hasPeriodHint = /\b(hoy|manana|semana|mes|ano)\b/.test(normalized) || /\b\d{1,2}\s+de\s+[a-z]+\b/.test(normalized);
+  if (hasPeriodHint) return undefined;
+
+  const idMatch = normalized.match(/\b(?:folio|id|operation_id|operacion)\s*[:=]?\s*([a-z0-9_-]{3,})\b/);
+  if (idMatch?.[1]) {
+    return idMatch[1];
+  }
+
+  const deMatch = normalized.match(/\bpedidos?\s+de\s+(.+?)\s*$/);
+  if (deMatch?.[1]) {
+    const value = deMatch[1].trim();
+    if (value.length >= 2) return value;
+  }
+
+  const pedidoDeMatch = normalized.match(/\bpedido\s+de\s+(.+?)\s*$/);
+  if (pedidoDeMatch?.[1]) {
+    const value = pedidoDeMatch[1].trim();
+    if (value.length >= 2) return value;
+  }
+
+  return undefined;
+}
+
 function formatOrderReportReply(report: OrderReportResult): string {
   const label = report.period.label;
   if (report.total === 0) {
@@ -450,6 +486,23 @@ function formatOrderLookupReply(result: OrderLookupResult): string {
 
   const extra = result.total > shown.length ? `\n... y ${result.total - shown.length} más` : "";
   return `Pedidos encontrados para "${result.query}" (${result.total}):\n${lines.join("\n")}${extra}`;
+}
+
+function formatOrderStatusReply(result: OrderStatusResult): string {
+  if (result.total === 0) {
+    return `No encontré el estado para "${result.query}".`;
+  }
+
+  const maxRows = 10;
+  const shown = result.orders.slice(0, maxRows);
+  const lines = shown.map((order, idx) => {
+    const payment = order.estado_pago ?? "-";
+    const total = order.total != null ? `${order.total}${order.moneda ? ` ${order.moneda}` : ""}` : "-";
+    return `${idx + 1}. ${order.folio || "-"} | ${order.fecha_hora_entrega} | ${order.nombre_cliente} | ${order.producto} | pago:${payment} | estado:${order.estado_operativo} | ${total}`;
+  });
+
+  const extra = result.total > shown.length ? `\n... y ${result.total - shown.length} más` : "";
+  return `Estado de pedidos para "${result.query}" (${result.total}):\n${lines.join("\n")}${extra}`;
 }
 
 function normalizeTipoEnvioInput(raw: string): string {
@@ -637,6 +690,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeWebPublishFn = deps.executeWebPublishFn ?? createPublishSiteTool();
   const executeOrderReportFn = deps.executeOrderReportFn ?? createReportOrdersTool();
   const executeOrderLookupFn = deps.executeOrderLookupFn ?? createLookupOrderTool();
+  const executeOrderStatusFn = deps.executeOrderStatusFn ?? createOrderStatusTool();
   const orderReportTimezone = deps.orderReportTimezone?.trim() || REPORT_DEFAULT_TIMEZONE;
   const copy = createBotCopy(deps.botPersona);
   const webChatEnabled = deps.webChatEnabled ?? true;
@@ -1066,6 +1120,40 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     }
 
     const lookupQuery = detectOrderLookupQuery(msg.text);
+    const statusQuery = detectOrderStatusQuery(msg.text);
+    if (statusQuery) {
+      try {
+        const status = await executeOrderStatusFn({
+          chat_id: msg.chat_id,
+          query: statusQuery
+        });
+
+        deps.onTrace?.({
+          event: "order_status_succeeded",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "order.status",
+          intent_source: "fallback",
+          detail: `query=${status.query};total=${status.total}`
+        });
+
+        return [formatOrderStatusReply(status)];
+      } catch (err) {
+        const safeDetail = err instanceof Error ? err.message : String(err);
+
+        deps.onTrace?.({
+          event: "order_status_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "order.status",
+          intent_source: "fallback",
+          detail: safeDetail
+        });
+
+        return ["No pude consultar el estado de ese pedido en este momento. Intenta de nuevo en unos minutos."];
+      }
+    }
+
     if (lookupQuery) {
       try {
         const lookup = await executeOrderLookupFn({
