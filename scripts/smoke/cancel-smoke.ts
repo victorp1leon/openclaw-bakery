@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import { loadAppConfig } from "../../src/config/appConfig";
 import { createConversationProcessor } from "../../src/runtime/conversationProcessor";
 import { createCancelOrderTool } from "../../src/tools/order/cancelOrder";
+import { createOrderCardSyncTool } from "../../src/tools/order/orderCardSync";
 
 dotenv.config();
 
@@ -50,10 +51,24 @@ const executeOrderCancel = liveMode
     detail: "cancel-smoke mock execution"
   });
 
+const orderCardSync = liveMode
+  ? createOrderCardSyncTool({
+    apiKey: config.orderTool.trello.apiKey,
+    token: config.orderTool.trello.token,
+    apiBaseUrl: config.orderTool.trello.apiBaseUrl,
+    cancelListId: config.orderTool.trello.cancelListId,
+    timeoutMs: config.orderTool.trello.timeoutMs,
+    maxRetries: config.orderTool.trello.maxRetries,
+    dryRunDefault: dryRun,
+    timezone: config.timezone
+  })
+  : undefined;
+
 const processor = createConversationProcessor({
   allowedChatIds: new Set([chatId]),
   routeIntentFn: async () => "unknown",
-  executeOrderCancelFn: executeOrderCancel
+  executeOrderCancelFn: executeOrderCancel,
+  orderCardSync
 });
 
 async function main() {

@@ -21,6 +21,7 @@
 - Se actualizo documentacion tecnica y de colaboracion:
   - specs C4 de `update-order`, `cancel-order`, `conversation-processor`.
   - `system-map`, matriz DDD, config matrix y skills `order.update` / `order.cancel`.
+- Se ajustaron `scripts/smoke/update-smoke.ts` y `scripts/smoke/cancel-smoke.ts` para que en modo `live` prueben tambien el sync de Trello (no solo Sheets) via `orderCardSync`.
 
 ## Validation
 - Tests ejecutados:
