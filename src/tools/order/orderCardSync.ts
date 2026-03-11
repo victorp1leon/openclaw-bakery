@@ -20,6 +20,7 @@ export type OrderCardSyncConfig = {
   apiKey?: string;
   token?: string;
   apiBaseUrl?: string;
+  listId?: string;
   cancelListId?: string;
   timeoutMs?: number;
   maxRetries?: number;
@@ -110,6 +111,24 @@ function normalizeReferenceForSearch(args: {
   return undefined;
 }
 
+function normalizeSearchText(value: string | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function cardMatchesReference(card: TrelloCard, args: { marker: string; markerRef: string }): boolean {
+  const desc = normalizeSearchText(card.desc);
+  const name = normalizeSearchText(card.name);
+  const marker = normalizeSearchText(args.marker);
+  const markerRef = normalizeSearchText(args.markerRef);
+  if (!markerRef) return false;
+
+  return (
+    desc.includes(marker) ||
+    desc.includes(markerRef) ||
+    name.includes(markerRef)
+  );
+}
+
 function updateComment(args: {
   operation_id: string;
   chat_id: string;
@@ -139,6 +158,7 @@ export function createOrderCardSyncTool(config: OrderCardSyncConfig = {}) {
   const apiKey = config.apiKey?.trim() || undefined;
   const token = config.token?.trim() || undefined;
   const apiBaseUrl = normalizeBaseUrl(config.apiBaseUrl);
+  const listId = config.listId?.trim() || undefined;
   const cancelListId = config.cancelListId?.trim() || undefined;
   const timeoutMs = Number.isFinite(config.timeoutMs) && (config.timeoutMs ?? 0) > 0 ? Math.trunc(config.timeoutMs!) : 5000;
   const maxRetries = Number.isFinite(config.maxRetries) && (config.maxRetries ?? -1) >= 0 ? Math.trunc(config.maxRetries!) : 2;
@@ -248,12 +268,37 @@ export function createOrderCardSyncTool(config: OrderCardSyncConfig = {}) {
       }
     });
 
-    const cards = ((search.data as Record<string, unknown> | undefined)?.cards as unknown[] | undefined) ?? [];
-    const first = cards[0];
-    if (!first || typeof first !== "object") {
-      throw new Error("order_trello_card_not_found");
+    const cards = ((search.data as Record<string, unknown> | undefined)?.cards as unknown[] | undefined)
+      ?.filter((item) => item && typeof item === "object")
+      .map((item) => item as TrelloCard) ?? [];
+    const fromSearch = cards.find((card) => cardMatchesReference(card, { marker, markerRef })) ?? cards[0];
+    if (fromSearch) {
+      return fromSearch;
     }
-    return first as TrelloCard;
+
+    if (listId) {
+      const listCards = await fetchWithRetry({
+        operation_id: args.operation_id,
+        method: "GET",
+        path: `/1/lists/${encodeURIComponent(listId)}/cards`,
+        params: {
+          fields: "id,name,desc,due,idList,url",
+          limit: "1000"
+        }
+      });
+
+      const listData = Array.isArray(listCards.data) ? listCards.data : [];
+      const fromList = listData
+        .filter((item) => item && typeof item === "object")
+        .map((item) => item as TrelloCard)
+        .find((card) => cardMatchesReference(card, { marker, markerRef }));
+
+      if (fromList) {
+        return fromList;
+      }
+    }
+
+    throw new Error("order_trello_card_not_found");
   }
 
   async function rollbackCard(args: {

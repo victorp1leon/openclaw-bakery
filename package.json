@@ -3,6 +3,8 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "healthcheck": "npx ts-node --transpile-only src/healthcheck.ts",
     "test": "vitest",
+    "test:summary": "npx ts-node --transpile-only scripts/tests/generate-test-summary.ts",
+    "test:smoke-integration:summary": "npx ts-node --transpile-only scripts/tests/generate-smoke-integration-summary.ts",
     "security:scan": "node scripts/security/scan-secrets.js",
     "verify:security": "npm run security:scan && npm test",
     "smoke:expense": "npx ts-node --transpile-only scripts/smoke/expense-smoke.ts",

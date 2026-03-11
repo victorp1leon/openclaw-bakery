@@ -139,6 +139,7 @@ const orderCardSync = createOrderCardSyncTool({
   apiKey: appConfig.orderTool.trello.apiKey,
   token: appConfig.orderTool.trello.token,
   apiBaseUrl: appConfig.orderTool.trello.apiBaseUrl,
+  listId: appConfig.orderTool.trello.listId,
   cancelListId: appConfig.orderTool.trello.cancelListId,
   timeoutMs: appConfig.orderTool.trello.timeoutMs,
   maxRetries: appConfig.orderTool.trello.maxRetries,

@@ -56,6 +56,7 @@ const orderCardSync = liveMode
     apiKey: config.orderTool.trello.apiKey,
     token: config.orderTool.trello.token,
     apiBaseUrl: config.orderTool.trello.apiBaseUrl,
+    listId: config.orderTool.trello.listId,
     cancelListId: config.orderTool.trello.cancelListId,
     timeoutMs: config.orderTool.trello.timeoutMs,
     maxRetries: config.orderTool.trello.maxRetries,

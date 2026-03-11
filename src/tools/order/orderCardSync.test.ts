@@ -110,6 +110,48 @@ describe("orderCardSync tool", () => {
     expect(commentCallUrl).toContain("motivo%3Acliente+cancelo");
   });
 
+  it("falls back to list scan when Trello search has no indexed result yet", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ cards: [] })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ([{ id: "card-fallback-1", name: "Pedido (op-fallback-1)", desc: "[operation_id:op-fallback-1]" }])
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: "comment-fallback-1" })
+      });
+
+    const tool = createOrderCardSyncTool({
+      fetchFn,
+      apiKey: "key",
+      token: "token",
+      listId: "list-1",
+      dryRunDefault: false,
+      maxRetries: 0
+    });
+
+    const result = await tool.updateCardForOrder({
+      operation_id: "op-fallback-1",
+      chat_id: "chat-fallback-1",
+      reference: { folio: "op-fallback-1" },
+      patch: { cantidad: 9 }
+    });
+
+    expect(result.card_id).toBe("card-fallback-1");
+    expect(fetchFn).toHaveBeenCalledTimes(3);
+    expect(String(fetchFn.mock.calls[0]?.[0] ?? "")).toContain("/1/search");
+    expect(String(fetchFn.mock.calls[1]?.[0] ?? "")).toContain("/1/lists/list-1/cards");
+    expect(String(fetchFn.mock.calls[2]?.[0] ?? "")).toContain("/1/cards/card-fallback-1/actions/comments");
+  });
+
   it("rolls back trello update when comment append fails", async () => {
     const fetchFn = vi
       .fn()

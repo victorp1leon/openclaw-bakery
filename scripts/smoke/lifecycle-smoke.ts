@@ -16,6 +16,7 @@ const config = loadAppConfig();
 const liveMode = process.env.SMOKE_LIFECYCLE_LIVE === "1";
 const dryRun = (process.env.SMOKE_LIFECYCLE_DRY_RUN ?? (liveMode ? "0" : "1")) === "1";
 const strictCreateSync = process.env.SMOKE_LIFECYCLE_STRICT_CREATE_SYNC === "1";
+const traceEnabled = process.env.SMOKE_LIFECYCLE_TRACE === "1";
 const chatId = process.env.SMOKE_CHAT_ID?.trim() || process.env.SMOKE_LIFECYCLE_CHAT_ID?.trim() || `smoke-lifecycle-${Date.now()}`;
 const customerName = process.env.SMOKE_LIFECYCLE_CUSTOMER?.trim() || "Cliente Lifecycle Smoke";
 const product = process.env.SMOKE_LIFECYCLE_PRODUCT?.trim() || "pastel";
@@ -38,6 +39,14 @@ const orderPayload = {
   notas: "smoke-lifecycle"
 };
 
+function toPositiveInt(raw: string | undefined, fallback: number): number {
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : fallback;
+}
+
+const confirmMaxAttempts = toPositiveInt(process.env.SMOKE_LIFECYCLE_CONFIRM_MAX_ATTEMPTS, 3);
+const confirmRetryDelayMs = toPositiveInt(process.env.SMOKE_LIFECYCLE_CONFIRM_RETRY_DELAY_MS, 1000);
+
 function sleep(ms: number): Promise<void> {
   if (ms <= 0) return Promise.resolve();
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -45,6 +54,110 @@ function sleep(ms: number): Promise<void> {
 
 function assertOrThrow(condition: boolean, detail: string): void {
   if (!condition) throw new Error(detail);
+}
+
+type ConversationTraceEvent = {
+  event: string;
+  chat_id: string;
+  strict_mode: boolean;
+  intent?: string;
+  intent_source?: string;
+  parse_source?: string;
+  detail?: string;
+};
+
+type Phase = "create" | "update" | "cancel";
+
+function isExecutedReply(reply: string): boolean {
+  return reply.includes("Ejecutado");
+}
+
+function isRetryableOrderFailureReply(reply: string): boolean {
+  const normalized = reply.toLowerCase();
+  return normalized.includes("no se pudo ejecutar el pedido") && normalized.includes("responde confirmar para reintentar");
+}
+
+function extractOperationIdFromFailureReply(reply: string): string | undefined {
+  const match = reply.match(/operation_id:\s*([a-f0-9-]{8,})/i);
+  return match?.[1];
+}
+
+function latestFailureTraceDetail(events: ConversationTraceEvent[], phase: Phase): string | undefined {
+  const traceEventName = phase === "create"
+    ? "order_execute_failed"
+    : phase === "update"
+      ? "order_update_execute_failed"
+      : "order_cancel_execute_failed";
+
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const event = events[i];
+    if (event.event === traceEventName) {
+      return event.detail;
+    }
+  }
+  return undefined;
+}
+
+async function confirmPendingWithRetry(args: {
+  processor: {
+    handleMessage: (message: { chat_id: string; text: string }) => Promise<string[]>;
+  };
+  chatId: string;
+  phase: Phase;
+  traceEvents: ConversationTraceEvent[];
+}): Promise<{ ok: boolean; reply: string; attempts: number }> {
+  let lastReply = "";
+
+  for (let attempt = 1; attempt <= confirmMaxAttempts; attempt += 1) {
+    const response = await args.processor.handleMessage({ chat_id: args.chatId, text: "confirmar" });
+    const reply = response[0] ?? "";
+    lastReply = reply;
+
+    const ok = isExecutedReply(reply);
+    const retryableFailure = isRetryableOrderFailureReply(reply);
+    const operationId = retryableFailure ? extractOperationIdFromFailureReply(reply) : undefined;
+    const traceDetail = !ok ? latestFailureTraceDetail(args.traceEvents, args.phase) : undefined;
+
+    console.log(
+      JSON.stringify(
+        {
+          event: `lifecycle_${args.phase}_confirm_attempt`,
+          attempt,
+          ok,
+          retryableFailure,
+          operation_id: operationId,
+          trace_detail: traceDetail,
+          reply
+        },
+        null,
+        2
+      )
+    );
+
+    if (ok) {
+      return {
+        ok: true,
+        reply,
+        attempts: attempt
+      };
+    }
+
+    if (!retryableFailure || attempt >= confirmMaxAttempts) {
+      return {
+        ok: false,
+        reply,
+        attempts: attempt
+      };
+    }
+
+    await sleep(confirmRetryDelayMs);
+  }
+
+  return {
+    ok: false,
+    reply: lastReply,
+    attempts: confirmMaxAttempts
+  };
 }
 
 function extractSummaryPayload(reply: string): Record<string, unknown> {
@@ -294,6 +407,7 @@ const orderCardSync = createOrderCardSyncTool({
   apiKey: config.orderTool.trello.apiKey,
   token: config.orderTool.trello.token,
   apiBaseUrl: config.orderTool.trello.apiBaseUrl,
+  listId: config.orderTool.trello.listId,
   cancelListId: config.orderTool.trello.cancelListId,
   timeoutMs: config.orderTool.trello.timeoutMs,
   maxRetries: config.orderTool.trello.maxRetries,
@@ -303,6 +417,7 @@ const orderCardSync = createOrderCardSyncTool({
 
 async function main() {
   const createTrigger = `smoke lifecycle create ${Date.now()}`;
+  const traceEvents: ConversationTraceEvent[] = [];
 
   const processor = createConversationProcessor({
     allowedChatIds: new Set([chatId]),
@@ -317,7 +432,13 @@ async function main() {
     executeAppendOrderFn: executeAppendOrder,
     executeOrderUpdateFn: executeOrderUpdate,
     executeOrderCancelFn: executeOrderCancel,
-    orderCardSync
+    orderCardSync,
+    onTrace: (event) => {
+      traceEvents.push(event);
+      if (traceEnabled) {
+        console.log(JSON.stringify({ event: "lifecycle_trace", trace: event }, null, 2));
+      }
+    }
   });
 
   console.log(
@@ -327,6 +448,9 @@ async function main() {
         mode: liveMode ? "live" : "mock",
         dryRun,
         strictCreateSync,
+        traceEnabled,
+        confirmMaxAttempts,
+        confirmRetryDelayMs,
         chatId,
         order: {
           customerName,
@@ -360,11 +484,25 @@ async function main() {
   const createOperationId = String(createSummaryPayload.operation_id ?? "");
   assertOrThrow(createOperationId.length > 0, "lifecycle_create_operation_id_missing");
 
-  const createConfirm = await processor.handleMessage({ chat_id: chatId, text: "confirmar" });
-  const createConfirmReply = createConfirm[0] ?? "";
-  const createConfirmOk = createConfirmReply.includes("Ejecutado");
-  console.log(JSON.stringify({ event: "lifecycle_create_confirm", reply: createConfirmReply, ok: createConfirmOk }, null, 2));
-  assertOrThrow(createConfirmOk, "lifecycle_create_confirm_unexpected_reply");
+  const createConfirm = await confirmPendingWithRetry({
+    processor,
+    chatId,
+    phase: "create",
+    traceEvents
+  });
+  console.log(
+    JSON.stringify(
+      {
+        event: "lifecycle_create_confirm",
+        reply: createConfirm.reply,
+        ok: createConfirm.ok,
+        attempts: createConfirm.attempts
+      },
+      null,
+      2
+    )
+  );
+  assertOrThrow(createConfirm.ok, "lifecycle_create_confirm_unexpected_reply");
 
   let trelloCardId = "trello-dry-run-card";
 
@@ -426,11 +564,25 @@ async function main() {
   const updateOperationId = String(updateSummaryPayload.operation_id ?? "");
   assertOrThrow(updateOperationId.length > 0, "lifecycle_update_operation_id_missing");
 
-  const updateConfirm = await processor.handleMessage({ chat_id: chatId, text: "confirmar" });
-  const updateConfirmReply = updateConfirm[0] ?? "";
-  const updateConfirmOk = updateConfirmReply.includes("Ejecutado");
-  console.log(JSON.stringify({ event: "lifecycle_update_confirm", reply: updateConfirmReply, ok: updateConfirmOk }, null, 2));
-  assertOrThrow(updateConfirmOk, "lifecycle_update_confirm_unexpected_reply");
+  const updateConfirm = await confirmPendingWithRetry({
+    processor,
+    chatId,
+    phase: "update",
+    traceEvents
+  });
+  console.log(
+    JSON.stringify(
+      {
+        event: "lifecycle_update_confirm",
+        reply: updateConfirm.reply,
+        ok: updateConfirm.ok,
+        attempts: updateConfirm.attempts
+      },
+      null,
+      2
+    )
+  );
+  assertOrThrow(updateConfirm.ok, "lifecycle_update_confirm_unexpected_reply");
 
   if (!dryRun) {
     const rowAfterUpdate = await waitFor({
@@ -479,11 +631,25 @@ async function main() {
   const cancelOperationId = String(cancelSummaryPayload.operation_id ?? "");
   assertOrThrow(cancelOperationId.length > 0, "lifecycle_cancel_operation_id_missing");
 
-  const cancelConfirm = await processor.handleMessage({ chat_id: chatId, text: "confirmar" });
-  const cancelConfirmReply = cancelConfirm[0] ?? "";
-  const cancelConfirmOk = cancelConfirmReply.includes("Ejecutado");
-  console.log(JSON.stringify({ event: "lifecycle_cancel_confirm", reply: cancelConfirmReply, ok: cancelConfirmOk }, null, 2));
-  assertOrThrow(cancelConfirmOk, "lifecycle_cancel_confirm_unexpected_reply");
+  const cancelConfirm = await confirmPendingWithRetry({
+    processor,
+    chatId,
+    phase: "cancel",
+    traceEvents
+  });
+  console.log(
+    JSON.stringify(
+      {
+        event: "lifecycle_cancel_confirm",
+        reply: cancelConfirm.reply,
+        ok: cancelConfirm.ok,
+        attempts: cancelConfirm.attempts
+      },
+      null,
+      2
+    )
+  );
+  assertOrThrow(cancelConfirm.ok, "lifecycle_cancel_confirm_unexpected_reply");
 
   if (!dryRun) {
     const cancelListId = config.orderTool.trello.cancelListId ?? "";
