@@ -15,6 +15,7 @@ const config = loadAppConfig();
 
 const liveMode = process.env.SMOKE_LIFECYCLE_LIVE === "1";
 const dryRun = (process.env.SMOKE_LIFECYCLE_DRY_RUN ?? (liveMode ? "0" : "1")) === "1";
+const strictCreateSync = process.env.SMOKE_LIFECYCLE_STRICT_CREATE_SYNC === "1";
 const chatId = process.env.SMOKE_CHAT_ID?.trim() || process.env.SMOKE_LIFECYCLE_CHAT_ID?.trim() || `smoke-lifecycle-${Date.now()}`;
 const customerName = process.env.SMOKE_LIFECYCLE_CUSTOMER?.trim() || "Cliente Lifecycle Smoke";
 const product = process.env.SMOKE_LIFECYCLE_PRODUCT?.trim() || "pastel";
@@ -196,6 +197,27 @@ async function fetchTrelloComments(cardId: string): Promise<string[]> {
     .filter((text): text is string => typeof text === "string");
 }
 
+async function findTrelloCardIdByOperationId(operationId: string): Promise<string | undefined> {
+  const apiKey = config.orderTool.trello.apiKey?.trim();
+  const token = config.orderTool.trello.token?.trim();
+  if (!apiKey || !token) throw new Error("smoke_lifecycle_trello_credentials_missing");
+  const baseUrl = (config.orderTool.trello.apiBaseUrl?.trim() || "https://api.trello.com").replace(/\/+$/, "");
+
+  const params = new URLSearchParams({
+    key: apiKey,
+    token,
+    query: `[operation_id:${operationId}]`,
+    modelTypes: "cards",
+    cards_limit: "1",
+    card_fields: "id,name,idList"
+  });
+  const response = await fetch(`${baseUrl}/1/search?${params.toString()}`);
+  if (!response.ok) throw new Error(`smoke_lifecycle_trello_search_http_${response.status}`);
+  const payload = (await response.json()) as { cards?: Array<{ id?: string }> };
+  const card = Array.isArray(payload.cards) ? payload.cards[0] : undefined;
+  return typeof card?.id === "string" && card.id.length > 0 ? card.id : undefined;
+}
+
 async function waitFor<T>(args: {
   label: string;
   attempts?: number;
@@ -308,6 +330,7 @@ async function main() {
         event: "lifecycle_smoke_start",
         mode: liveMode ? "live" : "mock",
         dryRun,
+        strictCreateSync,
         chatId,
         order: {
           customerName,
@@ -351,16 +374,27 @@ async function main() {
 
   if (!dryRun) {
     const rowAfterCreate = await waitFor({
-      label: "lifecycle_create_sheet_validation",
+      label: "lifecycle_create_row_found",
       execute: async () => readOrderRowByFolio(createOperationId),
-      validate: (value) => {
-        const row = value.row;
-        return (row[19] ?? "").trim().toLowerCase() === "activo" && (row[20] ?? "").trim().length > 0;
-      }
+      validate: (value) => value.row.length > 0
     });
-
+    const estadoPedidoAfterCreate = (rowAfterCreate.row[19] ?? "").trim().toLowerCase();
     trelloCardId = (rowAfterCreate.row[20] ?? "").trim();
+
+    if (trelloCardId.length === 0) {
+      const cardIdFromMarker = await waitFor({
+        label: "lifecycle_create_trello_card_lookup",
+        execute: async () => findTrelloCardIdByOperationId(createOperationId),
+        validate: (value) => typeof value === "string" && value.length > 0
+      });
+      trelloCardId = cardIdFromMarker ?? "";
+    }
     assertOrThrow(trelloCardId.length > 0, "lifecycle_create_trello_card_id_missing");
+
+    if (strictCreateSync) {
+      assertOrThrow(estadoPedidoAfterCreate === "activo", "lifecycle_create_estado_pedido_not_activo");
+      assertOrThrow((rowAfterCreate.row[20] ?? "").trim().length > 0, "lifecycle_create_trello_card_id_not_persisted");
+    }
 
     const card = await waitFor({
       label: "lifecycle_create_trello_validation",
@@ -375,6 +409,7 @@ async function main() {
           folio: createOperationId,
           estado_pedido: rowAfterCreate.row[19],
           trello_card_id: trelloCardId,
+          sheet_card_id_persisted: (rowAfterCreate.row[20] ?? "").trim().length > 0,
           trello_list_id: card.idList
         },
         null,

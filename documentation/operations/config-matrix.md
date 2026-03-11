@@ -133,6 +133,7 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 - Full lifecycle smoke (`create -> update -> cancel`, with Trello+Sheets cross-validation):
   - Mock default: `npm run smoke:lifecycle`
   - Live: `SMOKE_LIFECYCLE_LIVE=1 SMOKE_LIFECYCLE_DRY_RUN=0 npm run smoke:lifecycle`
+  - Optional strict create sync gate: `SMOKE_LIFECYCLE_STRICT_CREATE_SYNC=1` (fails if `create` does not persist `estado_pedido` and `trello_card_id` on first write).
 - If live mode fails with `order_trello_api_key_missing`, `order_trello_token_missing`, `order_trello_list_id_missing`, or `order_trello_cancel_list_id_missing`, configure matching `ORDER_TRELLO_*` vars and retry.
 - If live mode fails with `order_connector_url_missing` or `order_connector_api_key_missing`, configure `ORDER_SHEETS_WEBHOOK_URL` / `ORDER_SHEETS_API_KEY` and retry.
 - Live order `gws` smoke attempt:
