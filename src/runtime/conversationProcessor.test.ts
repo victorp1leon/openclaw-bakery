@@ -762,6 +762,46 @@ describe("conversation processor security flow", () => {
     expect(getOperation("op-order-update")?.status).toBe("executed");
   });
 
+  it("acepta order.update en lenguaje natural sin JSON", async () => {
+    const executeOrderUpdateFn = vi.fn(async ({ operation_id, reference, patch }) => ({
+      ok: true,
+      dry_run: false,
+      operation_id,
+      payload: {
+        reference,
+        patch: patch as Record<string, unknown>,
+        matched_row_index: 8,
+        updated_fields: ["fecha_hora_entrega", "estado_pago"]
+      },
+      detail: "update-order executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-update-natural"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-order-update-natural",
+      routeIntentFn: async () => "pedido",
+      executeOrderUpdateFn
+    });
+
+    const summary = await processor.handleMessage({
+      chat_id: "chat-order-update-natural",
+      text: "actualiza pedido folio op-xyz-123, cambia fecha de entrega a 2026-03-12 17:00 y estado de pago a parcial"
+    });
+    expect(summary[0]).toContain("Resumen");
+    expect(summary[0]).toContain("order.update");
+
+    const done = await processor.handleMessage({ chat_id: "chat-order-update-natural", text: "confirmar" });
+    expect(done[0]).toContain("Ejecutado");
+    expect(executeOrderUpdateFn).toHaveBeenCalledWith({
+      operation_id: "op-order-update-natural",
+      chat_id: "chat-order-update-natural",
+      reference: { folio: "op-xyz-123", operation_id_ref: undefined },
+      patch: { fecha_hora_entrega: "2026-03-12 17:00", estado_pago: "parcial" },
+      trello_card_id: "trello-dry-run-card"
+    });
+  });
+
   it("devuelve parse error cuando order.update no incluye patch", async () => {
     const routeIntentFn = vi.fn(async () => "pedido" as const);
 
@@ -1031,6 +1071,38 @@ describe("conversation processor security flow", () => {
       chat_id: "chat-payment-record-parse",
       text: "parcial"
     });
+    expect(summary[0]).toContain("Resumen");
+    expect(summary[0]).toContain("payment.record");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+  });
+
+  it("mantiene solicitud de referencia cuando respuesta libre es un placeholder", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-payment-record-reference"]),
+      routeIntentFn
+    });
+
+    const askReference = await processor.handleMessage({
+      chat_id: "chat-payment-record-reference",
+      text: 'registra pago del pedido {"payment":{"estado_pago":"pendiente","monto":100}}'
+    });
+
+    expect(askReference[0].toLowerCase()).toContain("folio");
+
+    const askAgain = await processor.handleMessage({
+      chat_id: "chat-payment-record-reference",
+      text: "pendiente"
+    });
+
+    expect(askAgain[0].toLowerCase()).toContain("folio");
+
+    const summary = await processor.handleMessage({
+      chat_id: "chat-payment-record-reference",
+      text: "op-xyz-123"
+    });
+
     expect(summary[0]).toContain("Resumen");
     expect(summary[0]).toContain("payment.record");
     expect(routeIntentFn).not.toHaveBeenCalled();

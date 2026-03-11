@@ -59,9 +59,15 @@ function neutralMessages(): MessageBuilder {
     help: () =>
       [
         "Guía rápida:",
-        "- gasto 380 harina y azúcar en Costco",
-        "- pedido Victor 12 cupcakes red velvet para mañana 2pm recoger en tienda pagado total 480",
+        "- Crear pedido: pedido Victor 12 cupcakes red velvet para mañana 2pm recoger en tienda pagado total 480",
+        "- Consultar pedido: consulta pedido folio op-xyz-123",
+        "- Actualizar pedido: actualiza pedido folio op-xyz-123, cambia fecha de entrega a 2026-03-12 17:00",
+        "- Cancelar pedido: cancela pedido folio op-xyz-123 motivo cliente cancelo",
+        "- Registrar pago: registra pago del pedido folio op-xyz-123 en parcial, abono 350 por transferencia, nota anticipo",
+        "- Reporte diario: que pedidos tengo hoy",
+        "- Gasto: gasto 380 harina y azúcar en Costco",
         "Notas:",
+        "- Si falta información te la voy pidiendo (folio, estado de pago, producto, etc.)",
         "- Para tipo de envío puedes escribir: envío a domicilio o recoger en tienda",
         "- Después del resumen responde: confirmar | cancelar"
       ].join("\n"),
@@ -97,9 +103,15 @@ function bakeryWarmMessages(): MessageBuilder {
     help: () =>
       [
         "Guía rápida:",
-        "- gasto 380 harina y azúcar en Costco",
-        "- pedido Victor 12 cupcakes red velvet para mañana 2pm recoger en tienda pagado total 480",
+        "- Crear pedido: pedido Victor 12 cupcakes red velvet para mañana 2pm recoger en tienda pagado total 480",
+        "- Consultar pedido: consulta pedido folio op-xyz-123",
+        "- Actualizar pedido: actualiza pedido folio op-xyz-123, cambia fecha de entrega a 2026-03-12 17:00",
+        "- Cancelar pedido: cancela pedido folio op-xyz-123 motivo cliente cancelo",
+        "- Registrar pago: registra pago del pedido folio op-xyz-123 en parcial, abono 350 por transferencia, nota anticipo",
+        "- Reporte diario: que pedidos tengo hoy",
+        "- Gasto: gasto 380 harina y azúcar en Costco",
         "Tips:",
+        "- Si falta información te voy preguntando lo necesario",
         "- Para tipo de envío puedes escribir: envío a domicilio o recoger en tienda",
         "- Cuando veas el resumen responde: confirmar | cancelar"
       ].join("\n"),
@@ -128,8 +140,14 @@ function conciseMessages(): MessageBuilder {
     help: () =>
       [
         "Ayuda:",
-        "- gasto 380 harina y azúcar en Costco",
-        "- pedido Victor 12 cupcakes red velvet para mañana 2pm recoger en tienda pagado total 480",
+        "- Crear pedido: pedido Victor 12 cupcakes red velvet para mañana 2pm recoger en tienda pagado total 480",
+        "- Consultar pedido: consulta pedido folio op-xyz-123",
+        "- Cancelar pedido: cancela pedido folio op-xyz-123 motivo cliente cancelo",
+        "- Actualizar pedido: actualiza pedido folio op-xyz-123, cambia estado de pago a pagado",
+        "- Registrar pago: registra pago del pedido folio op-xyz-123 en pagado",
+        "- Reporte diario: que pedidos tengo hoy",
+        "- Gasto: gasto 380 harina y azúcar en Costco",
+        "- Si falta información te la pido",
         "- Responde confirmar | cancelar después del resumen"
       ].join("\n"),
     unknown: () => "No entendí. Escribe 'ayuda'.",

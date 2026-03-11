@@ -247,6 +247,18 @@ const ORDER_UPDATE_PATCH_FIELDS = new Set([
   "moneda",
   "notas"
 ]);
+const ORDER_REFERENCE_TOKEN_PATTERN = /^[a-z0-9][a-z0-9_-]{2,}$/i;
+const ORDER_REFERENCE_RESERVED_VALUES = new Set([
+  "pendiente",
+  "pagado",
+  "parcial",
+  "confirmar",
+  "cancelar",
+  "si",
+  "no",
+  "ok",
+  "listo"
+]);
 
 function toDateKeyFromDate(date: Date, timezone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -707,19 +719,28 @@ function trimString(value: unknown): string | undefined {
   return out.length > 0 ? out : undefined;
 }
 
+function sanitizeOrderReferenceValue(value: unknown): string | undefined {
+  const out = trimString(value);
+  if (!out) return undefined;
+  if (!ORDER_REFERENCE_TOKEN_PATTERN.test(out)) return undefined;
+  const normalized = normalizeForMatch(out);
+  if (ORDER_REFERENCE_RESERVED_VALUES.has(normalized)) return undefined;
+  return out;
+}
+
 function extractOrderReferenceFromText(text: string): { folio?: string; operation_id_ref?: string } {
-  const folio = text.match(/\bfolio\s*[:=]?\s*([a-z0-9_-]{3,})\b/i)?.[1]?.trim();
-  const operationId = text.match(/\b(?:operation_id|operacion|id)\s*[:=]?\s*([a-z0-9_-]{3,})\b/i)?.[1]?.trim();
+  const folio = sanitizeOrderReferenceValue(text.match(/\bfolio\s*[:=]?\s*([a-z0-9_-]{3,})\b/i)?.[1]);
+  const operationId = sanitizeOrderReferenceValue(text.match(/\b(?:operation_id|operacion|id)\s*[:=]?\s*([a-z0-9_-]{3,})\b/i)?.[1]);
   return {
-    folio: folio && folio.length > 0 ? folio : undefined,
-    operation_id_ref: operationId && operationId.length > 0 ? operationId : undefined
+    folio,
+    operation_id_ref: operationId
   };
 }
 
 function hasOrderReference(value: unknown): boolean {
   if (!isObjectRecord(value)) return false;
-  const folio = trimString(value.folio);
-  const operationId = trimString(value.operation_id_ref);
+  const folio = sanitizeOrderReferenceValue(value.folio);
+  const operationId = sanitizeOrderReferenceValue(value.operation_id_ref);
   return Boolean(folio || operationId);
 }
 
@@ -727,11 +748,71 @@ function referenceFromFreeText(text: string): { folio?: string; operation_id_ref
   const fromTagged = extractOrderReferenceFromText(text);
   if (fromTagged.folio || fromTagged.operation_id_ref) return fromTagged;
 
-  const fallback = text.trim();
-  if (fallback.length >= 3) {
+  const fallback = sanitizeOrderReferenceValue(text);
+  if (fallback) {
     return { folio: fallback };
   }
   return {};
+}
+
+function parseOrderUpdatePatchFromText(text: string): Record<string, unknown> | undefined {
+  const normalized = normalizeForMatch(text);
+  const patch: Record<string, unknown> = {};
+
+  const deliveryMatch = text.match(
+    /\b(?:fecha(?:\s+y)?\s*hora(?:\s+de)?\s*entrega|fecha(?:\s+de)?\s+entrega|entrega)\s*(?:a|para|=|:)?\s*((?:\d{4}[/-]\d{1,2}[/-]\d{1,2})(?:[ t]\d{1,2}:\d{2})?)\b/i
+  )?.[1];
+  if (deliveryMatch) {
+    patch.fecha_hora_entrega = deliveryMatch.replace(/[Tt]/g, " ").replace(/\//g, "-").trim();
+  }
+
+  const paymentMatch =
+    normalized.match(/\bestado\s+de\s+pago\s*(?:a|en|=|:|como)?\s*(pagado|pendiente|parcial)\b/)?.[1] ??
+    (/\b(?:pago|abono)\b/.test(normalized) ? normalized.match(/\b(pagado|pendiente|parcial)\b/)?.[1] : undefined);
+  if (paymentMatch) {
+    patch.estado_pago = paymentMatch;
+  }
+
+  const shippingValue =
+    text.match(
+      /\b(?:tipo\s+de?\s*envio|envio)\s*(?:a|en|=|:|para)?\s*(envio_domicilio|recoger_en_tienda|envio a domicilio|a domicilio|recoger en tienda|retiro en tienda)\b/i
+    )?.[1] ??
+    text.match(/\b(envio a domicilio|a domicilio|recoger en tienda|retiro en tienda)\b/i)?.[1];
+  if (shippingValue) {
+    patch.tipo_envio = normalizeTipoEnvioInput(shippingValue);
+  }
+
+  const quantityMatch = normalized.match(/\b(?:cantidad|piezas?|unidades?)\s*(?:a|=|:)?\s*(\d+)\b/)?.[1];
+  if (quantityMatch) {
+    patch.cantidad = Number(quantityMatch);
+  }
+
+  const totalMatch = normalized.match(/\btotal\s*(?:a|=|:)?\s*(\d+(?:[.,]\d+)?)\b/)?.[1];
+  if (totalMatch) {
+    patch.total = Number(totalMatch.replace(",", "."));
+  }
+
+  const customerMatch = text.match(/\b(?:nombre(?:\s+del)?\s+cliente|cliente)\s*(?:a|=|:)\s*([^,.;\n]+)/i)?.[1]?.trim();
+  if (customerMatch) {
+    patch.nombre_cliente = customerMatch;
+  }
+
+  const productMatch = text.match(/\bproducto\s*(?:a|=|:)\s*([^,.;\n]+)/i)?.[1]?.trim();
+  if (productMatch) {
+    patch.producto = productMatch;
+  }
+
+  const addressMatch = text.match(/\bdireccion\s*(?:a|=|:)\s*([^,;\n]+)/i)?.[1]?.trim();
+  if (addressMatch) {
+    patch.direccion = addressMatch;
+  }
+
+  const notesMatch = text.match(/\b(?:nota|notas)\s*(?:a|=|:)\s*(.+)$/i)?.[1]?.trim();
+  if (notesMatch) {
+    patch.notas = notesMatch;
+  }
+
+  return Object.keys(patch).length > 0 ? patch : undefined;
 }
 
 function parseOrderUpdateRequest(text: string):
@@ -759,11 +840,11 @@ function parseOrderUpdateRequest(text: string):
     const payload = inline.value;
 
     if (isObjectRecord(payload.reference)) {
-      reference.folio = trimString(payload.reference.folio);
-      reference.operation_id_ref = trimString(payload.reference.operation_id_ref);
+      reference.folio = sanitizeOrderReferenceValue(payload.reference.folio);
+      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.reference.operation_id_ref);
     } else {
-      reference.folio = trimString(payload.folio);
-      reference.operation_id_ref = trimString(payload.operation_id_ref);
+      reference.folio = sanitizeOrderReferenceValue(payload.folio);
+      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.operation_id_ref);
     }
 
     if (isObjectRecord(payload.patch)) {
@@ -774,6 +855,10 @@ function parseOrderUpdateRequest(text: string):
         patch = Object.fromEntries(filteredEntries);
       }
     }
+  }
+
+  if (!patch) {
+    patch = parseOrderUpdatePatchFromText(text);
   }
 
   const fromText = extractOrderReferenceFromText(text);
@@ -832,11 +917,11 @@ function parseOrderCancelRequest(text: string):
     const payload = inline.value;
 
     if (isObjectRecord(payload.reference)) {
-      reference.folio = trimString(payload.reference.folio);
-      reference.operation_id_ref = trimString(payload.reference.operation_id_ref);
+      reference.folio = sanitizeOrderReferenceValue(payload.reference.folio);
+      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.reference.operation_id_ref);
     } else {
-      reference.folio = trimString(payload.folio);
-      reference.operation_id_ref = trimString(payload.operation_id_ref);
+      reference.folio = sanitizeOrderReferenceValue(payload.folio);
+      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.operation_id_ref);
     }
 
     const motivoInline = trimString(payload.motivo);
@@ -903,11 +988,11 @@ function parsePaymentRecordRequest(text: string):
     }
 
     if (isObjectRecord(payload.reference)) {
-      reference.folio = trimString(payload.reference.folio);
-      reference.operation_id_ref = trimString(payload.reference.operation_id_ref);
+      reference.folio = sanitizeOrderReferenceValue(payload.reference.folio);
+      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.reference.operation_id_ref);
     } else {
-      reference.folio = trimString(payload.folio);
-      reference.operation_id_ref = trimString(payload.operation_id_ref);
+      reference.folio = sanitizeOrderReferenceValue(payload.folio);
+      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.operation_id_ref);
     }
 
     if (isObjectRecord(payload.payment)) {
