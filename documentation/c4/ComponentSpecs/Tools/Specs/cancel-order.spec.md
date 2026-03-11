@@ -4,8 +4,8 @@ Status: MVP
 Last Updated: 2026-03-11
 
 ## Objective
-Cancel an existing order in Google Sheets (`Pedidos`) without deleting history.
-Cancellation must be explicit, auditable, and idempotent.
+Cancel an existing order without deleting history while keeping Trello + Google Sheets consistent.
+Cancellation must be explicit, auditable, idempotent, and rollback-safe.
 
 ## Inputs
 - `operation_id: string` (cancel operation id)
@@ -17,7 +17,12 @@ Cancellation must be explicit, auditable, and idempotent.
 - Google Workspace CLI config:
   - command + args
   - spreadsheet id
-  - read range (`Pedidos!A:R`)
+  - read range (`Pedidos!A:U`)
+  - timeout/retries
+- Trello sync config:
+  - api key + token
+  - cancel list id (`Pedidos - Cancelados`)
+  - api base URL
   - timeout/retries
 
 ## Outputs
@@ -30,15 +35,19 @@ Cancellation must be explicit, auditable, and idempotent.
 - Deterministic errors (`order_cancel_*`) on validation/config/provider failures.
 
 ## Rules
-- Source of truth is Google Sheets `Pedidos`.
+- Consistency rule: Trello and Google Sheets must both succeed for cancellation to be successful.
 - Resolve exactly one row by `folio` or `operation_id_ref`.
 - If no unique match, fail deterministically (`not_found` / `ambiguous`).
 - Never hard-delete the row.
+- Move Trello card to the configured cancel list and append cancel comment.
 - Represent cancellation as a marker appended to `notas`:
   - `[CANCELADO] <timestamp> op:<operation_id> chat:<chat_id> motivo:<motivo|n/a>`
+- Set `estado_pedido=cancelado` in Sheets row.
 - If marker already exists, treat as idempotent success (`already_canceled=true`) and avoid duplicate marker insertion.
 - Keep original `folio` and order payload fields unchanged.
-- Persist update via `gws` on exact target row range (`A:R` for that row).
+- Persist update via `gws` on exact target row range (`A:U` for that row).
+- If Sheets write fails after Trello move, rollback Trello card to previous snapshot and fail operation.
+- If Trello cancellation fails after partial mutation, rollback Trello card internally and fail operation.
 
 ## Error Handling Classification
 - Retriable:

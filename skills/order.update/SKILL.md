@@ -6,7 +6,7 @@ description: Use when user asks to update an existing order (date, quantity, shi
 # skill: order.update
 
 ## Overview
-Actualiza pedidos existentes en `Pedidos` mediante referencia (`folio` u `operation_id_ref`) y `patch` controlado. Siempre requiere resumen + confirmacion explicita antes de ejecutar la mutacion.
+Actualiza pedidos existentes en `Pedidos` mediante referencia (`folio` u `operation_id_ref`) y `patch` controlado. Siempre requiere resumen + confirmacion explicita antes de ejecutar la mutacion, y aplica consistencia Trello+Sheets con rollback en fallo parcial.
 
 ## When To Use
 - El usuario quiere cambiar datos de un pedido ya registrado.
@@ -37,6 +37,7 @@ Actualiza pedidos existentes en `Pedidos` mediante referencia (`folio` u `operat
 3. Persistir operacion `pending_confirm` con `idempotency_key=operation_id`.
 4. Mostrar resumen y esperar `confirmar|cancelar`.
 5. En confirmacion, ejecutar tool `update-order` y persistir resultado (`executed|failed`).
+6. Validar que Trello y Sheets queden consistentes; si Sheets falla despues de Trello, revertir Trello.
 
 ## Safety Constraints
 - Nunca mutar sin confirmacion explicita.

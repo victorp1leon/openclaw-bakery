@@ -56,6 +56,7 @@ export type AppConfig = {
       apiKey?: string;
       token?: string;
       listId?: string;
+      cancelListId?: string;
       apiBaseUrl: string;
       timeoutMs: number;
       maxRetries: number;
@@ -190,6 +191,7 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
         apiKey: env.ORDER_TRELLO_API_KEY?.trim() || undefined,
         token: env.ORDER_TRELLO_TOKEN?.trim() || undefined,
         listId: env.ORDER_TRELLO_LIST_ID?.trim() || undefined,
+        cancelListId: env.ORDER_TRELLO_CANCEL_LIST_ID?.trim() || undefined,
         apiBaseUrl: env.ORDER_TRELLO_API_BASE_URL?.trim() || "https://api.trello.com",
         timeoutMs: toPositiveInt(env.ORDER_TRELLO_TIMEOUT_MS, 5000),
         maxRetries: toNonNegativeInt(env.ORDER_TRELLO_MAX_RETRIES, 2)

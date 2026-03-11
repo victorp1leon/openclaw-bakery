@@ -104,7 +104,10 @@ export function runHealthcheck(args: {
 
   const orderTrelloStatus: HealthStatus = args.config.orderTool.trello.dryRun
     ? "warn"
-    : args.config.orderTool.trello.apiKey && args.config.orderTool.trello.token && args.config.orderTool.trello.listId
+    : args.config.orderTool.trello.apiKey &&
+        args.config.orderTool.trello.token &&
+        args.config.orderTool.trello.listId &&
+        args.config.orderTool.trello.cancelListId
       ? "ok"
       : "fail";
 
@@ -116,6 +119,7 @@ export function runHealthcheck(args: {
       `apiKeyConfigured=${args.config.orderTool.trello.apiKey ? "1" : "0"}`,
       `tokenConfigured=${args.config.orderTool.trello.token ? "1" : "0"}`,
       `listIdConfigured=${args.config.orderTool.trello.listId ? "1" : "0"}`,
+      `cancelListIdConfigured=${args.config.orderTool.trello.cancelListId ? "1" : "0"}`,
       `apiBaseUrl=${args.config.orderTool.trello.apiBaseUrl}`,
       `timeoutMs=${args.config.orderTool.trello.timeoutMs}`,
       `maxRetries=${args.config.orderTool.trello.maxRetries}`

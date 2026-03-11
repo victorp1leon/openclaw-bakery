@@ -6,7 +6,7 @@ description: Use when user asks to cancel an existing order and requires confirm
 # skill: order.cancel
 
 ## Overview
-Cancela pedidos existentes en `Pedidos` sin borrar historial. Usa un marker auditable en `notas` (`[CANCELADO]`) y confirmacion explicita antes de ejecutar.
+Cancela pedidos existentes en `Pedidos` sin borrar historial. Usa un marker auditable en `notas` (`[CANCELADO]`), marca `estado_pedido=cancelado`, mueve la tarjeta Trello a la lista de cancelados y requiere confirmacion explicita antes de ejecutar.
 
 ## When To Use
 - El usuario pide cancelar un pedido existente.
@@ -29,6 +29,7 @@ Cancela pedidos existentes en `Pedidos` sin borrar historial. Usa un marker audi
 ## Output Contract
 - Antes de ejecutar: resumen estructurado + `confirmar | cancelar`.
 - Al confirmar: `cancel-order` agrega marker `[CANCELADO]` en `notas`.
+- Al confirmar: se sincroniza Trello + Sheets en modo transaccional (rollback si falla alguno).
 - Si ya estaba cancelado: respuesta exitosa idempotente (`already_canceled=true`) sin duplicar marker.
 
 ## Workflow
@@ -37,6 +38,7 @@ Cancela pedidos existentes en `Pedidos` sin borrar historial. Usa un marker audi
 3. Registrar operacion `pending_confirm` con `idempotency_key=operation_id`.
 4. Mostrar resumen y esperar `confirmar|cancelar`.
 5. En confirmacion, ejecutar `cancel-order` y persistir `executed|failed`.
+6. Si falla Sheets tras mover en Trello, revertir tarjeta a snapshot previo.
 
 ## Safety Constraints
 - Nunca ejecutar mutacion sin confirmacion explicita.

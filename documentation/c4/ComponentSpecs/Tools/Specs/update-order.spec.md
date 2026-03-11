@@ -4,8 +4,8 @@ Status: MVP
 Last Updated: 2026-03-11
 
 ## Objective
-Update an existing order row in Google Sheets (`Pedidos`) after user confirmation.
-This adapter mutates order data and must preserve traceability and idempotency.
+Update an existing order after user confirmation while keeping Trello + Google Sheets consistent.
+This lifecycle mutation must preserve traceability and idempotency, and must rollback on partial failures.
 
 ## Inputs
 - `operation_id: string` (mutation operation id)
@@ -31,7 +31,11 @@ This adapter mutates order data and must preserve traceability and idempotency.
 - Google Workspace CLI config:
   - command + args
   - spreadsheet id
-  - read range (`Pedidos!A:R`)
+  - read range (`Pedidos!A:U`)
+  - timeout/retries
+- Trello sync config:
+  - api key + token
+  - api base URL
   - timeout/retries
 
 ## Outputs
@@ -45,7 +49,7 @@ This adapter mutates order data and must preserve traceability and idempotency.
 - Deterministic errors (`order_update_*`) on validation/config/provider failures.
 
 ## Rules
-- Source of truth is Google Sheets `Pedidos`.
+- Consistency rule: Trello and Google Sheets must both succeed for the operation to be considered successful.
 - Resolve exactly one row by `folio` or `operation_id_ref`.
 - If no unique match, fail deterministically (`not_found` / `ambiguous`).
 - Immutable columns:
@@ -57,7 +61,9 @@ This adapter mutates order data and must preserve traceability and idempotency.
 - Re-validate shipping invariant after patch:
   - if `tipo_envio=envio_domicilio`, `direccion` is mandatory.
 - If `fecha_hora_entrega` changes, recompute `fecha_hora_entrega_iso`.
-- Persist update via `gws` on exact target row range (`A:R` for that row).
+- Execute Trello sync first (due/comment), then persist update via `gws` on exact target row range (`A:U` for that row).
+- If Sheets write fails after Trello sync, rollback Trello card to previous snapshot and fail operation.
+- If Trello update fails after partial mutation, rollback Trello card internally and fail operation.
 - Append mutation audit tag to `notas`:
   - `[UPDATE] <timestamp> op:<operation_id> chat:<chat_id>`
 

@@ -14,6 +14,8 @@ export type OrderCancelPreview = {
   producto: string;
   estado_pago?: string;
   notas?: string;
+  estado_pedido?: string;
+  trello_card_id?: string;
 };
 
 export type OrderCancelExecutionPayload = {
@@ -59,7 +61,9 @@ const INDEX = {
   estado_pago: 12,
   notas: 15,
   operation_id: 17,
-  fecha_hora_entrega_iso: 18
+  fecha_hora_entrega_iso: 18,
+  estado_pedido: 19,
+  trello_card_id: 20
 } as const;
 
 const CANCEL_MARKER = "[CANCELADO]";
@@ -133,9 +137,22 @@ function normalizeReadRange(value: string | undefined): string | undefined {
   const sheet = range.slice(0, bang).trim();
   const a1 = range.slice(bang + 1).trim();
   if (!sheet) return undefined;
-  if (!a1) return `${sheet}!A:R`;
-  if (a1.includes(":")) return `${sheet}!${a1}`;
-  return `${sheet}!A:R`;
+  if (!a1) return `${sheet}!A:U`;
+  if (!a1.includes(":")) return `${sheet}!A:U`;
+
+  const [startTokenRaw, endTokenRaw] = a1.split(":");
+  const startToken = startTokenRaw?.trim() || "A";
+  const endToken = endTokenRaw?.trim() || "U";
+  const endMatch = endToken.match(/^([A-Za-z]+)(\d+)?$/);
+  if (!endMatch) return `${sheet}!${a1}`;
+
+  const endCol = endMatch[1].toUpperCase();
+  const endRow = endMatch[2] ?? "";
+  if (lettersToColumnNumber(endCol) >= lettersToColumnNumber("U")) {
+    return `${sheet}!${a1}`;
+  }
+
+  return `${sheet}!${startToken}:U${endRow}`;
 }
 
 function lettersToColumnNumber(value: string): number {
@@ -276,7 +293,9 @@ function toPreview(row: Array<string | number>): OrderCancelPreview {
     nombre_cliente: String(row[INDEX.nombre_cliente] ?? ""),
     producto: String(row[INDEX.producto] ?? ""),
     estado_pago: trimOptional(row[INDEX.estado_pago]),
-    notas: trimOptional(row[INDEX.notas])
+    notas: trimOptional(row[INDEX.notas]),
+    estado_pedido: trimOptional(row[INDEX.estado_pedido]),
+    trello_card_id: trimOptional(row[INDEX.trello_card_id])
   };
 }
 
@@ -309,6 +328,7 @@ function applyCancel(args: {
 
   const marker = `${CANCEL_MARKER} ${args.now.toISOString()} op:${args.operation_id} chat:${args.chat_id} motivo:${args.motivo ?? "n/a"}`;
   updatedRow[INDEX.notas] = notes ? `${notes} | ${marker}` : marker;
+  updatedRow[INDEX.estado_pedido] = "cancelado";
   return { updatedRow, alreadyCanceled: false };
 }
 
@@ -317,7 +337,7 @@ export function createCancelOrderTool(config: CancelOrderToolConfig = {}) {
   const gwsCommand = config.gwsCommand?.trim() || "gws";
   const gwsCommandArgs = config.gwsCommandArgs ?? [];
   const gwsSpreadsheetId = config.gwsSpreadsheetId?.trim() || undefined;
-  const normalizedRange = normalizeReadRange(config.gwsRange) ?? "Pedidos!A:R";
+  const normalizedRange = normalizeReadRange(config.gwsRange) ?? "Pedidos!A:U";
   const gwsValueInputOption = config.gwsValueInputOption ?? "USER_ENTERED";
   const timeoutMs = Number.isFinite(config.timeoutMs) && (config.timeoutMs ?? 0) > 0 ? Math.trunc(config.timeoutMs!) : 5000;
   const maxRetries = Number.isFinite(config.maxRetries) && (config.maxRetries ?? -1) >= 0 ? Math.trunc(config.maxRetries!) : 2;
@@ -359,7 +379,7 @@ export function createCancelOrderTool(config: CancelOrderToolConfig = {}) {
     }
 
     const rangeMeta = parseRangeMeta(normalizedRange);
-    const writeWidth = Math.max(rangeMeta.width, INDEX.fecha_hora_entrega_iso + 1);
+    const writeWidth = Math.max(rangeMeta.width, INDEX.trello_card_id + 1);
     const readParams = {
       spreadsheetId: gwsSpreadsheetId,
       range: normalizedRange

@@ -49,6 +49,7 @@ type ParsedOrderRow = {
   moneda?: string;
   notas?: string;
   operation_id?: string;
+  estado_pedido?: string;
   _dateKey?: string;
   _matchKey: string;
 };
@@ -120,13 +121,13 @@ function normalizeReadRange(value: string | undefined): string | undefined {
   if (!range) return undefined;
 
   const bang = range.indexOf("!");
-  if (bang === -1) return `${range}!A:R`;
+  if (bang === -1) return `${range}!A:U`;
   const sheet = range.slice(0, bang).trim();
   const a1 = range.slice(bang + 1).trim();
   if (!sheet) return undefined;
-  if (!a1) return `${sheet}!A:R`;
+  if (!a1) return `${sheet}!A:U`;
   if (a1.includes(":")) return `${sheet}!${a1}`;
-  return `${sheet}!A:R`;
+  return `${sheet}!A:U`;
 }
 
 function readValuesFromGwsPayload(value: unknown): string[][] | undefined {
@@ -248,6 +249,7 @@ function mapRows(rows: string[][], timezone: string): ParsedOrderRow[] {
       moneda: row[14] || undefined,
       notas,
       operation_id,
+      estado_pedido: row[19] || undefined,
       _dateKey: extractDateKey(dateSource, timezone),
       _matchKey: searchKey
     };
@@ -269,6 +271,9 @@ function matchesQuery(row: ParsedOrderRow, query: string): boolean {
 }
 
 function deriveOperationalStatus(row: ParsedOrderRow, todayDateKey: string): OrderOperationalStatus {
+  if (row.estado_pedido && normalizeForMatch(row.estado_pedido) === "cancelado") {
+    return "cancelado";
+  }
   const notesNormalized = normalizeForMatch(row.notas ?? "");
   if (notesNormalized.includes("[cancelado]")) {
     return "cancelado";
@@ -318,7 +323,7 @@ export function createOrderStatusTool(config: OrderStatusToolConfig = {}) {
   const gwsCommand = config.gwsCommand?.trim() || "gws";
   const gwsCommandArgs = config.gwsCommandArgs ?? [];
   const gwsSpreadsheetId = config.gwsSpreadsheetId?.trim() || undefined;
-  const normalizedRange = normalizeReadRange(config.gwsRange) ?? "Pedidos!A:R";
+  const normalizedRange = normalizeReadRange(config.gwsRange) ?? "Pedidos!A:U";
   const timeoutMs = Number.isFinite(config.timeoutMs) && (config.timeoutMs ?? 0) > 0 ? Math.trunc(config.timeoutMs!) : 5000;
   const maxRetries = Number.isFinite(config.maxRetries) && (config.maxRetries ?? -1) >= 0 ? Math.trunc(config.maxRetries!) : 2;
   const retryBackoffMs = Number.isFinite(config.retryBackoffMs) && (config.retryBackoffMs ?? -1) >= 0

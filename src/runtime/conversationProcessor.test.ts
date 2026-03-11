@@ -70,7 +70,16 @@ let createConversationProcessor: (args: {
       notas?: string;
     };
     dryRun?: boolean;
-  }) => Promise<{ ok: boolean; dry_run: boolean; operation_id: string; detail: string }>;
+  }) => Promise<{
+    ok: boolean;
+    dry_run: boolean;
+    operation_id: string;
+    detail: string;
+    payload?: {
+      trello_card_id?: string;
+      trello_card_created?: boolean;
+    };
+  }>;
   executeAppendOrderFn?: (args: {
     operation_id: string;
     chat_id: string;
@@ -90,6 +99,8 @@ let createConversationProcessor: (args: {
       moneda: string;
       notas?: string;
     };
+    trello_card_id?: string;
+    estado_pedido?: string;
     dryRun?: boolean;
   }) => Promise<{ ok: boolean; dry_run: boolean; operation_id: string; detail: string }>;
   executeWebPublishFn?: (args: {
@@ -221,6 +232,34 @@ let createConversationProcessor: (args: {
     };
     detail: string;
   }>;
+  orderCardSync?: {
+    updateCardForOrder: (args: {
+      operation_id: string;
+      chat_id: string;
+      trello_card_id?: string;
+      reference: { operation_id_ref?: string; folio?: string };
+      patch: Record<string, unknown>;
+      dryRun?: boolean;
+    }) => Promise<{ card_id: string; snapshot: { card_id: string }; dry_run: boolean }>;
+    cancelCardForOrder: (args: {
+      operation_id: string;
+      chat_id: string;
+      trello_card_id?: string;
+      reference: { operation_id_ref?: string; folio?: string };
+      motivo?: string;
+      dryRun?: boolean;
+    }) => Promise<{ card_id: string; snapshot: { card_id: string }; dry_run: boolean }>;
+    rollbackCard: (args: {
+      operation_id: string;
+      snapshot: { card_id: string };
+      dryRun?: boolean;
+    }) => Promise<void>;
+    deleteCard: (args: {
+      operation_id: string;
+      card_id: string;
+      dryRun?: boolean;
+    }) => Promise<void>;
+  };
   botPersona?: "neutral" | "bakery_warm" | "concise";
   webChatEnabled?: boolean;
   onTrace?: (event: {
@@ -682,6 +721,40 @@ describe("conversation processor security flow", () => {
     expect(getState("chat-order-update-fail").pending?.operation_id).toBe("op-order-update-fail");
   });
 
+  it("revierte cambio en trello cuando falla sheets en order.update", async () => {
+    const rollbackCard = vi.fn(async () => undefined);
+    const executeOrderUpdateFn = vi.fn(async () => {
+      throw new Error("order_update_gws_write_rate_limit");
+    });
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-update-rollback"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-order-update-rollback",
+      routeIntentFn: async () => "pedido",
+      executeOrderUpdateFn,
+      orderCardSync: {
+        updateCardForOrder: vi.fn(async () => ({ card_id: "card-1", snapshot: { card_id: "card-1" }, dry_run: false })),
+        cancelCardForOrder: vi.fn(async () => ({ card_id: "card-1", snapshot: { card_id: "card-1" }, dry_run: false })),
+        rollbackCard,
+        deleteCard: vi.fn(async () => undefined)
+      }
+    });
+
+    await processor.handleMessage({
+      chat_id: "chat-order-update-rollback",
+      text: 'actualiza pedido folio op-xyz-123 {"patch":{"estado_pago":"pagado"}}'
+    });
+    await processor.handleMessage({ chat_id: "chat-order-update-rollback", text: "confirmar" });
+
+    expect(rollbackCard).toHaveBeenCalledTimes(1);
+    expect(rollbackCard).toHaveBeenCalledWith({
+      operation_id: "op-order-update-rollback",
+      snapshot: { card_id: "card-1" },
+      dryRun: false
+    });
+  });
+
   it("inicia flujo de order.cancel con resumen y confirmacion", async () => {
     const routeIntentFn = vi.fn(async () => "pedido" as const);
     const executeOrderCancelFn = vi.fn(async ({ operation_id, reference, motivo }) => ({
@@ -766,6 +839,40 @@ describe("conversation processor security flow", () => {
     expect(failed[0]).toContain("No se pudo ejecutar el pedido");
     expect(getOperation("op-order-cancel-fail")?.status).toBe("failed");
     expect(getState("chat-order-cancel-fail").pending?.operation_id).toBe("op-order-cancel-fail");
+  });
+
+  it("revierte cambio en trello cuando falla sheets en order.cancel", async () => {
+    const rollbackCard = vi.fn(async () => undefined);
+    const executeOrderCancelFn = vi.fn(async () => {
+      throw new Error("order_cancel_gws_write_rate_limit");
+    });
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-cancel-rollback"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-order-cancel-rollback",
+      routeIntentFn: async () => "pedido",
+      executeOrderCancelFn,
+      orderCardSync: {
+        updateCardForOrder: vi.fn(async () => ({ card_id: "card-1", snapshot: { card_id: "card-1" }, dry_run: false })),
+        cancelCardForOrder: vi.fn(async () => ({ card_id: "card-1", snapshot: { card_id: "card-1" }, dry_run: false })),
+        rollbackCard,
+        deleteCard: vi.fn(async () => undefined)
+      }
+    });
+
+    await processor.handleMessage({
+      chat_id: "chat-order-cancel-rollback",
+      text: "cancela pedido folio op-xyz-123"
+    });
+    await processor.handleMessage({ chat_id: "chat-order-cancel-rollback", text: "confirmar" });
+
+    expect(rollbackCard).toHaveBeenCalledTimes(1);
+    expect(rollbackCard).toHaveBeenCalledWith({
+      operation_id: "op-order-cancel-rollback",
+      snapshot: { card_id: "card-1" },
+      dryRun: false
+    });
   });
 
   it("no confunde alta de pedido con consulta de reporte", async () => {
@@ -947,11 +1054,16 @@ describe("conversation processor security flow", () => {
       ok: true,
       dry_run: false,
       operation_id,
-      detail: "create-card executed"
+      detail: "create-card executed",
+      payload: {
+        trello_card_id: "card-123",
+        trello_card_created: true
+      }
     }));
     const executeAppendOrderFn = vi.fn(async () => {
       throw new Error("order_connector_http_503");
     });
+    const deleteCard = vi.fn(async () => undefined);
 
     const processor = createConversationProcessor({
       allowedChatIds: new Set(["chat-order-fail"]),
@@ -970,7 +1082,13 @@ describe("conversation processor security flow", () => {
         }
       }),
       executeCreateCardFn,
-      executeAppendOrderFn
+      executeAppendOrderFn,
+      orderCardSync: {
+        updateCardForOrder: vi.fn(async () => ({ card_id: "card-123", snapshot: { card_id: "card-123" }, dry_run: false })),
+        cancelCardForOrder: vi.fn(async () => ({ card_id: "card-123", snapshot: { card_id: "card-123" }, dry_run: false })),
+        rollbackCard: vi.fn(async () => undefined),
+        deleteCard
+      }
     });
 
     await processor.handleMessage({ chat_id: "chat-order-fail", text: "pedido Victor 12 cupcakes recoger" });
@@ -979,6 +1097,12 @@ describe("conversation processor security flow", () => {
     expect(failed[0]).toContain("No se pudo ejecutar el pedido");
     expect(executeCreateCardFn).toHaveBeenCalledTimes(1);
     expect(executeAppendOrderFn).toHaveBeenCalledTimes(1);
+    expect(deleteCard).toHaveBeenCalledTimes(1);
+    expect(deleteCard).toHaveBeenCalledWith({
+      operation_id: "op-order-fail",
+      card_id: "card-123",
+      dryRun: false
+    });
     expect(getOperation("op-order-fail")?.status).toBe("failed");
     expect(getState("chat-order-fail").pending?.operation_id).toBe("op-order-fail");
   });

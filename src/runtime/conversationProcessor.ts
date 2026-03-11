@@ -20,6 +20,7 @@ import {
 } from "../tools/order/cancelOrder";
 import { createCardTool } from "../tools/order/createCard";
 import { createLookupOrderTool, type OrderLookupResult } from "../tools/order/lookupOrder";
+import { createOrderCardSyncTool, type TrelloCardSnapshot } from "../tools/order/orderCardSync";
 import { createOrderStatusTool, type OrderStatusResult } from "../tools/order/orderStatus";
 import { createReportOrdersTool, type OrderReportPeriod, type OrderReportResult } from "../tools/order/reportOrders";
 import {
@@ -55,11 +56,22 @@ type ProcessorDeps = {
     chat_id: string;
     payload: Order;
     dryRun?: boolean;
-  }) => Promise<{ ok: boolean; dry_run: boolean; operation_id: string; detail: string }>;
+  }) => Promise<{
+    ok: boolean;
+    dry_run: boolean;
+    operation_id: string;
+    detail: string;
+    payload?: {
+      trello_card_id?: string;
+      trello_card_created?: boolean;
+    };
+  }>;
   executeAppendOrderFn?: (args: {
     operation_id: string;
     chat_id: string;
     payload: Order;
+    trello_card_id?: string;
+    estado_pedido?: string;
     dryRun?: boolean;
   }) => Promise<{ ok: boolean; dry_run: boolean; operation_id: string; detail: string }>;
   executeWebPublishFn?: (args: {
@@ -105,6 +117,34 @@ type ProcessorDeps = {
     payload: OrderCancelExecutionPayload;
     detail: string;
   }>;
+  orderCardSync?: {
+    updateCardForOrder: (args: {
+      operation_id: string;
+      chat_id: string;
+      trello_card_id?: string;
+      reference: { operation_id_ref?: string; folio?: string };
+      patch: Record<string, unknown>;
+      dryRun?: boolean;
+    }) => Promise<{ card_id: string; snapshot: TrelloCardSnapshot; dry_run: boolean }>;
+    cancelCardForOrder: (args: {
+      operation_id: string;
+      chat_id: string;
+      trello_card_id?: string;
+      reference: { operation_id_ref?: string; folio?: string };
+      motivo?: string;
+      dryRun?: boolean;
+    }) => Promise<{ card_id: string; snapshot: TrelloCardSnapshot; dry_run: boolean }>;
+    rollbackCard: (args: {
+      operation_id: string;
+      snapshot: TrelloCardSnapshot;
+      dryRun?: boolean;
+    }) => Promise<void>;
+    deleteCard: (args: {
+      operation_id: string;
+      card_id: string;
+      dryRun?: boolean;
+    }) => Promise<void>;
+  };
   orderReportTimezone?: string;
   botPersona?: BotPersona;
   webChatEnabled?: boolean;
@@ -894,6 +934,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeOrderStatusFn = deps.executeOrderStatusFn ?? createOrderStatusTool();
   const executeOrderUpdateFn = deps.executeOrderUpdateFn ?? createUpdateOrderTool();
   const executeOrderCancelFn = deps.executeOrderCancelFn ?? createCancelOrderTool();
+  const orderCardSync = deps.orderCardSync ?? createOrderCardSyncTool();
   const orderReportTimezone = deps.orderReportTimezone?.trim() || REPORT_DEFAULT_TIMEZONE;
   const copy = createBotCopy(deps.botPersona);
   const webChatEnabled = deps.webChatEnabled ?? true;
@@ -1052,13 +1093,33 @@ export function createConversationProcessor(deps: ProcessorDeps) {
               throw new Error(cardExecution.detail || "order_create_card_failed");
             }
 
-            const appendExecution = await executeAppendOrderFn({
-              operation_id: st.pending.operation_id,
-              chat_id: msg.chat_id,
-              payload: vOrder.data
-            });
-            if (!appendExecution.ok) {
-              throw new Error(appendExecution.detail || "order_append_failed");
+            let appendExecution;
+            try {
+              appendExecution = await executeAppendOrderFn({
+                operation_id: st.pending.operation_id,
+                chat_id: msg.chat_id,
+                payload: vOrder.data,
+                trello_card_id: cardExecution.payload?.trello_card_id,
+                estado_pedido: "activo"
+              });
+              if (!appendExecution.ok) {
+                throw new Error(appendExecution.detail || "order_append_failed");
+              }
+            } catch (err) {
+              const cardId = cardExecution.payload?.trello_card_id;
+              const cardCreated = cardExecution.payload?.trello_card_created === true;
+              if (cardCreated && cardId) {
+                try {
+                  await orderCardSync.deleteCard({
+                    operation_id: st.pending.operation_id,
+                    card_id: cardId,
+                    dryRun: cardExecution.dry_run
+                  });
+                } catch {
+                  throw new Error("order_create_rollback_delete_card_failed");
+                }
+              }
+              throw err;
             }
 
             upsertOperation({
@@ -1133,14 +1194,43 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           }
 
           try {
-            const execution = await executeOrderUpdateFn({
+            const reference = payload.reference as OrderUpdateReference;
+            const patch = payload.patch as Record<string, unknown>;
+
+            const cardSync = await orderCardSync.updateCardForOrder({
               operation_id: st.pending.operation_id,
               chat_id: msg.chat_id,
-              reference: payload.reference as OrderUpdateReference,
-              patch: payload.patch
+              trello_card_id: typeof payload.trello_card_id === "string" ? payload.trello_card_id : undefined,
+              reference: {
+                folio: reference.folio,
+                operation_id_ref: reference.operation_id_ref
+              },
+              patch
             });
-            if (!execution.ok) {
-              throw new Error(execution.detail || "order_update_failed");
+
+            let execution;
+            try {
+              execution = await executeOrderUpdateFn({
+                operation_id: st.pending.operation_id,
+                chat_id: msg.chat_id,
+                reference,
+                patch
+              });
+              if (!execution.ok) {
+                throw new Error(execution.detail || "order_update_failed");
+              }
+            } catch (err) {
+              try {
+                await orderCardSync.rollbackCard({
+                  operation_id: st.pending.operation_id,
+                  snapshot: cardSync.snapshot,
+                  dryRun: cardSync.dry_run
+                });
+              } catch (rollbackErr) {
+                const rollbackDetail = rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr);
+                throw new Error(`order_update_rollback_failed:${rollbackDetail}`);
+              }
+              throw err;
             }
 
             st.pending.action.payload = execution.payload as unknown as Record<string, unknown>;
@@ -1215,14 +1305,42 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           }
 
           try {
-            const execution = await executeOrderCancelFn({
+            const reference = payload.reference as OrderCancelReference;
+            const trelloCardId = typeof payload.trello_card_id === "string" ? payload.trello_card_id : undefined;
+            const cardSync = await orderCardSync.cancelCardForOrder({
               operation_id: st.pending.operation_id,
               chat_id: msg.chat_id,
-              reference: payload.reference as OrderCancelReference,
+              trello_card_id: trelloCardId,
+              reference: {
+                folio: reference.folio,
+                operation_id_ref: reference.operation_id_ref
+              },
               motivo: typeof payload.motivo === "string" ? payload.motivo : undefined
             });
-            if (!execution.ok) {
-              throw new Error(execution.detail || "order_cancel_failed");
+
+            let execution;
+            try {
+              execution = await executeOrderCancelFn({
+                operation_id: st.pending.operation_id,
+                chat_id: msg.chat_id,
+                reference,
+                motivo: typeof payload.motivo === "string" ? payload.motivo : undefined
+              });
+              if (!execution.ok) {
+                throw new Error(execution.detail || "order_cancel_failed");
+              }
+            } catch (err) {
+              try {
+                await orderCardSync.rollbackCard({
+                  operation_id: st.pending.operation_id,
+                  snapshot: cardSync.snapshot,
+                  dryRun: cardSync.dry_run
+                });
+              } catch (rollbackErr) {
+                const rollbackDetail = rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr);
+                throw new Error(`order_cancel_rollback_failed:${rollbackDetail}`);
+              }
+              throw err;
             }
 
             st.pending.action.payload = execution.payload as unknown as Record<string, unknown>;

@@ -109,6 +109,31 @@ describe("runHealthcheck", () => {
     expect(report.status).toBe("fail");
   });
 
+  it("marca fail cuando order trello live no tiene lista de cancelados", () => {
+    const config = loadAppConfig({
+      ORDER_TRELLO_DRY_RUN: "0",
+      ORDER_TRELLO_API_KEY: "key",
+      ORDER_TRELLO_TOKEN: "token",
+      ORDER_TRELLO_LIST_ID: "list-1",
+      NODE_ENV: "development",
+      TIMEZONE: "America/Mexico_City",
+      DEFAULT_CURRENCY: "MXN",
+      ALLOWLIST_CHAT_IDS: "local-dev"
+    } as NodeJS.ProcessEnv);
+
+    const report = runHealthcheck({
+      config,
+      dbOpen: true,
+      dbPath: "bot.db",
+      allowlistSize: 1
+    });
+
+    const orderTrello = report.checks.find((c) => c.name === "order_trello_connector");
+    expect(orderTrello?.status).toBe("fail");
+    expect(orderTrello?.detail).toContain("cancelListIdConfigured=0");
+    expect(report.status).toBe("fail");
+  });
+
   it("marca fail cuando order sheets live no tiene api key", () => {
     const config = loadAppConfig({
       ORDER_SHEETS_DRY_RUN: "0",

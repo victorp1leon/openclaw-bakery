@@ -12,6 +12,7 @@ import { createAppendOrderTool } from "./tools/order/appendOrder";
 import { createCancelOrderTool } from "./tools/order/cancelOrder";
 import { createCreateCardTool } from "./tools/order/createCard";
 import { createLookupOrderTool } from "./tools/order/lookupOrder";
+import { createOrderCardSyncTool } from "./tools/order/orderCardSync";
 import { createOrderStatusTool } from "./tools/order/orderStatus";
 import { createReportOrdersTool } from "./tools/order/reportOrders";
 import { createUpdateOrderTool } from "./tools/order/updateOrder";
@@ -64,6 +65,7 @@ logger.info(
         apiKeyConfigured: Boolean(appConfig.orderTool.trello.apiKey),
         tokenConfigured: Boolean(appConfig.orderTool.trello.token),
         listIdConfigured: Boolean(appConfig.orderTool.trello.listId),
+        cancelListIdConfigured: Boolean(appConfig.orderTool.trello.cancelListId),
         apiBaseUrl: appConfig.orderTool.trello.apiBaseUrl,
         timeoutMs: appConfig.orderTool.trello.timeoutMs,
         maxRetries: appConfig.orderTool.trello.maxRetries
@@ -141,6 +143,17 @@ const executeCreateCard = createCreateCardTool({
   timeoutMs: appConfig.orderTool.trello.timeoutMs,
   maxRetries: appConfig.orderTool.trello.maxRetries,
   dryRunDefault: appConfig.orderTool.trello.dryRun
+});
+
+const orderCardSync = createOrderCardSyncTool({
+  apiKey: appConfig.orderTool.trello.apiKey,
+  token: appConfig.orderTool.trello.token,
+  apiBaseUrl: appConfig.orderTool.trello.apiBaseUrl,
+  cancelListId: appConfig.orderTool.trello.cancelListId,
+  timeoutMs: appConfig.orderTool.trello.timeoutMs,
+  maxRetries: appConfig.orderTool.trello.maxRetries,
+  dryRunDefault: appConfig.orderTool.trello.dryRun,
+  timezone: appConfig.timezone
 });
 
 const executeAppendOrder = createAppendOrderTool({
@@ -234,6 +247,7 @@ const tracedProcessor = createConversationProcessor({
   executeOrderStatusFn: executeOrderStatus,
   executeOrderUpdateFn: executeOrderUpdate,
   executeOrderCancelFn: executeOrderCancel,
+  orderCardSync,
   orderReportTimezone: appConfig.timezone,
   executeWebPublishFn: executeWebPublish,
   webChatEnabled: appConfig.webTool.chatEnabled,

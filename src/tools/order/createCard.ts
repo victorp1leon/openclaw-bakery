@@ -134,12 +134,14 @@ function withOrderPayload(args: {
   payload: Order;
   chat_id: string;
   card?: TrelloCard;
-}): Order & { chat_id: string; trello_card_id?: string; trello_card_url?: string } {
+  created?: boolean;
+}): Order & { chat_id: string; trello_card_id?: string; trello_card_url?: string; trello_card_created?: boolean } {
   return {
     ...args.payload,
     chat_id: args.chat_id,
     trello_card_id: args.card?.id,
-    trello_card_url: args.card?.url ?? args.card?.shortUrl
+    trello_card_url: args.card?.url ?? args.card?.shortUrl,
+    trello_card_created: args.created ?? false
   };
 }
 
@@ -161,7 +163,12 @@ export function createCreateCardTool(config: CreateCardToolConfig = {}) {
     chat_id: string;
     payload: Order;
     dryRun?: boolean;
-  }): Promise<ToolExecutionResult<Order & { chat_id: string; trello_card_id?: string; trello_card_url?: string }>> {
+  }): Promise<ToolExecutionResult<Order & {
+    chat_id: string;
+    trello_card_id?: string;
+    trello_card_url?: string;
+    trello_card_created?: boolean;
+  }>> {
     const dry_run = args.dryRun ?? dryRunDefault;
 
     if (dry_run) {
@@ -222,7 +229,12 @@ export function createCreateCardTool(config: CreateCardToolConfig = {}) {
             ok: true,
             dry_run,
             operation_id: args.operation_id,
-            payload: withOrderPayload({ payload: args.payload, chat_id: args.chat_id, card: existing }),
+            payload: withOrderPayload({
+              payload: args.payload,
+              chat_id: args.chat_id,
+              card: existing,
+              created: false
+            }),
             detail: `create-card deduped existing (attempt=${attempt})`
           };
         }
@@ -254,7 +266,12 @@ export function createCreateCardTool(config: CreateCardToolConfig = {}) {
             ok: true,
             dry_run,
             operation_id: args.operation_id,
-            payload: withOrderPayload({ payload: args.payload, chat_id: args.chat_id, card }),
+            payload: withOrderPayload({
+              payload: args.payload,
+              chat_id: args.chat_id,
+              card,
+              created: true
+            }),
             detail: `create-card executed (attempt=${attempt})`
           };
         }

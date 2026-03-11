@@ -1,7 +1,7 @@
 # Bot Bakery Configuration Matrix
 
 Status: MVP
-Last Updated: 2026-03-06
+Last Updated: 2026-03-11
 
 This matrix documents environment variables, defaults, requiredness, and runtime impact.
 
@@ -41,7 +41,8 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 | `ORDER_TRELLO_DRY_RUN` | `1` | No | order Trello adapter, healthcheck | Safe default mode for `create-card`; no Trello write when enabled. |
 | `ORDER_TRELLO_API_KEY` | _(unset)_ | Required when `ORDER_TRELLO_DRY_RUN=0` | order Trello adapter, healthcheck | Trello API key for `create-card` live mode. |
 | `ORDER_TRELLO_TOKEN` | _(unset)_ | Required when `ORDER_TRELLO_DRY_RUN=0` | order Trello adapter, healthcheck | Trello token for `create-card` live mode. |
-| `ORDER_TRELLO_LIST_ID` | _(unset)_ | Required when `ORDER_TRELLO_DRY_RUN=0` | order Trello adapter, healthcheck | Target Trello list ID for order cards. |
+| `ORDER_TRELLO_LIST_ID` | _(unset)_ | Required when `ORDER_TRELLO_DRY_RUN=0` | order Trello adapter, healthcheck | Target Trello list ID for active order cards. |
+| `ORDER_TRELLO_CANCEL_LIST_ID` | _(unset)_ | Required when `ORDER_TRELLO_DRY_RUN=0` | order Trello adapter, healthcheck | Target Trello list ID for canceled orders (`order.cancel`). |
 | `ORDER_TRELLO_API_BASE_URL` | `https://api.trello.com` | No | order Trello adapter | Trello API base URL. |
 | `ORDER_TRELLO_TIMEOUT_MS` | `5000` | No | order Trello adapter | HTTP timeout per Trello request attempt. |
 | `ORDER_TRELLO_MAX_RETRIES` | `2` | No | order Trello adapter | Bounded retry count for transient Trello errors. |
@@ -129,7 +130,7 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 - Dry-run order smoke (safe default): `npm run smoke:order`
 - Live Trello+Sheets attempt:
   - `ORDER_TRELLO_DRY_RUN=0 ORDER_SHEETS_DRY_RUN=0 npm run smoke:order`
-- If live mode fails with `order_trello_api_key_missing`, `order_trello_token_missing`, or `order_trello_list_id_missing`, configure matching `ORDER_TRELLO_*` vars and retry.
+- If live mode fails with `order_trello_api_key_missing`, `order_trello_token_missing`, `order_trello_list_id_missing`, or `order_trello_cancel_list_id_missing`, configure matching `ORDER_TRELLO_*` vars and retry.
 - If live mode fails with `order_connector_url_missing` or `order_connector_api_key_missing`, configure `ORDER_SHEETS_WEBHOOK_URL` / `ORDER_SHEETS_API_KEY` and retry.
 - Live order `gws` smoke attempt:
   - `ORDER_TRELLO_DRY_RUN=0 ORDER_SHEETS_DRY_RUN=0 ORDER_SHEETS_PROVIDER=gws ORDER_SHEETS_GWS_SPREADSHEET_ID=<id> ORDER_SHEETS_GWS_RANGE=Pedidos!A1 npm run smoke:order`
@@ -184,7 +185,7 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 - `ORDER_SHEETS_WEBHOOK_URL` can reuse the same Apps Script `/exec` URL as `EXPENSE_SHEETS_WEBHOOK_URL` when the endpoint routes by `intent` (`gasto` / `pedido`).
 - Order/expense adapters send API key both in header and `api_key` body field to handle Apps Script header propagation limitations.
 - `gws` provider invokes `googleworkspace/cli` Sheets append command; ensure host auth/session is configured before live mode.
-- `report.orders` reads Google Sheets via `gws` (`values.get`) using `ORDER_SHEETS_GWS_SPREADSHEET_ID` and a read range derived from `ORDER_SHEETS_GWS_RANGE` (`Pedidos!A1` -> `Pedidos!A:R`), preferring `fecha_hora_entrega_iso` for filtering when that column exists.
+- `report.orders` reads Google Sheets via `gws` (`values.get`) using `ORDER_SHEETS_GWS_SPREADSHEET_ID` and a read range derived from `ORDER_SHEETS_GWS_RANGE` (`Pedidos!A1` -> `Pedidos!A:U`), preferring `fecha_hora_entrega_iso` for filtering when that column exists.
 - Web publish adapter sanitizes media URLs by removing query/hash and only accepts `https` image URLs from approved domains.
 - Chat-based `web` flow is disabled by default (`WEB_CHAT_ENABLE=0`); preferred operation mode is content-driven via repository + terminal/CI.
 - Facebook import helper (`web:import:facebook`) only reads public page HTML and can fail due to anti-bot restrictions; manual image curation remains fallback.

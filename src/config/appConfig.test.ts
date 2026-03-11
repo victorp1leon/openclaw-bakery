@@ -29,6 +29,7 @@ describe("appConfig", () => {
     expect(config.orderTool.trello.apiKey).toBeUndefined();
     expect(config.orderTool.trello.token).toBeUndefined();
     expect(config.orderTool.trello.listId).toBeUndefined();
+    expect(config.orderTool.trello.cancelListId).toBeUndefined();
     expect(config.orderTool.trello.apiBaseUrl).toBe("https://api.trello.com");
     expect(config.orderTool.trello.timeoutMs).toBe(5000);
     expect(config.orderTool.trello.maxRetries).toBe(2);
@@ -139,6 +140,7 @@ describe("appConfig", () => {
       ORDER_TRELLO_API_KEY: "  trello-key  ",
       ORDER_TRELLO_TOKEN: "  trello-token  ",
       ORDER_TRELLO_LIST_ID: "  list-123  ",
+      ORDER_TRELLO_CANCEL_LIST_ID: "  list-cancel-456  ",
       ORDER_TRELLO_API_BASE_URL: " https://api.trello.com ",
       ORDER_TRELLO_TIMEOUT_MS: "6200",
       ORDER_TRELLO_MAX_RETRIES: "5",
@@ -160,6 +162,7 @@ describe("appConfig", () => {
     expect(config.orderTool.trello.apiKey).toBe("trello-key");
     expect(config.orderTool.trello.token).toBe("trello-token");
     expect(config.orderTool.trello.listId).toBe("list-123");
+    expect(config.orderTool.trello.cancelListId).toBe("list-cancel-456");
     expect(config.orderTool.trello.apiBaseUrl).toBe("https://api.trello.com");
     expect(config.orderTool.trello.timeoutMs).toBe(6200);
     expect(config.orderTool.trello.maxRetries).toBe(5);

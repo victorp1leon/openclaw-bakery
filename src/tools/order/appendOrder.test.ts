@@ -106,6 +106,7 @@ describe("appendOrderTool", () => {
     expect(row.folio).toBe("op-4");
     expect(row.producto).toBe("cupcakes");
     expect(typeof row.fecha_hora_entrega_iso).toBe("string");
+    expect(row.estado_pedido).toBe("activo");
   });
 
   it("normalizes relative delivery datetime into fecha_hora_entrega_iso", async () => {
@@ -288,6 +289,8 @@ describe("appendOrderTool", () => {
     const body = JSON.parse(call.commandArgs[jsonIndex + 1]) as { values: unknown[][] };
     const row = body.values[0] as unknown[];
     expect(row[18]).toBeTypeOf("string");
+    expect(row[19]).toBe("activo");
+    expect(row[20]).toBe("");
   });
 
   it("retries gws call on timeout and then succeeds", async () => {

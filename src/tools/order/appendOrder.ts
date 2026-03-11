@@ -55,6 +55,8 @@ type AppendOrderWebhookPayload = {
     notas?: string;
     chat_id: string;
     operation_id: string;
+    estado_pedido: string;
+    trello_card_id?: string;
   };
 };
 
@@ -133,6 +135,8 @@ function toWebhookPayload(args: {
   operation_id: string;
   chat_id: string;
   payload: Order;
+  estado_pedido: string;
+  trello_card_id?: string;
   now: Date;
   timezone: string;
 }): AppendOrderWebhookPayload {
@@ -166,7 +170,9 @@ function toWebhookPayload(args: {
       moneda: args.payload.moneda,
       notas: args.payload.notas,
       chat_id: args.chat_id,
-      operation_id: args.operation_id
+      operation_id: args.operation_id,
+      estado_pedido: args.estado_pedido,
+      trello_card_id: args.trello_card_id
     }
   };
 }
@@ -175,6 +181,8 @@ function toGwsValues(args: {
   operation_id: string;
   chat_id: string;
   payload: Order;
+  estado_pedido: string;
+  trello_card_id?: string;
   now: Date;
   timezone: string;
 }): Array<string | number> {
@@ -203,8 +211,47 @@ function toGwsValues(args: {
     args.payload.notas ?? "",
     args.chat_id,
     args.operation_id,
-    fecha_hora_entrega_iso ?? ""
+    fecha_hora_entrega_iso ?? "",
+    args.estado_pedido,
+    args.trello_card_id ?? ""
   ];
+}
+
+function lettersToColumnNumber(value: string): number {
+  let out = 0;
+  for (const ch of value.toUpperCase()) {
+    if (ch < "A" || ch > "Z") return 0;
+    out = out * 26 + (ch.charCodeAt(0) - 64);
+  }
+  return out;
+}
+
+function normalizeGwsRange(value: string | undefined): string | undefined {
+  const range = value?.trim();
+  if (!range) return undefined;
+
+  const bang = range.indexOf("!");
+  if (bang === -1) return `${range}!A:U`;
+
+  const sheet = range.slice(0, bang).trim();
+  const a1 = range.slice(bang + 1).trim();
+  if (!sheet) return undefined;
+  if (!a1) return `${sheet}!A:U`;
+  if (!a1.includes(":")) return `${sheet}!A:U`;
+
+  const [startTokenRaw, endTokenRaw] = a1.split(":");
+  const startToken = startTokenRaw?.trim() || "A";
+  const endToken = endTokenRaw?.trim() || "U";
+  const endMatch = endToken.match(/^([A-Za-z]+)(\d+)?$/);
+  if (!endMatch) return `${sheet}!${a1}`;
+
+  const endCol = endMatch[1].toUpperCase();
+  const endRow = endMatch[2] ?? "";
+  if (lettersToColumnNumber(endCol) >= lettersToColumnNumber("U")) {
+    return `${sheet}!${a1}`;
+  }
+
+  return `${sheet}!${startToken}:U${endRow}`;
 }
 
 async function postJsonWithTimeout(args: {
@@ -275,7 +322,7 @@ export function createAppendOrderTool(config: AppendOrderToolConfig = {}) {
   const gwsCommand = config.gwsCommand?.trim() || "gws";
   const gwsCommandArgs = config.gwsCommandArgs ?? [];
   const gwsSpreadsheetId = config.gwsSpreadsheetId?.trim() || undefined;
-  const gwsRange = config.gwsRange?.trim() || undefined;
+  const gwsRange = normalizeGwsRange(config.gwsRange);
   const gwsValueInputOption = config.gwsValueInputOption ?? "USER_ENTERED";
   const timezone = config.timezone?.trim() || "America/Mexico_City";
   const now = config.now ?? (() => new Date());
@@ -285,10 +332,22 @@ export function createAppendOrderTool(config: AppendOrderToolConfig = {}) {
     operation_id: string;
     chat_id: string;
     payload: Order;
+    trello_card_id?: string;
+    estado_pedido?: string;
     dryRun?: boolean;
-  }): Promise<ToolExecutionResult<Order & { chat_id: string }>> {
+  }): Promise<ToolExecutionResult<Order & {
+    chat_id: string;
+    trello_card_id?: string;
+    estado_pedido?: string;
+  }>> {
     const dry_run = args.dryRun ?? dryRunDefault;
-    const payloadWithChat = { ...args.payload, chat_id: args.chat_id };
+    const estado_pedido = args.estado_pedido?.trim() || "activo";
+    const payloadWithChat = {
+      ...args.payload,
+      chat_id: args.chat_id,
+      trello_card_id: args.trello_card_id,
+      estado_pedido
+    };
 
     if (dry_run) {
       return {
@@ -313,6 +372,7 @@ export function createAppendOrderTool(config: AppendOrderToolConfig = {}) {
 
       const webhookPayload = toWebhookPayload({
         ...args,
+        estado_pedido,
         now: now(),
         timezone
       });
@@ -393,6 +453,7 @@ export function createAppendOrderTool(config: AppendOrderToolConfig = {}) {
       values: [
         toGwsValues({
           ...args,
+          estado_pedido,
           now: now(),
           timezone
         })

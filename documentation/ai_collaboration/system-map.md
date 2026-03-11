@@ -54,8 +54,8 @@ Last Updated: 2026-03-11
 4. `report.orders`: consulta (`dia/semana/mes/año`, incluyendo fechas/meses explicitos) -> lectura Sheets (`gws`) -> respuesta resumida (sin confirmacion ni mutacion).
 5. `order.lookup`: consulta por folio/nombre/producto -> lectura Sheets (`gws`) -> respuesta resumida (sin confirmacion ni mutacion).
 6. `order.status`: consulta de estado operativo/pago -> lectura Sheets (`gws`) -> respuesta resumida (sin confirmacion ni mutacion).
-7. `order.update`: mutacion por referencia de pedido -> confirmacion -> escritura Sheets (`gws`) -> persistencia/idempotencia.
-8. `order.cancel`: mutacion de cancelacion (marker `[CANCELADO]`) -> confirmacion -> escritura Sheets (`gws`) -> persistencia/idempotencia.
+7. `order.update`: mutacion por referencia -> confirmacion -> sync Trello + Sheets (`gws`) con rollback en fallos parciales -> persistencia/idempotencia.
+8. `order.cancel`: mutacion de cancelacion (marker `[CANCELADO]` + `estado_pedido=cancelado`) -> confirmacion -> mover tarjeta Trello a cancelados + escritura Sheets (`gws`) con rollback en fallos parciales -> persistencia/idempotencia.
 9. (Planned) `payment.record`: registro de movimiento de pago -> confirmacion -> escritura Sheets (`gws`) -> persistencia/idempotencia.
 
 ## Source Documents
