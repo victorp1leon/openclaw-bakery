@@ -12,6 +12,7 @@
     "smoke:status": "npx ts-node --transpile-only scripts/smoke/status-smoke.ts",
     "smoke:update": "npx ts-node --transpile-only scripts/smoke/update-smoke.ts",
     "smoke:cancel": "npx ts-node --transpile-only scripts/smoke/cancel-smoke.ts",
+    "smoke:lifecycle": "npx ts-node --transpile-only scripts/smoke/lifecycle-smoke.ts",
     "smoke:gws:live": "bash -lc 'set -euo pipefail; npm run smoke:report; SMOKE_LOOKUP_LIVE=1 npm run smoke:lookup; SMOKE_STATUS_LIVE=1 npm run smoke:status'",
     "smoke:web": "npx ts-node --transpile-only scripts/smoke/web-smoke.ts",
     "smoke:web:ui": "npm run web:build && npx ts-node --transpile-only scripts/smoke/web-ui-playwright-smoke.ts",

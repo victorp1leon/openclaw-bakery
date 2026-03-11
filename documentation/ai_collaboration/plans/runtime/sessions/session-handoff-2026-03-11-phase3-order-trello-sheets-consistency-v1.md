@@ -25,6 +25,7 @@
 - Se agrego persistencia de `trello_card_id` en mutaciones de filas legacy:
   - `order.update` ahora backfillea `trello_card_id` y completa `estado_pedido=activo` si estaba vacio.
   - `order.cancel` ahora escribe `trello_card_id` y `estado_pedido=cancelado` incluso en casos ya cancelados cuando falte ese dato.
+- Se agrego smoke integrado `scripts/smoke/lifecycle-smoke.ts` (`npm run smoke:lifecycle`) para validar `create -> update -> cancel` en una sola ejecucion, con validaciones automaticas de Trello + Sheets en modo live.
 
 ## Validation
 - Tests ejecutados:
