@@ -533,6 +533,22 @@ function detectOrderLookupQuery(text: string): string | undefined {
   return undefined;
 }
 
+function detectOrderLookupRequestWithoutQuery(text: string): boolean {
+  const normalized = normalizeForMatch(text);
+  const hasOrderWord = /\bpedidos?\b/.test(normalized);
+  if (!hasOrderWord) return false;
+
+  const hasPeriodHint = /\b(hoy|manana|semana|mes|ano)\b/.test(normalized) || /\b\d{1,2}\s+de\s+[a-z]+\b/.test(normalized);
+  if (hasPeriodHint) return false;
+
+  const hasLookupVerb = /\b(busca|buscar|consulta|consultar|estado|estatus|status|folio|id|detalle|ver|muestrame|dame)\b/.test(
+    normalized
+  );
+  if (!hasLookupVerb) return false;
+
+  return detectOrderLookupQuery(text) == null;
+}
+
 function detectOrderStatusQuery(text: string): string | undefined {
   const normalized = normalizeForMatch(text);
   const hasOrderWord = /\bpedidos?\b/.test(normalized);
@@ -698,6 +714,24 @@ function extractOrderReferenceFromText(text: string): { folio?: string; operatio
     folio: folio && folio.length > 0 ? folio : undefined,
     operation_id_ref: operationId && operationId.length > 0 ? operationId : undefined
   };
+}
+
+function hasOrderReference(value: unknown): boolean {
+  if (!isObjectRecord(value)) return false;
+  const folio = trimString(value.folio);
+  const operationId = trimString(value.operation_id_ref);
+  return Boolean(folio || operationId);
+}
+
+function referenceFromFreeText(text: string): { folio?: string; operation_id_ref?: string } {
+  const fromTagged = extractOrderReferenceFromText(text);
+  if (fromTagged.folio || fromTagged.operation_id_ref) return fromTagged;
+
+  const fallback = text.trim();
+  if (fallback.length >= 3) {
+    return { folio: fallback };
+  }
+  return {};
 }
 
 function parseOrderUpdateRequest(text: string):
@@ -1105,6 +1139,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     const st = getState(msg.chat_id);
 
     if (st.pending) {
+      if (st.pending.asked && isConfirm(msg.text)) {
+        return [copy.askFor(st.pending.asked)];
+      }
+
       if (isConfirm(msg.text)) {
         const idempotencyKey = st.pending.idempotency_key ?? st.pending.operation_id;
 
@@ -1715,6 +1753,144 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       }
 
       if (st.pending.asked) {
+        if (st.pending.action.intent === "order.lookup") {
+          const query = msg.text.trim();
+          if (query.length < 2) {
+            return [copy.askFor("order_lookup_query")];
+          }
+
+          try {
+            const lookup = await executeOrderLookupFn({
+              chat_id: msg.chat_id,
+              query
+            });
+
+            deps.onTrace?.({
+              event: "order_lookup_succeeded",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "order.lookup",
+              intent_source: "fallback",
+              detail: `query=${lookup.query};total=${lookup.total}`
+            });
+
+            clearPending(msg.chat_id);
+            return [formatOrderLookupReply(lookup)];
+          } catch (err) {
+            const safeDetail = err instanceof Error ? err.message : String(err);
+
+            deps.onTrace?.({
+              event: "order_lookup_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "order.lookup",
+              intent_source: "fallback",
+              detail: safeDetail
+            });
+
+            clearPending(msg.chat_id);
+            return ["No pude consultar ese pedido en este momento. Intenta de nuevo en unos minutos."];
+          }
+        }
+
+        if (st.pending.action.intent === "order.cancel") {
+          const payload = isObjectRecord(st.pending.action.payload) ? { ...st.pending.action.payload } : {};
+          const reference = isObjectRecord(payload.reference) ? { ...payload.reference } : {};
+          const mergedReference = {
+            ...reference,
+            ...referenceFromFreeText(msg.text)
+          };
+
+          st.pending.action.payload = {
+            ...payload,
+            reference: mergedReference
+          };
+
+          if (!hasOrderReference(mergedReference)) {
+            setState(msg.chat_id, st);
+            return [copy.askFor("order_reference")];
+          }
+
+          st.pending.asked = undefined;
+          st.pending.missing = [];
+          setState(msg.chat_id, st);
+
+          const register = registerPendingOperation({
+            operation_id: st.pending.operation_id,
+            chat_id: msg.chat_id,
+            intent: "order.cancel",
+            payload: st.pending.action.payload,
+            idempotency_key: st.pending.idempotency_key ?? st.pending.operation_id
+          });
+
+          if (!register.inserted) {
+            clearPending(msg.chat_id);
+            return [
+              copy.duplicate(register.operation.operation_id, register.operation.status)
+            ];
+          }
+
+          return [copy.summary("order.cancel", st.pending.action.payload, st.pending.operation_id)];
+        }
+
+        if (st.pending.action.intent === "payment.record") {
+          const payload = isObjectRecord(st.pending.action.payload) ? { ...st.pending.action.payload } : {};
+          const reference = isObjectRecord(payload.reference) ? { ...payload.reference } : {};
+          const payment = isObjectRecord(payload.payment) ? { ...payload.payment } : {};
+
+          const mergedReference = {
+            ...reference,
+            ...referenceFromFreeText(msg.text)
+          };
+
+          const normalizedInput = normalizeForMatch(msg.text);
+          const estadoFromInput = normalizedInput.match(/\b(pagado|pendiente|parcial)\b/)?.[1];
+          if (estadoFromInput) {
+            payment.estado_pago = estadoFromInput;
+          }
+
+          st.pending.action.payload = {
+            ...payload,
+            reference: mergedReference,
+            payment
+          };
+
+          if (!hasOrderReference(mergedReference)) {
+            st.pending.asked = "order_reference";
+            st.pending.missing = ["order_reference"];
+            setState(msg.chat_id, st);
+            return [copy.askFor("order_reference")];
+          }
+
+          if (typeof payment.estado_pago !== "string" || payment.estado_pago.trim().length === 0) {
+            st.pending.asked = "payment_estado_pago";
+            st.pending.missing = ["payment.estado_pago"];
+            setState(msg.chat_id, st);
+            return [copy.askFor("payment_estado_pago")];
+          }
+
+          st.pending.asked = undefined;
+          st.pending.missing = [];
+          setState(msg.chat_id, st);
+
+          const register = registerPendingOperation({
+            operation_id: st.pending.operation_id,
+            chat_id: msg.chat_id,
+            intent: "payment.record",
+            payload: st.pending.action.payload,
+            idempotency_key: st.pending.idempotency_key ?? st.pending.operation_id
+          });
+
+          if (!register.inserted) {
+            clearPending(msg.chat_id);
+            return [
+              copy.duplicate(register.operation.operation_id, register.operation.status)
+            ];
+          }
+
+          return [copy.summary("payment.record", st.pending.action.payload, st.pending.operation_id)];
+        }
+
         const updatedPayload = mergeField(st.pending.action.payload, st.pending.asked, msg.text);
         st.pending.action.payload = updatedPayload;
 
@@ -1794,6 +1970,40 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     const paymentRecordDraft = parsePaymentRecordRequest(msg.text);
     if (paymentRecordDraft.matched) {
       if (!paymentRecordDraft.result.ok) {
+        if (
+          paymentRecordDraft.result.error === "payment_record_reference_missing" ||
+          paymentRecordDraft.result.error === "payment_record_estado_pago_missing"
+        ) {
+          const operation_id = newOperationId();
+          const reference = extractOrderReferenceFromText(msg.text);
+          const normalizedInput = normalizeForMatch(msg.text);
+          const estadoPago = normalizedInput.match(/\b(pagado|pendiente|parcial)\b/)?.[1];
+
+          const pendingPayload: Record<string, unknown> = {
+            reference: {
+              ...(reference.folio ? { folio: reference.folio } : {}),
+              ...(reference.operation_id_ref ? { operation_id_ref: reference.operation_id_ref } : {})
+            },
+            payment: {
+              ...(estadoPago ? { estado_pago: estadoPago } : {})
+            }
+          };
+
+          const askField = hasOrderReference(pendingPayload.reference)
+            ? "payment_estado_pago"
+            : "order_reference";
+          const pending = {
+            operation_id,
+            idempotency_key: operation_id,
+            action: { intent: "payment.record" as const, payload: pendingPayload },
+            missing: [askField === "payment_estado_pago" ? "payment.estado_pago" : "order_reference"],
+            asked: askField
+          };
+
+          setState(msg.chat_id, { pending });
+          return [copy.askFor(askField)];
+        }
+
         deps.onTrace?.({
           event: "parse_failed",
           chat_id: msg.chat_id,
@@ -1900,6 +2110,31 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     const orderCancelDraft = parseOrderCancelRequest(msg.text);
     if (orderCancelDraft.matched) {
       if (!orderCancelDraft.result.ok) {
+        if (orderCancelDraft.result.error === "order_cancel_reference_missing") {
+          const operation_id = newOperationId();
+          const inline = parseInlineJsonObject(msg.text.trim());
+          const motivoFromJson = inline.ok === true ? trimString(inline.value.motivo) : undefined;
+          const motivoFromText = msg.text.match(/\bmotivo\s*[:=]\s*(.+)$/i)?.[1]?.trim();
+          const pendingPayload: Record<string, unknown> = {
+            reference: {}
+          };
+          const motivo = motivoFromJson ?? motivoFromText;
+          if (motivo) {
+            pendingPayload.motivo = motivo;
+          }
+
+          const pending = {
+            operation_id,
+            idempotency_key: operation_id,
+            action: { intent: "order.cancel" as const, payload: pendingPayload },
+            missing: ["order_reference"],
+            asked: "order_reference"
+          };
+
+          setState(msg.chat_id, { pending });
+          return [copy.askFor("order_reference")];
+        }
+
         deps.onTrace?.({
           event: "parse_failed",
           chat_id: msg.chat_id,
@@ -1989,7 +2224,25 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     }
 
     const lookupQuery = detectOrderLookupQuery(msg.text);
+    const lookupNeedsQuery = detectOrderLookupRequestWithoutQuery(msg.text);
     const statusQuery = detectOrderStatusQuery(msg.text);
+    if (lookupNeedsQuery) {
+      const operation_id = newOperationId();
+      setState(msg.chat_id, {
+        pending: {
+          operation_id,
+          idempotency_key: operation_id,
+          action: {
+            intent: "order.lookup",
+            payload: {}
+          },
+          missing: ["order_lookup_query"],
+          asked: "order_lookup_query"
+        }
+      });
+      return [copy.askFor("order_lookup_query")];
+    }
+
     if (statusQuery) {
       try {
         const status = await executeOrderStatusFn({

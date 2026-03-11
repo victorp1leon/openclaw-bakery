@@ -607,6 +607,50 @@ describe("conversation processor security flow", () => {
     });
   });
 
+  it("pide dato faltante para consulta de pedido y luego responde", async () => {
+    const executeOrderLookupFn = vi.fn(async ({ query }) => ({
+      query,
+      timezone: "America/Mexico_City",
+      total: 1,
+      orders: [
+        {
+          folio: "op-lookup-2",
+          fecha_hora_entrega: "2026-03-07 16:00",
+          nombre_cliente: "Victor",
+          producto: "pastel",
+          cantidad: 1,
+          estado_pago: "pendiente",
+          total: 900,
+          moneda: "MXN"
+        }
+      ],
+      detail: "lookup-order executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-lookup-missing"]),
+      routeIntentFn: async () => "pedido",
+      executeOrderLookupFn
+    });
+
+    const ask = await processor.handleMessage({
+      chat_id: "chat-lookup-missing",
+      text: "consulta un pedido"
+    });
+    expect(ask[0].toLowerCase()).toContain("folio");
+
+    const reply = await processor.handleMessage({
+      chat_id: "chat-lookup-missing",
+      text: "victor"
+    });
+
+    expect(reply[0]).toContain('Pedidos encontrados para "victor"');
+    expect(executeOrderLookupFn).toHaveBeenCalledWith({
+      chat_id: "chat-lookup-missing",
+      query: "victor"
+    });
+  });
+
   it("resuelve consulta de estado de pedido sin pasar por intent router", async () => {
     const routeIntentFn = vi.fn(async () => "pedido" as const);
     const executeOrderStatusFn = vi.fn(async () => ({
@@ -839,7 +883,7 @@ describe("conversation processor security flow", () => {
     expect(getOperation("op-order-cancel")?.status).toBe("executed");
   });
 
-  it("devuelve parse error cuando order.cancel no incluye referencia", async () => {
+  it("pide referencia cuando order.cancel no incluye referencia", async () => {
     const routeIntentFn = vi.fn(async () => "pedido" as const);
 
     const processor = createConversationProcessor({
@@ -852,7 +896,13 @@ describe("conversation processor security flow", () => {
       text: 'cancela pedido {"motivo":"cliente cancelo"}'
     });
 
-    expect(replies[0]).toContain("order_cancel_reference_missing");
+    expect(replies[0].toLowerCase()).toContain("folio");
+    const summary = await processor.handleMessage({
+      chat_id: "chat-order-cancel-parse",
+      text: "op-xyz-123"
+    });
+    expect(summary[0]).toContain("Resumen");
+    expect(summary[0]).toContain("order.cancel");
     expect(routeIntentFn).not.toHaveBeenCalled();
   });
 
@@ -963,7 +1013,7 @@ describe("conversation processor security flow", () => {
     expect(getOperation("op-payment-record")?.status).toBe("executed");
   });
 
-  it("devuelve parse error cuando payment.record no incluye estado_pago", async () => {
+  it("pide estado_pago cuando payment.record no incluye estado_pago", async () => {
     const routeIntentFn = vi.fn(async () => "pedido" as const);
 
     const processor = createConversationProcessor({
@@ -976,7 +1026,13 @@ describe("conversation processor security flow", () => {
       text: 'registra pago del pedido folio op-xyz-123 {"payment":{"monto":100}}'
     });
 
-    expect(replies[0]).toContain("payment_record_estado_pago_missing");
+    expect(replies[0].toLowerCase()).toContain("estado de pago");
+    const summary = await processor.handleMessage({
+      chat_id: "chat-payment-record-parse",
+      text: "parcial"
+    });
+    expect(summary[0]).toContain("Resumen");
+    expect(summary[0]).toContain("payment.record");
     expect(routeIntentFn).not.toHaveBeenCalled();
   });
 

@@ -130,7 +130,7 @@ async function main() {
     chat_id: chatId,
     text: `registra pago del pedido folio ${folio} {"payment":{"monto":100}}`
   });
-  const parseFailOk = (parseFail[0] ?? "").includes("payment_record_estado_pago_missing");
+  const parseFailOk = (parseFail[0] ?? "").toLowerCase().includes("estado de pago");
   console.log(
     JSON.stringify(
       {
@@ -144,6 +144,23 @@ async function main() {
   );
   if (!parseFailOk) {
     throw new Error("payment_smoke_parse_fail_unexpected_reply");
+  }
+
+  const cleanup = await processor.handleMessage({ chat_id: chatId, text: "cancelar" });
+  const cleanupOk = (cleanup[0] ?? "").toLowerCase().includes("cancel");
+  console.log(
+    JSON.stringify(
+      {
+        event: "payment_smoke_parse_cleanup",
+        reply: cleanup[0],
+        ok: cleanupOk
+      },
+      null,
+      2
+    )
+  );
+  if (!cleanupOk) {
+    throw new Error("payment_smoke_parse_cleanup_unexpected_reply");
   }
 
   console.log(JSON.stringify({ event: "payment_smoke_done", ok: true }, null, 2));
