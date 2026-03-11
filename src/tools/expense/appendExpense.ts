@@ -2,19 +2,7 @@ import type { Expense } from "../../schemas/expense";
 import type { ToolExecutionResult } from "../types";
 import { runGwsCommand, type GwsCommandRunner } from "../googleWorkspace/runGwsCommand";
 
-type FetchLike = (input: string | URL, init?: RequestInit) => Promise<{
-  ok: boolean;
-  status: number;
-  json?: () => Promise<unknown>;
-  text?: () => Promise<string>;
-}>;
-
 export type AppendExpenseToolConfig = {
-  fetchFn?: FetchLike;
-  provider?: "apps_script" | "gws";
-  webhookUrl?: string;
-  apiKey?: string;
-  apiKeyHeader?: string;
   timeoutMs?: number;
   maxRetries?: number;
   dryRunDefault?: boolean;
@@ -27,49 +15,15 @@ export type AppendExpenseToolConfig = {
   gwsRunner?: GwsCommandRunner;
 };
 
-type AppendExpenseWebhookPayload = {
-  operation_id: string;
-  chat_id: string;
-  intent: "gasto";
-  expense: Expense;
-  row: {
-    fecha?: string;
-    monto: number;
-    moneda: string;
-    concepto: string;
-    categoria?: "insumos" | "servicios" | "otros";
-    metodo_pago?: "efectivo" | "transferencia" | "tarjeta";
-    proveedor?: string;
-    notas?: string;
-    chat_id: string;
-    operation_id: string;
-  };
-};
-
 function sleep(ms: number): Promise<void> {
   if (ms <= 0) return Promise.resolve();
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function classifyTransportError(err: unknown): "timeout" | "network" | "other" {
-  if (err instanceof Error && err.name === "AbortError") return "timeout";
-  if (err instanceof TypeError) return "network";
-  return "other";
-}
-
-function isRetriableHttpStatus(status: number): boolean {
-  return status === 429 || status >= 500;
 }
 
 function sanitizeErrorToken(value: unknown): string {
   if (typeof value !== "string") return "unknown";
   const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return normalized || "unknown";
-}
-
-function isHtmlText(value: string): boolean {
-  const t = value.trim().toLowerCase();
-  return t.startsWith("<!doctype html") || t.startsWith("<html");
 }
 
 function parseJsonText(text: string): unknown {
@@ -117,31 +71,6 @@ function isRetriableGwsFailure(args: { timedOut: boolean; code?: number; stdout:
   return /(timeout|timed out|econnreset|enotfound|eai_again|network|temporar|rate limit|429)/.test(combined);
 }
 
-function toWebhookPayload(args: {
-  operation_id: string;
-  chat_id: string;
-  payload: Expense;
-}): AppendExpenseWebhookPayload {
-  return {
-    operation_id: args.operation_id,
-    chat_id: args.chat_id,
-    intent: "gasto",
-    expense: args.payload,
-    row: {
-      fecha: args.payload.fecha,
-      monto: args.payload.monto,
-      moneda: args.payload.moneda,
-      concepto: args.payload.concepto,
-      categoria: args.payload.categoria,
-      metodo_pago: args.payload.metodo_pago,
-      proveedor: args.payload.proveedor,
-      notas: args.payload.notas,
-      chat_id: args.chat_id,
-      operation_id: args.operation_id
-    }
-  };
-}
-
 function toGwsValues(args: { operation_id: string; chat_id: string; payload: Expense }): Array<string | number> {
   return [
     args.payload.fecha ?? "",
@@ -157,65 +86,7 @@ function toGwsValues(args: { operation_id: string; chat_id: string; payload: Exp
   ];
 }
 
-async function postJsonWithTimeout(args: {
-  fetchFn: FetchLike;
-  url: string;
-  body: unknown;
-  timeoutMs: number;
-  apiKeyHeader: string;
-  apiKey: string;
-}) {
-  const bodyObject =
-    args.body && typeof args.body === "object" && !Array.isArray(args.body)
-      ? ({ ...(args.body as Record<string, unknown>), api_key: args.apiKey } as Record<string, unknown>)
-      : args.body;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), args.timeoutMs);
-
-  try {
-    return await args.fetchFn(args.url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        [args.apiKeyHeader]: args.apiKey
-      },
-      body: JSON.stringify(bodyObject),
-      signal: controller.signal
-    });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function readResponseBody(response: Awaited<ReturnType<FetchLike>>): Promise<{ json?: unknown; text?: string }> {
-  if (response.text) {
-    const text = await response.text();
-    if (!text) return {};
-    try {
-      return { json: JSON.parse(text), text };
-    } catch {
-      return { text };
-    }
-  }
-
-  if (response.json) {
-    try {
-      return { json: await response.json() };
-    } catch {
-      return {};
-    }
-  }
-
-  return {};
-}
-
 export function createAppendExpenseTool(config: AppendExpenseToolConfig = {}) {
-  const fetchFn = config.fetchFn ?? ((globalThis.fetch as unknown) as FetchLike | undefined);
-  const provider = config.provider ?? "apps_script";
-  const webhookUrl = config.webhookUrl?.trim() || undefined;
-  const apiKey = config.apiKey?.trim() || undefined;
-  const apiKeyHeader = config.apiKeyHeader?.trim() || "x-api-key";
   const timeoutMs = Number.isFinite(config.timeoutMs) && (config.timeoutMs ?? 0) > 0 ? Math.trunc(config.timeoutMs!) : 5000;
   const maxRetries = Number.isFinite(config.maxRetries) && (config.maxRetries ?? -1) >= 0 ? Math.trunc(config.maxRetries!) : 2;
   const dryRunDefault = config.dryRunDefault ?? true;
@@ -246,81 +117,6 @@ export function createAppendExpenseTool(config: AppendExpenseToolConfig = {}) {
         payload: payloadWithChat,
         detail: "append-expense dry-run"
       };
-    }
-
-    if (provider === "apps_script") {
-      if (!fetchFn) {
-        throw new Error("expense_connector_fetch_unavailable");
-      }
-      if (!webhookUrl) {
-        throw new Error("expense_connector_url_missing");
-      }
-      if (!apiKey) {
-        throw new Error("expense_connector_api_key_missing");
-      }
-
-      const webhookPayload = toWebhookPayload(args);
-      const attempts = maxRetries + 1;
-      let lastError: Error | undefined;
-
-      for (let attempt = 1; attempt <= attempts; attempt += 1) {
-        try {
-          const response = await postJsonWithTimeout({
-            fetchFn,
-            url: webhookUrl,
-            body: webhookPayload,
-            timeoutMs,
-            apiKey,
-            apiKeyHeader
-          });
-
-          if (response.ok) {
-            const responseBody = await readResponseBody(response);
-            const jsonObj =
-              responseBody.json && typeof responseBody.json === "object"
-                ? (responseBody.json as Record<string, unknown>)
-                : undefined;
-
-            if (jsonObj && jsonObj.ok === false) {
-              throw new Error(`expense_connector_remote_${sanitizeErrorToken(jsonObj.error)}`);
-            }
-
-            if (!jsonObj && responseBody.text && isHtmlText(responseBody.text)) {
-              throw new Error("expense_connector_response_invalid");
-            }
-
-            return {
-              ok: true,
-              dry_run,
-              operation_id: args.operation_id,
-              payload: payloadWithChat,
-              detail: `append-expense executed (provider=apps_script, attempt=${attempt})`
-            };
-          }
-
-          if (isRetriableHttpStatus(response.status) && attempt < attempts) {
-            await sleep(retryBackoffMs * attempt);
-            continue;
-          }
-
-          throw new Error(`expense_connector_http_${response.status}`);
-        } catch (err) {
-          const cls = classifyTransportError(err);
-          if ((cls === "timeout" || cls === "network") && attempt < attempts) {
-            await sleep(retryBackoffMs * attempt);
-            continue;
-          }
-
-          lastError = err instanceof Error ? err : new Error(String(err));
-          break;
-        }
-      }
-
-      throw lastError ?? new Error("expense_connector_failed");
-    }
-
-    if (provider !== "gws") {
-      throw new Error("expense_connector_provider_invalid");
     }
     if (!gwsSpreadsheetId) {
       throw new Error("expense_connector_gws_spreadsheet_id_missing");

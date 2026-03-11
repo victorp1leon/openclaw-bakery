@@ -47,7 +47,7 @@ describe("runHealthcheck", () => {
     expect(report.status).toBe("warn");
   });
 
-  it("marca fail cuando dry-run está desactivado sin webhook de gasto", () => {
+  it("marca fail cuando dry-run está desactivado sin config gws de gasto", () => {
     const config = loadAppConfig({
       EXPENSE_TOOL_DRY_RUN: "0",
       NODE_ENV: "development",
@@ -67,10 +67,10 @@ describe("runHealthcheck", () => {
     expect(report.status).toBe("fail");
   });
 
-  it("marca fail cuando live no tiene API key", () => {
+  it("marca fail cuando expense gws live no tiene spreadsheet/range", () => {
     const config = loadAppConfig({
       EXPENSE_TOOL_DRY_RUN: "0",
-      EXPENSE_SHEETS_WEBHOOK_URL: "https://example.com/webhook",
+      EXPENSE_SHEETS_PROVIDER: "gws",
       NODE_ENV: "development",
       TIMEZONE: "America/Mexico_City",
       DEFAULT_CURRENCY: "MXN",
@@ -134,10 +134,9 @@ describe("runHealthcheck", () => {
     expect(report.status).toBe("fail");
   });
 
-  it("marca fail cuando order sheets live no tiene api key", () => {
+  it("marca fail cuando order sheets live no tiene spreadsheet/range", () => {
     const config = loadAppConfig({
       ORDER_SHEETS_DRY_RUN: "0",
-      ORDER_SHEETS_WEBHOOK_URL: "https://example.com/order-webhook",
       NODE_ENV: "development",
       TIMEZONE: "America/Mexico_City",
       DEFAULT_CURRENCY: "MXN",
@@ -152,27 +151,6 @@ describe("runHealthcheck", () => {
     });
 
     expect(report.checks.find((c) => c.name === "order_sheets_connector")?.status).toBe("fail");
-    expect(report.status).toBe("fail");
-  });
-
-  it("marca fail cuando expense gws live no tiene spreadsheet/range", () => {
-    const config = loadAppConfig({
-      EXPENSE_TOOL_DRY_RUN: "0",
-      EXPENSE_SHEETS_PROVIDER: "gws",
-      NODE_ENV: "development",
-      TIMEZONE: "America/Mexico_City",
-      DEFAULT_CURRENCY: "MXN",
-      ALLOWLIST_CHAT_IDS: "local-dev"
-    } as NodeJS.ProcessEnv);
-
-    const report = runHealthcheck({
-      config,
-      dbOpen: true,
-      dbPath: "bot.db",
-      allowlistSize: 1
-    });
-
-    expect(report.checks.find((c) => c.name === "expense_connector")?.status).toBe("fail");
     expect(report.status).toBe("fail");
   });
 

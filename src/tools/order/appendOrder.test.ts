@@ -32,216 +32,10 @@ describe("appendOrderTool", () => {
     expect(result.detail).toContain("dry-run");
   });
 
-  it("fails when dry-run is disabled and webhook url is missing", async () => {
-    const fetchFn = vi.fn();
+  it("fails when gws live is missing spreadsheet id", async () => {
     const tool = createAppendOrderTool({
-      fetchFn,
       dryRunDefault: false,
-      apiKey: "secret"
-    });
-
-    await expect(
-      tool({
-        operation_id: "op-2",
-        chat_id: "chat-2",
-        payload: buildOrder()
-      })
-    ).rejects.toThrow("order_connector_url_missing");
-
-    expect(fetchFn).not.toHaveBeenCalled();
-  });
-
-  it("fails when dry-run is disabled and api key is missing", async () => {
-    const fetchFn = vi.fn();
-    const tool = createAppendOrderTool({
-      fetchFn,
-      webhookUrl: "https://example.com/order",
-      dryRunDefault: false
-    });
-
-    await expect(
-      tool({
-        operation_id: "op-3",
-        chat_id: "chat-3",
-        payload: buildOrder()
-      })
-    ).rejects.toThrow("order_connector_api_key_missing");
-
-    expect(fetchFn).not.toHaveBeenCalled();
-  });
-
-  it("posts mapped payload when connector is enabled", async () => {
-    const fetchFn = vi.fn(async () => ({ ok: true, status: 200 }));
-    const tool = createAppendOrderTool({
-      fetchFn,
-      webhookUrl: "https://example.com/order",
-      apiKey: "top-secret",
-      apiKeyHeader: "x-order-key",
-      dryRunDefault: false,
-      timeoutMs: 2000,
-      maxRetries: 0
-    });
-
-    const result = await tool({
-      operation_id: "op-4",
-      chat_id: "chat-4",
-      payload: buildOrder()
-    });
-
-    expect(result.ok).toBe(true);
-    expect(result.dry_run).toBe(false);
-    expect(fetchFn).toHaveBeenCalledTimes(1);
-
-    const [, init] = fetchFn.mock.calls[0] as [string, RequestInit];
-    const headers = init.headers as Record<string, string>;
-    const body = JSON.parse(String(init.body)) as Record<string, unknown>;
-    const row = body.row as Record<string, unknown>;
-
-    expect(headers["x-order-key"]).toBe("top-secret");
-    expect(body.operation_id).toBe("op-4");
-    expect(body.chat_id).toBe("chat-4");
-    expect(body.intent).toBe("pedido");
-    expect(row.operation_id).toBe("op-4");
-    expect(row.chat_id).toBe("chat-4");
-    expect(row.folio).toBe("op-4");
-    expect(row.producto).toBe("cupcakes");
-    expect(typeof row.fecha_hora_entrega_iso).toBe("string");
-    expect(row.estado_pedido).toBe("activo");
-  });
-
-  it("normalizes relative delivery datetime into fecha_hora_entrega_iso", async () => {
-    const fetchFn = vi.fn(async () => ({ ok: true, status: 200 }));
-    const tool = createAppendOrderTool({
-      fetchFn,
-      webhookUrl: "https://example.com/order",
-      apiKey: "top-secret",
-      dryRunDefault: false,
-      timeoutMs: 2000,
-      maxRetries: 0,
-      timezone: "America/Mexico_City",
-      now: () => new Date("2026-03-07T12:00:00.000Z")
-    });
-
-    await tool({
-      operation_id: "op-4b",
-      chat_id: "chat-4b",
-      payload: {
-        ...buildOrder(),
-        fecha_hora_entrega: "hoy, a las 6pm"
-      }
-    });
-
-    const [, init] = fetchFn.mock.calls[0] as [string, RequestInit];
-    const body = JSON.parse(String(init.body)) as Record<string, unknown>;
-    const row = body.row as Record<string, unknown>;
-    expect(row.fecha_hora_entrega_iso).toBe("2026-03-07T18:00:00");
-  });
-
-  it("retries once on retriable 5xx status", async () => {
-    const fetchFn = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: false, status: 503 })
-      .mockResolvedValueOnce({ ok: true, status: 200 });
-
-    const tool = createAppendOrderTool({
-      fetchFn,
-      webhookUrl: "https://example.com/order",
-      apiKey: "secret",
-      dryRunDefault: false,
-      maxRetries: 2,
-      retryBackoffMs: 0
-    });
-
-    const result = await tool({
-      operation_id: "op-5",
-      chat_id: "chat-5",
-      payload: buildOrder()
-    });
-
-    expect(result.ok).toBe(true);
-    expect(fetchFn).toHaveBeenCalledTimes(2);
-  });
-
-  it("does not retry on non-retriable 4xx status", async () => {
-    const fetchFn = vi.fn().mockResolvedValue({ ok: false, status: 400 });
-
-    const tool = createAppendOrderTool({
-      fetchFn,
-      webhookUrl: "https://example.com/order",
-      apiKey: "secret",
-      dryRunDefault: false,
-      maxRetries: 3,
-      retryBackoffMs: 0
-    });
-
-    await expect(
-      tool({
-        operation_id: "op-6",
-        chat_id: "chat-6",
-        payload: buildOrder()
-      })
-    ).rejects.toThrow("order_connector_http_400");
-
-    expect(fetchFn).toHaveBeenCalledTimes(1);
-  });
-
-  it("fails when upstream returns ok=false in JSON body with 200 status", async () => {
-    const fetchFn = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      text: async () => JSON.stringify({ ok: false, error: "order_unauthorized" })
-    });
-
-    const tool = createAppendOrderTool({
-      fetchFn,
-      webhookUrl: "https://example.com/order",
-      apiKey: "secret",
-      dryRunDefault: false,
-      maxRetries: 0
-    });
-
-    await expect(
-      tool({
-        operation_id: "op-7",
-        chat_id: "chat-7",
-        payload: buildOrder()
-      })
-    ).rejects.toThrow("order_connector_remote_order_unauthorized");
-
-    expect(fetchFn).toHaveBeenCalledTimes(1);
-  });
-
-  it("fails when upstream returns HTML with 200 status", async () => {
-    const fetchFn = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      text: async () => "<!DOCTYPE html><html><body>Error: order_unauthorized</body></html>"
-    });
-
-    const tool = createAppendOrderTool({
-      fetchFn,
-      webhookUrl: "https://example.com/order",
-      apiKey: "secret",
-      dryRunDefault: false,
-      maxRetries: 0
-    });
-
-    await expect(
-      tool({
-        operation_id: "op-8",
-        chat_id: "chat-8",
-        payload: buildOrder()
-      })
-    ).rejects.toThrow("order_connector_response_invalid");
-
-    expect(fetchFn).toHaveBeenCalledTimes(1);
-  });
-
-  it("fails when gws live is missing range", async () => {
-    const tool = createAppendOrderTool({
-      provider: "gws",
-      dryRunDefault: false,
-      gwsSpreadsheetId: "sheet-1"
+      gwsRange: "Pedidos!A1"
     });
 
     await expect(
@@ -250,10 +44,25 @@ describe("appendOrderTool", () => {
         chat_id: "chat-gws-1",
         payload: buildOrder()
       })
+    ).rejects.toThrow("order_connector_gws_spreadsheet_id_missing");
+  });
+
+  it("fails when gws live is missing range", async () => {
+    const tool = createAppendOrderTool({
+      dryRunDefault: false,
+      gwsSpreadsheetId: "sheet-1"
+    });
+
+    await expect(
+      tool({
+        operation_id: "op-gws-1b",
+        chat_id: "chat-gws-1b",
+        payload: buildOrder()
+      })
     ).rejects.toThrow("order_connector_gws_range_missing");
   });
 
-  it("executes append via gws provider when configured", async () => {
+  it("executes append via gws when configured", async () => {
     const gwsRunner = vi.fn().mockResolvedValue({
       exitCode: 0,
       signal: null,
@@ -263,7 +72,6 @@ describe("appendOrderTool", () => {
     });
 
     const tool = createAppendOrderTool({
-      provider: "gws",
       dryRunDefault: false,
       gwsSpreadsheetId: "sheet-1",
       gwsRange: "Pedidos!A1",
@@ -293,6 +101,39 @@ describe("appendOrderTool", () => {
     expect(row[20]).toBe("");
   });
 
+  it("normalizes relative delivery datetime into fecha_hora_entrega_iso", async () => {
+    const gwsRunner = vi.fn().mockResolvedValue({
+      exitCode: 0,
+      signal: null,
+      stdout: JSON.stringify({ ok: true }),
+      stderr: "",
+      timedOut: false
+    });
+    const tool = createAppendOrderTool({
+      dryRunDefault: false,
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A1",
+      gwsRunner,
+      timezone: "America/Mexico_City",
+      now: () => new Date("2026-03-07T12:00:00.000Z")
+    });
+
+    await tool({
+      operation_id: "op-gws-2b",
+      chat_id: "chat-gws-2b",
+      payload: {
+        ...buildOrder(),
+        fecha_hora_entrega: "hoy, a las 6pm"
+      }
+    });
+
+    const call = gwsRunner.mock.calls[0]?.[0] as { commandArgs: string[] };
+    const jsonIndex = call.commandArgs.indexOf("--json");
+    const body = JSON.parse(call.commandArgs[jsonIndex + 1]) as { values: unknown[][] };
+    const row = body.values[0] as unknown[];
+    expect(row[18]).toBe("2026-03-07T18:00:00");
+  });
+
   it("retries gws call on timeout and then succeeds", async () => {
     const gwsRunner = vi
       .fn()
@@ -312,7 +153,6 @@ describe("appendOrderTool", () => {
       });
 
     const tool = createAppendOrderTool({
-      provider: "gws",
       dryRunDefault: false,
       gwsSpreadsheetId: "sheet-1",
       gwsRange: "Pedidos!A1",
@@ -329,5 +169,26 @@ describe("appendOrderTool", () => {
 
     expect(result.ok).toBe(true);
     expect(gwsRunner).toHaveBeenCalledTimes(2);
+  });
+
+  it("fails when gws command is unavailable", async () => {
+    const err = new Error("spawn gws ENOENT") as NodeJS.ErrnoException;
+    err.code = "ENOENT";
+    const gwsRunner = vi.fn().mockRejectedValue(err);
+
+    const tool = createAppendOrderTool({
+      dryRunDefault: false,
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A1",
+      gwsRunner
+    });
+
+    await expect(
+      tool({
+        operation_id: "op-gws-4",
+        chat_id: "chat-gws-4",
+        payload: buildOrder()
+      })
+    ).rejects.toThrow("order_connector_gws_command_unavailable");
   });
 });

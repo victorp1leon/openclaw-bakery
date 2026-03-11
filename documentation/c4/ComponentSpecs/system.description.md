@@ -63,8 +63,7 @@ Last Updated: 2026-03-09
 - Telegram Bot API
 - OpenClaw CLI (local)
 - LM Studio (host-only network)
-- Google Sheets via Apps Script Web App
-- Google Workspace CLI (`googleworkspace/cli`) for optional direct Sheets provider
+- Google Workspace CLI (`googleworkspace/cli`) for Sheets access
 - Trello REST API
 - Hosting target (e.g., Netlify)
 

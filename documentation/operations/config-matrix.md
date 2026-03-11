@@ -27,14 +27,11 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 | `RATE_LIMIT_MAX_MESSAGES` | `8` | No | rate limit guard | Max messages per chat inside the window before temporary block. |
 | `RATE_LIMIT_BLOCK_SECONDS` | `30` | No | rate limit guard | Temporary block duration after burst detection. |
 | `EXPENSE_TOOL_DRY_RUN` | `1` | No | expense adapter, runtime | Safe default mode: no external write when enabled. |
-| `EXPENSE_SHEETS_PROVIDER` | `apps_script` | No | expense adapter, healthcheck | Selects Sheets provider: `apps_script` or `gws`. |
-| `EXPENSE_SHEETS_WEBHOOK_URL` | _(unset)_ | Required when `EXPENSE_TOOL_DRY_RUN=0` and `EXPENSE_SHEETS_PROVIDER=apps_script` | expense adapter, healthcheck | Apps Script endpoint URL for `expense.add` external write. |
-| `EXPENSE_TOOL_API_KEY` | _(unset)_ | Required when `EXPENSE_TOOL_DRY_RUN=0` and `EXPENSE_SHEETS_PROVIDER=apps_script` | expense adapter, healthcheck | Shared secret sent to Apps Script for endpoint authentication. |
-| `EXPENSE_TOOL_API_KEY_HEADER` | `x-api-key` | No | expense adapter | Header name used to send API key in live requests. |
+| `EXPENSE_SHEETS_PROVIDER` | `gws` | No | expense adapter, healthcheck | Fixed provider for Sheets writes (`gws`). Other values are ignored/fallback to `gws`. |
 | `EXPENSE_GWS_COMMAND` | `gws` | No | expense adapter, healthcheck | Binary used to invoke `googleworkspace/cli` command path. |
 | `EXPENSE_GWS_COMMAND_ARGS` | _(unset)_ | No | expense adapter | Comma-separated prefix args injected before Sheets subcommand. |
-| `EXPENSE_GWS_SPREADSHEET_ID` | _(unset)_ | Required when `EXPENSE_TOOL_DRY_RUN=0` and `EXPENSE_SHEETS_PROVIDER=gws` | expense adapter, healthcheck | Target spreadsheet id for expense row append. |
-| `EXPENSE_GWS_RANGE` | _(unset)_ | Required when `EXPENSE_TOOL_DRY_RUN=0` and `EXPENSE_SHEETS_PROVIDER=gws` | expense adapter, healthcheck | Target A1 range for append (e.g. `Gastos!A1`). |
+| `EXPENSE_GWS_SPREADSHEET_ID` | _(unset)_ | Required when `EXPENSE_TOOL_DRY_RUN=0` | expense adapter, healthcheck | Target spreadsheet id for expense row append. |
+| `EXPENSE_GWS_RANGE` | _(unset)_ | Required when `EXPENSE_TOOL_DRY_RUN=0` | expense adapter, healthcheck | Target A1 range for append (e.g. `Gastos!A1`). |
 | `EXPENSE_GWS_VALUE_INPUT_OPTION` | `USER_ENTERED` | No | expense adapter | Sheets `valueInputOption` (`USER_ENTERED` or `RAW`). |
 | `EXPENSE_TOOL_TIMEOUT_MS` | `5000` | No | expense adapter | HTTP timeout per connector attempt. |
 | `EXPENSE_TOOL_MAX_RETRIES` | `2` | No | expense adapter | Bounded retry count for transient errors. |
@@ -47,14 +44,11 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 | `ORDER_TRELLO_TIMEOUT_MS` | `5000` | No | order Trello adapter | HTTP timeout per Trello request attempt. |
 | `ORDER_TRELLO_MAX_RETRIES` | `2` | No | order Trello adapter | Bounded retry count for transient Trello errors. |
 | `ORDER_SHEETS_DRY_RUN` | `1` | No | order Sheets adapter, healthcheck | Safe default mode for `append-order`; no external write when enabled. |
-| `ORDER_SHEETS_PROVIDER` | `apps_script` | No | order Sheets adapter, healthcheck | Selects Sheets provider: `apps_script` or `gws`. |
-| `ORDER_SHEETS_WEBHOOK_URL` | _(unset)_ | Required when `ORDER_SHEETS_DRY_RUN=0` and `ORDER_SHEETS_PROVIDER=apps_script` | order Sheets adapter, healthcheck | Apps Script endpoint URL for order append. |
-| `ORDER_SHEETS_API_KEY` | _(unset)_ | Required when `ORDER_SHEETS_DRY_RUN=0` and `ORDER_SHEETS_PROVIDER=apps_script` | order Sheets adapter, healthcheck | Shared secret sent to order Sheets endpoint. |
-| `ORDER_SHEETS_API_KEY_HEADER` | `x-api-key` | No | order Sheets adapter | Header name used to send order Sheets API key. |
+| `ORDER_SHEETS_PROVIDER` | `gws` | No | order Sheets adapter, healthcheck | Fixed provider for Sheets writes (`gws`). Other values are ignored/fallback to `gws`. |
 | `ORDER_SHEETS_GWS_COMMAND` | `gws` | No | order Sheets adapter, healthcheck | Binary used to invoke `googleworkspace/cli` command path. |
 | `ORDER_SHEETS_GWS_COMMAND_ARGS` | _(unset)_ | No | order Sheets adapter | Comma-separated prefix args injected before Sheets subcommand. |
-| `ORDER_SHEETS_GWS_SPREADSHEET_ID` | _(unset)_ | Required when `ORDER_SHEETS_DRY_RUN=0` and `ORDER_SHEETS_PROVIDER=gws` | order Sheets adapter, healthcheck | Target spreadsheet id for order row append. |
-| `ORDER_SHEETS_GWS_RANGE` | _(unset)_ | Required when `ORDER_SHEETS_DRY_RUN=0` and `ORDER_SHEETS_PROVIDER=gws` | order Sheets adapter, healthcheck | Target A1 range for append (e.g. `Pedidos!A1`). |
+| `ORDER_SHEETS_GWS_SPREADSHEET_ID` | _(unset)_ | Required when `ORDER_SHEETS_DRY_RUN=0` | order Sheets adapter, healthcheck | Target spreadsheet id for order row append. |
+| `ORDER_SHEETS_GWS_RANGE` | _(unset)_ | Required when `ORDER_SHEETS_DRY_RUN=0` | order Sheets adapter, healthcheck | Target A1 range for append (e.g. `Pedidos!A1`). |
 | `ORDER_SHEETS_GWS_VALUE_INPUT_OPTION` | `USER_ENTERED` | No | order Sheets adapter | Sheets `valueInputOption` (`USER_ENTERED` or `RAW`). |
 | `ORDER_SHEETS_TIMEOUT_MS` | `5000` | No | order Sheets adapter | HTTP timeout per order Sheets request attempt. |
 | `ORDER_SHEETS_MAX_RETRIES` | `2` | No | order Sheets adapter | Bounded retry count for transient order Sheets errors. |
@@ -122,11 +116,8 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 
 ## Smoke Commands
 - Dry-run smoke (safe default): `npm run smoke:expense`
-- Live Apps Script attempt (requires endpoint + API key): `EXPENSE_TOOL_DRY_RUN=0 npm run smoke:expense`
-- If live mode fails with `expense_connector_url_missing`, set `EXPENSE_SHEETS_WEBHOOK_URL` and retry.
-- If live mode fails with `expense_connector_api_key_missing`, set `EXPENSE_TOOL_API_KEY` and retry.
 - Live `gws` smoke attempt:
-  - `EXPENSE_TOOL_DRY_RUN=0 EXPENSE_SHEETS_PROVIDER=gws EXPENSE_GWS_SPREADSHEET_ID=<id> EXPENSE_GWS_RANGE=Gastos!A1 npm run smoke:expense`
+  - `EXPENSE_TOOL_DRY_RUN=0 EXPENSE_GWS_SPREADSHEET_ID=<id> EXPENSE_GWS_RANGE=Gastos!A1 npm run smoke:expense`
 - Dry-run order smoke (safe default): `npm run smoke:order`
 - Live Trello+Sheets attempt:
   - `ORDER_TRELLO_DRY_RUN=0 ORDER_SHEETS_DRY_RUN=0 npm run smoke:order`
@@ -135,9 +126,8 @@ This matrix documents environment variables, defaults, requiredness, and runtime
   - Live: `SMOKE_LIFECYCLE_LIVE=1 SMOKE_LIFECYCLE_DRY_RUN=0 npm run smoke:lifecycle`
   - Optional strict create sync gate: `SMOKE_LIFECYCLE_STRICT_CREATE_SYNC=1` (fails if `create` does not persist `estado_pedido` and `trello_card_id` on first write).
 - If live mode fails with `order_trello_api_key_missing`, `order_trello_token_missing`, `order_trello_list_id_missing`, or `order_trello_cancel_list_id_missing`, configure matching `ORDER_TRELLO_*` vars and retry.
-- If live mode fails with `order_connector_url_missing` or `order_connector_api_key_missing`, configure `ORDER_SHEETS_WEBHOOK_URL` / `ORDER_SHEETS_API_KEY` and retry.
 - Live order `gws` smoke attempt:
-  - `ORDER_TRELLO_DRY_RUN=0 ORDER_SHEETS_DRY_RUN=0 ORDER_SHEETS_PROVIDER=gws ORDER_SHEETS_GWS_SPREADSHEET_ID=<id> ORDER_SHEETS_GWS_RANGE=Pedidos!A1 npm run smoke:order`
+  - `ORDER_TRELLO_DRY_RUN=0 ORDER_SHEETS_DRY_RUN=0 ORDER_SHEETS_GWS_SPREADSHEET_ID=<id> ORDER_SHEETS_GWS_RANGE=Pedidos!A1 npm run smoke:order`
 - Dry-run web smoke (safe default): `npm run smoke:web`
 - Start local webhook for controlled live validation:
   - `WEB_LOCAL_PUBLISH_API_KEY=<secret> npm run web:publish:webhook:local`
@@ -186,9 +176,7 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 - If validation fails with `web_publish_facebook_page_scope_missing`, set `WEB_FACEBOOK_PAGE_URL` or pass `facebookPageUrl` in content.
 
 ## Integration Notes
-- `ORDER_SHEETS_WEBHOOK_URL` can reuse the same Apps Script `/exec` URL as `EXPENSE_SHEETS_WEBHOOK_URL` when the endpoint routes by `intent` (`gasto` / `pedido`).
-- Order/expense adapters send API key both in header and `api_key` body field to handle Apps Script header propagation limitations.
-- `gws` provider invokes `googleworkspace/cli` Sheets append command; ensure host auth/session is configured before live mode.
+- Google writes use `gws` only (`googleworkspace/cli` Sheets append/get/update); ensure host auth/session is configured before live mode.
 - `report.orders` reads Google Sheets via `gws` (`values.get`) using `ORDER_SHEETS_GWS_SPREADSHEET_ID` and a read range derived from `ORDER_SHEETS_GWS_RANGE` (`Pedidos!A1` -> `Pedidos!A:U`), preferring `fecha_hora_entrega_iso` for filtering when that column exists.
 - Web publish adapter sanitizes media URLs by removing query/hash and only accepts `https` image URLs from approved domains.
 - Chat-based `web` flow is disabled by default (`WEB_CHAT_ENABLE=0`); preferred operation mode is content-driven via repository + terminal/CI.

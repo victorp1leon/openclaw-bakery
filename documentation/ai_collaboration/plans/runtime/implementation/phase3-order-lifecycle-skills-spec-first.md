@@ -42,10 +42,10 @@ Ya se cubrio `order.create`, `order.lookup` y reportes por periodo (`day/week/mo
 |---|---|---|---|
 | 1 | Aterrizar contratos (`*.spec.md`) de `order.update/cancel/status/payment.record` | Completed | Specs draft creadas en `Tools/Specs/` |
 | 2 | Actualizar spec de runtime para routing e intenciones | Completed | `order.status`, `order.update` y `order.cancel` documentados con reglas de confirm flow |
-| 3 | Implementar tools + wiring en runtime/skills | In Progress | `order.status` + `order.update` + `order.cancel` implementados con sync Trello+Sheets y rollback |
-| 4 | Agregar tests unitarios e integracion de runtime | In Progress | Cobertura para rollback/create/delete card + `order.status` + `order.update` + `order.cancel` |
-| 5 | Agregar smoke tests (mock default, live opcional) | In Progress | `smoke:status` + `smoke:update` + `smoke:cancel`; falta smoke lifecycle compuesto y `payment.record` |
-| 6 | Cierre documental y handoff de sesion | In Progress | Docs y matriz actualizadas para `order.update/order.cancel`; falta `payment.record` |
+| 3 | Implementar tools + wiring en runtime/skills | In Progress | `order.status` + `order.update` + `order.cancel` implementados con sync Trello+Sheets y rollback; conectores de Sheets consolidados a `gws` only |
+| 4 | Agregar tests unitarios e integracion de runtime | In Progress | Cobertura para rollback/create/delete card + `order.status` + `order.update` + `order.cancel`; suite completa estable tras migracion `gws` |
+| 5 | Agregar smoke tests (mock default, live opcional) | In Progress | `smoke:status` + `smoke:update` + `smoke:cancel` + `smoke:lifecycle`; falta `payment.record` |
+| 6 | Cierre documental y handoff de sesion | In Progress | Docs y matriz actualizadas para `gws` only en gasto/pedido; falta `payment.record` |
 
 ## Decisions & Trade-offs
 | Decision | Rationale | Date |

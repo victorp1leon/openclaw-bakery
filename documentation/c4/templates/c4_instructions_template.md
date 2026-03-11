@@ -48,7 +48,7 @@ List only systems that connect directly to this bot runtime (according to the ta
 - **Telegram Bot API**: Message transport for production chat channel.
 - **OpenClaw CLI**: Local agent runtime invoked by the bot process.
 - **LM Studio (OpenAI-compatible API)**: Local/host model endpoint used by OpenClaw.
-- **Google Sheets (Apps Script Web App)**: Expense/order append endpoints.
+- **Google Sheets (Google Workspace CLI / `gws`)**: Expense/order read and append operations.
 - **Trello REST API**: Order card creation/update.
 - **Web Hosting / Deploy Target (e.g., Netlify)**: Static site publish target.
 

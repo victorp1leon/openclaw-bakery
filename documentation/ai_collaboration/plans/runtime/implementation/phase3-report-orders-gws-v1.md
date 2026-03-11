@@ -27,7 +27,7 @@ Se necesita habilitar consultas operativas de pedidos por periodo (`hoy`, `maña
 ### Out of Scope
 - `order.status`, `order.update`, `order.cancel`.
 - Reportes financieros (`cashflow`, utilidad).
-- Nuevos endpoints Apps Script para lectura.
+- Nuevos proveedores de lectura fuera de `gws`.
 
 ## Approach
 | # | Paso | Estado | Notas |

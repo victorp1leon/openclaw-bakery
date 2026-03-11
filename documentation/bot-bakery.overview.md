@@ -1,7 +1,7 @@
 # OpenClaw Bakery Bot - Overview
 
 Status: MVP
-Last Updated: 2026-02-26
+Last Updated: 2026-03-11
 
 ## What It Is
 A conversational bot for a bakery business that receives chat messages (console/Telegram), interprets free-form text using OpenClaw + a local model, and safely executes business actions.
@@ -30,5 +30,5 @@ It centralizes common business operations in natural language:
 - Channels: console and Telegram (long polling)
 
 ## Next Scope (Priority)
-- `expense.add` end-to-end with a real Google Sheets connector (Apps Script)
-- `order.create` end-to-end with Trello + Sheets
+- `payment.record` end-to-end with Trello + Sheets consistency rules
+- advanced reporting and customer/inventory capabilities

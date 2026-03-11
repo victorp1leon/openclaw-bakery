@@ -28,7 +28,7 @@ External Systems:
 - Telegram Bot API [External System]: production chat transport (long polling).
 - OpenClaw CLI [External System]: local agent runtime invoked by the Node.js bot process.
 - LM Studio OpenAI-compatible API [External System]: model inference endpoint used by OpenClaw (host-only network).
-- Google Sheets via Apps Script Web App [External System]: append expense/order rows.
+- Google Sheets via Google Workspace CLI (`gws`) [External System]: append/read expense/order rows.
 - Trello REST API [External System]: create/update order cards.
 - Web Hosting / Deploy Target (e.g., Netlify) [External System]: publish generated static site.
 

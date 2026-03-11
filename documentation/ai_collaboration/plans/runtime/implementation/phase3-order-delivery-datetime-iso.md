@@ -20,7 +20,7 @@
 ## Alcance
 ### In Scope
 - Agregar normalizacion a `fecha_hora_entrega_iso` al confirmar pedido.
-- Persistir `fecha_hora_entrega_iso` en append `apps_script` y `gws`.
+- Persistir `fecha_hora_entrega_iso` en append via `gws`.
 - Hacer que `report.orders` use el campo ISO cuando exista.
 - Cubrir comportamiento con pruebas unitarias.
 

@@ -17,10 +17,6 @@ if (!Number.isFinite(monto) || monto <= 0) {
 }
 
 const executeExpense = createAppendExpenseTool({
-  provider: config.expenseTool.sheetsProvider,
-  webhookUrl: config.expenseTool.sheetsWebhookUrl,
-  apiKey: config.expenseTool.apiKey,
-  apiKeyHeader: config.expenseTool.apiKeyHeader,
   timeoutMs: config.expenseTool.timeoutMs,
   maxRetries: config.expenseTool.maxRetries,
   dryRunDefault: config.expenseTool.dryRun,
@@ -38,9 +34,6 @@ async function main() {
         event: "expense_smoke_start",
         dryRun: config.expenseTool.dryRun,
         provider: config.expenseTool.sheetsProvider,
-        webhookConfigured: Boolean(config.expenseTool.sheetsWebhookUrl),
-        apiKeyConfigured: Boolean(config.expenseTool.apiKey),
-        apiKeyHeader: config.expenseTool.apiKeyHeader,
         gwsCommand: config.expenseTool.gws.command,
         gwsCommandArgs: config.expenseTool.gws.commandArgs,
         gwsSpreadsheetIdConfigured: Boolean(config.expenseTool.gws.spreadsheetId),

@@ -11,7 +11,7 @@ The runtime is designed for local/self-hosted operation, typically:
 - Model provider endpoint: LM Studio OpenAI-compatible API (commonly host machine, reachable from VM)
 - Channel transport: Telegram Bot API (long polling) or local console
 - Persistence: local SQLite (`BOT_DB_PATH`, default `bot.db`)
-- External integrations (current/next): Google Sheets Apps Script, Trello, Netlify
+- External integrations (current/next): Google Sheets (`gws`), Trello, Netlify
 
 ## Logical flow
 
@@ -46,4 +46,3 @@ Before startup:
 3. Confirm DB path is writable.
 4. Confirm channel credentials if using Telegram.
 5. Confirm OpenClaw runtime settings (enabled/profile/timeout) match environment.
-

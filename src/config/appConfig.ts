@@ -1,7 +1,7 @@
 import { parseBotPersona, type BotPersona } from "../runtime/persona";
 
 export type ChannelMode = "console" | "telegram";
-export type SheetsProvider = "apps_script" | "gws";
+export type SheetsProvider = "gws";
 export type GwsValueInputOption = "RAW" | "USER_ENTERED";
 
 export type AppConfig = {
@@ -37,9 +37,6 @@ export type AppConfig = {
   expenseTool: {
     dryRun: boolean;
     sheetsProvider: SheetsProvider;
-    sheetsWebhookUrl?: string;
-    apiKey?: string;
-    apiKeyHeader: string;
     timeoutMs: number;
     maxRetries: number;
     gws: {
@@ -64,9 +61,6 @@ export type AppConfig = {
     sheets: {
       dryRun: boolean;
       provider: SheetsProvider;
-      webhookUrl?: string;
-      apiKey?: string;
-      apiKeyHeader: string;
       timeoutMs: number;
       maxRetries: number;
       gws: {
@@ -118,7 +112,7 @@ function parseHeaderName(raw: string | undefined, fallback: string): string {
 
 function parseSheetsProvider(raw: string | undefined, fallback: SheetsProvider): SheetsProvider {
   const value = raw?.trim().toLowerCase();
-  if (value === "apps_script" || value === "gws") return value;
+  if (value === "gws") return "gws";
   return fallback;
 }
 
@@ -171,10 +165,7 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     },
     expenseTool: {
       dryRun: (env.EXPENSE_TOOL_DRY_RUN ?? "1") === "1",
-      sheetsProvider: parseSheetsProvider(env.EXPENSE_SHEETS_PROVIDER, "apps_script"),
-      sheetsWebhookUrl: env.EXPENSE_SHEETS_WEBHOOK_URL?.trim() || undefined,
-      apiKey: env.EXPENSE_TOOL_API_KEY?.trim() || undefined,
-      apiKeyHeader: parseHeaderName(env.EXPENSE_TOOL_API_KEY_HEADER, "x-api-key"),
+      sheetsProvider: parseSheetsProvider(env.EXPENSE_SHEETS_PROVIDER, "gws"),
       timeoutMs: toPositiveInt(env.EXPENSE_TOOL_TIMEOUT_MS, 5000),
       maxRetries: toNonNegativeInt(env.EXPENSE_TOOL_MAX_RETRIES, 2),
       gws: {
@@ -198,10 +189,7 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       },
       sheets: {
         dryRun: (env.ORDER_SHEETS_DRY_RUN ?? "1") === "1",
-        provider: parseSheetsProvider(env.ORDER_SHEETS_PROVIDER, "apps_script"),
-        webhookUrl: env.ORDER_SHEETS_WEBHOOK_URL?.trim() || undefined,
-        apiKey: env.ORDER_SHEETS_API_KEY?.trim() || undefined,
-        apiKeyHeader: parseHeaderName(env.ORDER_SHEETS_API_KEY_HEADER, "x-api-key"),
+        provider: parseSheetsProvider(env.ORDER_SHEETS_PROVIDER, "gws"),
         timeoutMs: toPositiveInt(env.ORDER_SHEETS_TIMEOUT_MS, 5000),
         maxRetries: toNonNegativeInt(env.ORDER_SHEETS_MAX_RETRIES, 2),
         gws: {

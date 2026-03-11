@@ -42,10 +42,6 @@ const executeCreateCard = createCreateCardTool({
 });
 
 const executeAppendOrder = createAppendOrderTool({
-  provider: config.orderTool.sheets.provider,
-  webhookUrl: config.orderTool.sheets.webhookUrl,
-  apiKey: config.orderTool.sheets.apiKey,
-  apiKeyHeader: config.orderTool.sheets.apiKeyHeader,
   timeoutMs: config.orderTool.sheets.timeoutMs,
   maxRetries: config.orderTool.sheets.maxRetries,
   dryRunDefault: config.orderTool.sheets.dryRun,
@@ -75,9 +71,6 @@ async function main() {
         sheets: {
           dryRun: config.orderTool.sheets.dryRun,
           provider: config.orderTool.sheets.provider,
-          webhookConfigured: Boolean(config.orderTool.sheets.webhookUrl),
-          apiKeyConfigured: Boolean(config.orderTool.sheets.apiKey),
-          apiKeyHeader: config.orderTool.sheets.apiKeyHeader,
           gwsCommand: config.orderTool.sheets.gws.command,
           gwsCommandArgs: config.orderTool.sheets.gws.commandArgs,
           gwsSpreadsheetIdConfigured: Boolean(config.orderTool.sheets.gws.spreadsheetId),

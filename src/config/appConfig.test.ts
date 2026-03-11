@@ -14,10 +14,7 @@ describe("appConfig", () => {
     expect(config.rateLimit.maxMessagesPerWindow).toBe(8);
     expect(config.rateLimit.blockDurationMs).toBe(30_000);
     expect(config.expenseTool.dryRun).toBe(true);
-    expect(config.expenseTool.sheetsProvider).toBe("apps_script");
-    expect(config.expenseTool.sheetsWebhookUrl).toBeUndefined();
-    expect(config.expenseTool.apiKey).toBeUndefined();
-    expect(config.expenseTool.apiKeyHeader).toBe("x-api-key");
+    expect(config.expenseTool.sheetsProvider).toBe("gws");
     expect(config.expenseTool.timeoutMs).toBe(5000);
     expect(config.expenseTool.maxRetries).toBe(2);
     expect(config.expenseTool.gws.command).toBe("gws");
@@ -34,10 +31,7 @@ describe("appConfig", () => {
     expect(config.orderTool.trello.timeoutMs).toBe(5000);
     expect(config.orderTool.trello.maxRetries).toBe(2);
     expect(config.orderTool.sheets.dryRun).toBe(true);
-    expect(config.orderTool.sheets.provider).toBe("apps_script");
-    expect(config.orderTool.sheets.webhookUrl).toBeUndefined();
-    expect(config.orderTool.sheets.apiKey).toBeUndefined();
-    expect(config.orderTool.sheets.apiKeyHeader).toBe("x-api-key");
+    expect(config.orderTool.sheets.provider).toBe("gws");
     expect(config.orderTool.sheets.timeoutMs).toBe(5000);
     expect(config.orderTool.sheets.maxRetries).toBe(2);
     expect(config.orderTool.sheets.gws.command).toBe("gws");
@@ -108,9 +102,6 @@ describe("appConfig", () => {
     const config = loadAppConfig({
       EXPENSE_TOOL_DRY_RUN: "0",
       EXPENSE_SHEETS_PROVIDER: "gws",
-      EXPENSE_SHEETS_WEBHOOK_URL: " https://example.com/webhook ",
-      EXPENSE_TOOL_API_KEY: "  super-secret  ",
-      EXPENSE_TOOL_API_KEY_HEADER: "  X-Expense-Key  ",
       EXPENSE_TOOL_TIMEOUT_MS: "8500",
       EXPENSE_TOOL_MAX_RETRIES: "4",
       EXPENSE_GWS_COMMAND: " gws ",
@@ -122,9 +113,6 @@ describe("appConfig", () => {
 
     expect(config.expenseTool.dryRun).toBe(false);
     expect(config.expenseTool.sheetsProvider).toBe("gws");
-    expect(config.expenseTool.sheetsWebhookUrl).toBe("https://example.com/webhook");
-    expect(config.expenseTool.apiKey).toBe("super-secret");
-    expect(config.expenseTool.apiKeyHeader).toBe("X-Expense-Key");
     expect(config.expenseTool.timeoutMs).toBe(8500);
     expect(config.expenseTool.maxRetries).toBe(4);
     expect(config.expenseTool.gws.command).toBe("gws");
@@ -146,9 +134,6 @@ describe("appConfig", () => {
       ORDER_TRELLO_MAX_RETRIES: "5",
       ORDER_SHEETS_DRY_RUN: "0",
       ORDER_SHEETS_PROVIDER: "gws",
-      ORDER_SHEETS_WEBHOOK_URL: " https://example.com/order-webhook ",
-      ORDER_SHEETS_API_KEY: "  order-secret  ",
-      ORDER_SHEETS_API_KEY_HEADER: "  X-Order-Key  ",
       ORDER_SHEETS_TIMEOUT_MS: "9100",
       ORDER_SHEETS_MAX_RETRIES: "6",
       ORDER_SHEETS_GWS_COMMAND: " gws ",
@@ -169,9 +154,6 @@ describe("appConfig", () => {
 
     expect(config.orderTool.sheets.dryRun).toBe(false);
     expect(config.orderTool.sheets.provider).toBe("gws");
-    expect(config.orderTool.sheets.webhookUrl).toBe("https://example.com/order-webhook");
-    expect(config.orderTool.sheets.apiKey).toBe("order-secret");
-    expect(config.orderTool.sheets.apiKeyHeader).toBe("X-Order-Key");
     expect(config.orderTool.sheets.timeoutMs).toBe(9100);
     expect(config.orderTool.sheets.maxRetries).toBe(6);
     expect(config.orderTool.sheets.gws.command).toBe("gws");

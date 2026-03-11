@@ -46,9 +46,6 @@ logger.info(
     expense_tool: {
       dryRun: appConfig.expenseTool.dryRun,
       provider: appConfig.expenseTool.sheetsProvider,
-      urlConfigured: Boolean(appConfig.expenseTool.sheetsWebhookUrl),
-      apiKeyConfigured: Boolean(appConfig.expenseTool.apiKey),
-      apiKeyHeader: appConfig.expenseTool.apiKeyHeader,
       timeoutMs: appConfig.expenseTool.timeoutMs,
       maxRetries: appConfig.expenseTool.maxRetries,
       gws: {
@@ -73,9 +70,6 @@ logger.info(
       sheets: {
         dryRun: appConfig.orderTool.sheets.dryRun,
         provider: appConfig.orderTool.sheets.provider,
-        urlConfigured: Boolean(appConfig.orderTool.sheets.webhookUrl),
-        apiKeyConfigured: Boolean(appConfig.orderTool.sheets.apiKey),
-        apiKeyHeader: appConfig.orderTool.sheets.apiKeyHeader,
         timeoutMs: appConfig.orderTool.sheets.timeoutMs,
         maxRetries: appConfig.orderTool.sheets.maxRetries,
         gws: {
@@ -121,10 +115,6 @@ logger.info(
 );
 
 const executeExpense = createAppendExpenseTool({
-  provider: appConfig.expenseTool.sheetsProvider,
-  webhookUrl: appConfig.expenseTool.sheetsWebhookUrl,
-  apiKey: appConfig.expenseTool.apiKey,
-  apiKeyHeader: appConfig.expenseTool.apiKeyHeader,
   timeoutMs: appConfig.expenseTool.timeoutMs,
   maxRetries: appConfig.expenseTool.maxRetries,
   dryRunDefault: appConfig.expenseTool.dryRun,
@@ -157,10 +147,6 @@ const orderCardSync = createOrderCardSyncTool({
 });
 
 const executeAppendOrder = createAppendOrderTool({
-  provider: appConfig.orderTool.sheets.provider,
-  webhookUrl: appConfig.orderTool.sheets.webhookUrl,
-  apiKey: appConfig.orderTool.sheets.apiKey,
-  apiKeyHeader: appConfig.orderTool.sheets.apiKeyHeader,
   timeoutMs: appConfig.orderTool.sheets.timeoutMs,
   maxRetries: appConfig.orderTool.sheets.maxRetries,
   dryRunDefault: appConfig.orderTool.sheets.dryRun,

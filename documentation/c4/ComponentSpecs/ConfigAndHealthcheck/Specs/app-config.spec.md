@@ -16,10 +16,10 @@ It must provide deterministic parsing only and must not perform runtime connecti
   - channel config (`channelMode`, telegram settings)
   - OpenClaw config (`enabled`, `agentId`, `profile`, timeouts, strict flags)
   - rate limit config (`enabled`, `windowMs`, `maxMessagesPerWindow`, `blockDurationMs`)
-  - expense tool config (`dryRun`, `sheetsProvider`, `sheetsWebhookUrl`, `apiKey`, `apiKeyHeader`, `timeoutMs`, `maxRetries`, `gws`)
+  - expense tool config (`dryRun`, `sheetsProvider`, `timeoutMs`, `maxRetries`, `gws`)
   - order tool config:
     - Trello (`dryRun`, `apiKey`, `token`, `listId`, `apiBaseUrl`, `timeoutMs`, `maxRetries`)
-    - Sheets (`dryRun`, `provider`, `webhookUrl`, `apiKey`, `apiKeyHeader`, `timeoutMs`, `maxRetries`, `gws`)
+    - Sheets (`dryRun`, `provider`, `timeoutMs`, `maxRetries`, `gws`)
   - allowlist/raw local dev identifiers
 
 ## Rules
@@ -30,13 +30,11 @@ It must provide deterministic parsing only and must not perform runtime connecti
 - Boolean feature flags are derived from explicit `"1"` values.
 - Rate limit numeric thresholds must remain positive integers via fallback normalization.
 - Expense connector should default to safe mode (`EXPENSE_TOOL_DRY_RUN=1`) unless explicitly disabled.
-- Expense Sheets provider should default to `apps_script`.
-- Expense connector API key header should default to `x-api-key` when not configured.
+- Expense Sheets provider should default to `gws`.
 - Expense `gws` command should default to `gws` and value input option to `USER_ENTERED`.
 - Order Trello connector should default to safe mode (`ORDER_TRELLO_DRY_RUN=1`) unless explicitly disabled.
 - Order Sheets connector should default to safe mode (`ORDER_SHEETS_DRY_RUN=1`) unless explicitly disabled.
-- Order Sheets provider should default to `apps_script`.
-- Order Sheets API key header should default to `x-api-key` when not configured.
+- Order Sheets provider should default to `gws`.
 - Order Sheets `gws` command should default to `gws` and value input option to `USER_ENTERED`.
 - Do not validate external connectivity here (healthcheck is responsible for runtime checks).
 

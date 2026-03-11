@@ -19,7 +19,7 @@ This catalog defines expected log events, fields, and safe-logging rules.
 
 | Event / Message | Source | Level | Key Fields | Purpose |
 |---|---|---|---|---|
-| `runtime_config` | `src/index.ts` | `info` | `channel_mode`, `rate_limit.*`, `expense_tool.(dryRun,urlConfigured,apiKeyConfigured,apiKeyHeader,timeoutMs,maxRetries)`, `order_tool.trello.(dryRun,apiKeyConfigured,tokenConfigured,listIdConfigured,apiBaseUrl,timeoutMs,maxRetries)`, `order_tool.sheets.(dryRun,urlConfigured,apiKeyConfigured,apiKeyHeader,timeoutMs,maxRetries)`, `openclaw.*`, `telegram.*` | Startup configuration snapshot (sanitized). |
+| `runtime_config` | `src/index.ts` | `info` | `channel_mode`, `rate_limit.*`, `expense_tool.(dryRun,provider,timeoutMs,maxRetries,gws.*)`, `order_tool.trello.(dryRun,apiKeyConfigured,tokenConfigured,listIdConfigured,cancelListIdConfigured,apiBaseUrl,timeoutMs,maxRetries)`, `order_tool.sheets.(dryRun,provider,timeoutMs,maxRetries,gws.*)`, `openclaw.*`, `telegram.*` | Startup configuration snapshot (sanitized). |
 | `inbound_message` | `src/index.ts` | `info` | `event`, `channel`, `chat_id`, `text_preview` | Inbound traffic observability. |
 | `conversation_trace` + `allowlist_reject` | `src/runtime/conversationProcessor.ts` | `info` | `event`, `chat_id`, `strict_mode`, `detail` | Unauthorized access attempts. |
 | `conversation_trace` + `rate_limit_reject` | `src/runtime/conversationProcessor.ts` | `info` | `event`, `chat_id`, `strict_mode`, `detail` | Burst throttling events (`retry_after`). |

@@ -76,13 +76,9 @@ export function runHealthcheck(args: {
 
   const expenseConnectorStatus: HealthStatus = args.config.expenseTool.dryRun
     ? "warn"
-    : args.config.expenseTool.sheetsProvider === "apps_script"
-      ? args.config.expenseTool.sheetsWebhookUrl && args.config.expenseTool.apiKey
-        ? "ok"
-        : "fail"
-      : args.config.expenseTool.gws.command && args.config.expenseTool.gws.spreadsheetId && args.config.expenseTool.gws.range
-        ? "ok"
-        : "fail";
+    : args.config.expenseTool.gws.command && args.config.expenseTool.gws.spreadsheetId && args.config.expenseTool.gws.range
+      ? "ok"
+      : "fail";
 
   checks.push({
     name: "expense_connector",
@@ -90,9 +86,6 @@ export function runHealthcheck(args: {
     detail: [
       `dryRun=${args.config.expenseTool.dryRun ? "1" : "0"}`,
       `provider=${args.config.expenseTool.sheetsProvider}`,
-      `urlConfigured=${args.config.expenseTool.sheetsWebhookUrl ? "1" : "0"}`,
-      `apiKeyConfigured=${args.config.expenseTool.apiKey ? "1" : "0"}`,
-      `apiKeyHeader=${args.config.expenseTool.apiKeyHeader}`,
       `gwsCommand=${args.config.expenseTool.gws.command}`,
       `gwsSpreadsheetIdConfigured=${args.config.expenseTool.gws.spreadsheetId ? "1" : "0"}`,
       `gwsRangeConfigured=${args.config.expenseTool.gws.range ? "1" : "0"}`,
@@ -128,15 +121,11 @@ export function runHealthcheck(args: {
 
   const orderSheetsStatus: HealthStatus = args.config.orderTool.sheets.dryRun
     ? "warn"
-    : args.config.orderTool.sheets.provider === "apps_script"
-      ? args.config.orderTool.sheets.webhookUrl && args.config.orderTool.sheets.apiKey
-        ? "ok"
-        : "fail"
-      : args.config.orderTool.sheets.gws.command &&
-            args.config.orderTool.sheets.gws.spreadsheetId &&
-            args.config.orderTool.sheets.gws.range
-        ? "ok"
-        : "fail";
+    : args.config.orderTool.sheets.gws.command &&
+          args.config.orderTool.sheets.gws.spreadsheetId &&
+          args.config.orderTool.sheets.gws.range
+      ? "ok"
+      : "fail";
 
   checks.push({
     name: "order_sheets_connector",
@@ -144,9 +133,6 @@ export function runHealthcheck(args: {
     detail: [
       `dryRun=${args.config.orderTool.sheets.dryRun ? "1" : "0"}`,
       `provider=${args.config.orderTool.sheets.provider}`,
-      `urlConfigured=${args.config.orderTool.sheets.webhookUrl ? "1" : "0"}`,
-      `apiKeyConfigured=${args.config.orderTool.sheets.apiKey ? "1" : "0"}`,
-      `apiKeyHeader=${args.config.orderTool.sheets.apiKeyHeader}`,
       `gwsCommand=${args.config.orderTool.sheets.gws.command}`,
       `gwsSpreadsheetIdConfigured=${args.config.orderTool.sheets.gws.spreadsheetId ? "1" : "0"}`,
       `gwsRangeConfigured=${args.config.orderTool.sheets.gws.range ? "1" : "0"}`,

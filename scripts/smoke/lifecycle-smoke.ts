@@ -256,10 +256,6 @@ const executeCreateCard = createCreateCardTool({
 });
 
 const executeAppendOrder = createAppendOrderTool({
-  provider: config.orderTool.sheets.provider,
-  webhookUrl: config.orderTool.sheets.webhookUrl,
-  apiKey: config.orderTool.sheets.apiKey,
-  apiKeyHeader: config.orderTool.sheets.apiKeyHeader,
   timeoutMs: config.orderTool.sheets.timeoutMs,
   maxRetries: config.orderTool.sheets.maxRetries,
   dryRunDefault: dryRun,

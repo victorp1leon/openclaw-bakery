@@ -43,7 +43,7 @@ Last Updated: 2026-03-11
 | Telegram Bot API | Canal conversacional | Implementado |
 | OpenClaw CLI | Parseo estructurado | Implementado |
 | LM Studio endpoint | Proveedor modelo local | Implementado |
-| Google Sheets (Apps Script / GWS CLI provider) | Registro de gastos/pedidos | En progreso |
+| Google Sheets (GWS CLI provider) | Registro de gastos/pedidos | Implementado |
 | Trello REST API | Tarjetas de pedidos | En progreso |
 | Hosting estatico | Publicacion `web` | Implementado (webhook local) + Netlify-ready |
 

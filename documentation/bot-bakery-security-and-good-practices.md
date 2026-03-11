@@ -209,7 +209,7 @@ If using webhooks later (instead of long polling):
 - validate Telegram webhook secret token (`X-Telegram-Bot-Api-Secret-Token`)
 
 ### 9.2 Tool privileges (least privilege)
-- Google Sheets Apps Script endpoint: append-only where possible
+- Google Workspace CLI (`gws`) credentials: apply least privilege over target spreadsheets
 - Trello token: scope to the minimum board/list actions required
 - Netlify token: scope to the single site/deploy operation if possible
 
