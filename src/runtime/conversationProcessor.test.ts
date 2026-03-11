@@ -190,6 +190,7 @@ let createConversationProcessor: (args: {
       operation_id_ref?: string;
     };
     patch: unknown;
+    trello_card_id?: string;
     dryRun?: boolean;
   }) => Promise<{
     ok: boolean;
@@ -216,6 +217,7 @@ let createConversationProcessor: (args: {
       operation_id_ref?: string;
     };
     motivo?: string;
+    trello_card_id?: string;
     dryRun?: boolean;
   }) => Promise<{
     ok: boolean;
@@ -675,7 +677,8 @@ describe("conversation processor security flow", () => {
       operation_id: "op-order-update",
       chat_id: "chat-order-update",
       reference: { folio: "op-xyz-123", operation_id_ref: undefined },
-      patch: { cantidad: 10 }
+      patch: { cantidad: 10 },
+      trello_card_id: "trello-dry-run-card"
     });
     expect(getOperation("op-order-update")?.status).toBe("executed");
   });
@@ -795,7 +798,8 @@ describe("conversation processor security flow", () => {
       operation_id: "op-order-cancel",
       chat_id: "chat-order-cancel",
       reference: { folio: "op-xyz-123", operation_id_ref: undefined },
-      motivo: "cliente cancelo"
+      motivo: "cliente cancelo",
+      trello_card_id: "trello-dry-run-card"
     });
     expect(getOperation("op-order-cancel")?.status).toBe("executed");
   });

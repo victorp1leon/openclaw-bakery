@@ -96,6 +96,7 @@ type ProcessorDeps = {
     chat_id: string;
     reference: OrderUpdateReference;
     patch: unknown;
+    trello_card_id?: string;
     dryRun?: boolean;
   }) => Promise<{
     ok: boolean;
@@ -109,6 +110,7 @@ type ProcessorDeps = {
     chat_id: string;
     reference: OrderCancelReference;
     motivo?: string;
+    trello_card_id?: string;
     dryRun?: boolean;
   }) => Promise<{
     ok: boolean;
@@ -1214,7 +1216,8 @@ export function createConversationProcessor(deps: ProcessorDeps) {
                 operation_id: st.pending.operation_id,
                 chat_id: msg.chat_id,
                 reference,
-                patch
+                patch,
+                trello_card_id: cardSync.card_id
               });
               if (!execution.ok) {
                 throw new Error(execution.detail || "order_update_failed");
@@ -1324,7 +1327,8 @@ export function createConversationProcessor(deps: ProcessorDeps) {
                 operation_id: st.pending.operation_id,
                 chat_id: msg.chat_id,
                 reference,
-                motivo: typeof payload.motivo === "string" ? payload.motivo : undefined
+                motivo: typeof payload.motivo === "string" ? payload.motivo : undefined,
+                trello_card_id: cardSync.card_id
               });
               if (!execution.ok) {
                 throw new Error(execution.detail || "order_cancel_failed");

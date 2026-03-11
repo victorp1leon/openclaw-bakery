@@ -22,6 +22,9 @@
   - specs C4 de `update-order`, `cancel-order`, `conversation-processor`.
   - `system-map`, matriz DDD, config matrix y skills `order.update` / `order.cancel`.
 - Se ajustaron `scripts/smoke/update-smoke.ts` y `scripts/smoke/cancel-smoke.ts` para que en modo `live` prueben tambien el sync de Trello (no solo Sheets) via `orderCardSync`.
+- Se agrego persistencia de `trello_card_id` en mutaciones de filas legacy:
+  - `order.update` ahora backfillea `trello_card_id` y completa `estado_pedido=activo` si estaba vacio.
+  - `order.cancel` ahora escribe `trello_card_id` y `estado_pedido=cancelado` incluso en casos ya cancelados cuando falte ese dato.
 
 ## Validation
 - Tests ejecutados:

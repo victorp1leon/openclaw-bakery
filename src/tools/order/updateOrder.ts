@@ -502,6 +502,7 @@ function applyPatch(args: {
   patch: OrderUpdatePatch;
   operation_id: string;
   chat_id: string;
+  trello_card_id?: string;
   timezone: string;
   now: Date;
   writeWidth: number;
@@ -547,6 +548,25 @@ function applyPatch(args: {
     updatedFields.push("notas");
   }
 
+  const estadoPedido = trimOptional(updatedRow[INDEX.estado_pedido]);
+  if (!estadoPedido) {
+    updatedRow[INDEX.estado_pedido] = "activo";
+    if (!updatedFields.includes("estado_pedido")) {
+      updatedFields.push("estado_pedido");
+    }
+  }
+
+  const trelloCardId = trimOptional(args.trello_card_id);
+  if (trelloCardId) {
+    const existingCardId = trimOptional(updatedRow[INDEX.trello_card_id]);
+    if (existingCardId !== trelloCardId) {
+      updatedRow[INDEX.trello_card_id] = trelloCardId;
+      if (!updatedFields.includes("trello_card_id")) {
+        updatedFields.push("trello_card_id");
+      }
+    }
+  }
+
   return { updatedRow, updatedFields };
 }
 
@@ -571,6 +591,7 @@ export function createUpdateOrderTool(config: UpdateOrderToolConfig = {}) {
     chat_id: string;
     reference: OrderUpdateReference;
     patch: unknown;
+    trello_card_id?: string;
     dryRun?: boolean;
   }): Promise<ToolExecutionResult<OrderUpdateExecutionPayload>> {
     const reference = ensureReference(args.reference);
@@ -659,6 +680,7 @@ export function createUpdateOrderTool(config: UpdateOrderToolConfig = {}) {
           patch,
           operation_id: args.operation_id,
           chat_id: args.chat_id,
+          trello_card_id: args.trello_card_id,
           timezone,
           now: now(),
           writeWidth

@@ -32,7 +32,9 @@ function buildHeader(): string[] {
     "notas",
     "chat_id",
     "operation_id",
-    "fecha_hora_entrega_iso"
+    "fecha_hora_entrega_iso",
+    "estado_pedido",
+    "trello_card_id"
   ];
 }
 
@@ -56,7 +58,9 @@ function buildRow(overrides: Partial<Record<number, string>> = {}): string[] {
     "nota inicial",
     "chat-1",
     "op-create-1",
-    "2026-03-12T10:00:00"
+    "2026-03-12T10:00:00",
+    "activo",
+    ""
   ];
 
   for (const [idx, value] of Object.entries(overrides)) {
@@ -226,6 +230,40 @@ describe("update-order tool", () => {
     expect(result.payload.after?.estado_pago).toBe("parcial");
     expect(result.payload.after?.producto).toBe("pastel");
     expect(result.payload.after?.folio).toBe("op-order-1");
+  });
+
+  it("backfills trello_card_id and estado_pedido for existing rows", async () => {
+    const row = buildRow({ 19: "", 20: "" });
+    const gwsRunner = vi
+      .fn()
+      .mockResolvedValueOnce(okJson({ values: [buildHeader(), row] }))
+      .mockResolvedValueOnce(okJson({ updatedRange: "Pedidos!A2:U2" }));
+
+    const tool = createUpdateOrderTool({
+      dryRunDefault: false,
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:R",
+      now: () => new Date("2026-03-11T10:00:00.000Z"),
+      gwsRunner
+    });
+
+    const result = await tool({
+      operation_id: "op-update-7b",
+      chat_id: "chat-1",
+      reference: { folio: "op-order-1" },
+      patch: { cantidad: 3 },
+      trello_card_id: "card-xyz-123"
+    });
+
+    expect(result.payload.updated_fields).toEqual(expect.arrayContaining(["estado_pedido", "trello_card_id"]));
+    expect(result.payload.after?.estado_pedido).toBe("activo");
+    expect(result.payload.after?.trello_card_id).toBe("card-xyz-123");
+
+    const writeCallArgs = gwsRunner.mock.calls[1]?.[0];
+    const jsonArgIdx = writeCallArgs.commandArgs.indexOf("--json");
+    const body = JSON.parse(writeCallArgs.commandArgs[jsonArgIdx + 1]);
+    expect(body.values[0][19]).toBe("activo");
+    expect(body.values[0][20]).toBe("card-xyz-123");
   });
 
   it("retries on transient gws failure then succeeds", async () => {

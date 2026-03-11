@@ -310,26 +310,43 @@ function applyCancel(args: {
   operation_id: string;
   chat_id: string;
   motivo?: string;
+  trello_card_id?: string;
   now: Date;
   writeWidth: number;
 }): {
   updatedRow: Array<string | number>;
   alreadyCanceled: boolean;
+  needsWrite: boolean;
 } {
   const updatedRow = Array.from({ length: args.writeWidth }, (_, idx) => {
     const existing = args.row[idx];
     return existing == null ? "" : existing;
   });
 
+  let needsWrite = false;
+  const existingEstadoPedido = trimOptional(updatedRow[INDEX.estado_pedido]);
+  if (existingEstadoPedido !== "cancelado") {
+    updatedRow[INDEX.estado_pedido] = "cancelado";
+    needsWrite = true;
+  }
+
+  const nextCardId = trimOptional(args.trello_card_id);
+  if (nextCardId) {
+    const existingCardId = trimOptional(updatedRow[INDEX.trello_card_id]);
+    if (existingCardId !== nextCardId) {
+      updatedRow[INDEX.trello_card_id] = nextCardId;
+      needsWrite = true;
+    }
+  }
+
   const notes = trimOptional(updatedRow[INDEX.notas]) ?? "";
   if (notes.toLowerCase().includes(CANCEL_MARKER.toLowerCase())) {
-    return { updatedRow, alreadyCanceled: true };
+    return { updatedRow, alreadyCanceled: true, needsWrite };
   }
 
   const marker = `${CANCEL_MARKER} ${args.now.toISOString()} op:${args.operation_id} chat:${args.chat_id} motivo:${args.motivo ?? "n/a"}`;
   updatedRow[INDEX.notas] = notes ? `${notes} | ${marker}` : marker;
-  updatedRow[INDEX.estado_pedido] = "cancelado";
-  return { updatedRow, alreadyCanceled: false };
+  return { updatedRow, alreadyCanceled: false, needsWrite: true };
 }
 
 export function createCancelOrderTool(config: CancelOrderToolConfig = {}) {
@@ -352,6 +369,7 @@ export function createCancelOrderTool(config: CancelOrderToolConfig = {}) {
     chat_id: string;
     reference: OrderCancelReference;
     motivo?: string;
+    trello_card_id?: string;
     dryRun?: boolean;
   }): Promise<ToolExecutionResult<OrderCancelExecutionPayload>> {
     const reference = ensureReference(args.reference);
@@ -442,11 +460,12 @@ export function createCancelOrderTool(config: CancelOrderToolConfig = {}) {
           operation_id: args.operation_id,
           chat_id: args.chat_id,
           motivo,
+          trello_card_id: args.trello_card_id,
           now: now(),
           writeWidth
         });
 
-        if (applied.alreadyCanceled) {
+        if (applied.alreadyCanceled && !applied.needsWrite) {
           return {
             ok: true,
             dry_run,
@@ -518,10 +537,12 @@ export function createCancelOrderTool(config: CancelOrderToolConfig = {}) {
               operation_id_ref: target.operation_id || reference.operation_id_ref
             },
             matched_row_index: target.sheetRow,
-            already_canceled: false,
+            already_canceled: applied.alreadyCanceled,
             after: toPreview(applied.updatedRow)
           },
-          detail: `cancel-order executed (provider=gws, attempt=${attempt})`
+          detail: applied.alreadyCanceled
+            ? `cancel-order already-canceled-synced (provider=gws, attempt=${attempt})`
+            : `cancel-order executed (provider=gws, attempt=${attempt})`
         };
       } catch (err) {
         const cls = classifyGwsSpawnError(err);
