@@ -41,3 +41,8 @@ Reglas operativas para colaborar con Codex en este repositorio sin perder contin
 - System map: `documentation/ai_collaboration/system-map.md`
 - Plan template: `documentation/ai_collaboration/plans/_plan-template.md`
 - Session handoff template: `documentation/ai_collaboration/plans/_session-handoff-template.md`
+
+## Codex Local Scaffolding
+- Codex skills (workflow accelerators): `.codex/skills/`
+- Codex rules (operational guardrails): `.codex/rules/README.md`
+- Apply `.codex/rules/*` by default when working on runtime/tools/integrations unless a plan documents a temporary exception.

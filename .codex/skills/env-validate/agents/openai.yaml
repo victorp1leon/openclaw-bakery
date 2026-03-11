@@ -1,0 +1,4 @@
+interface:
+  display_name: "Env Validate"
+  short_description: "Check and normalize .env config"
+  default_prompt: "Use this skill when the user asks to validate or clean .env variables."

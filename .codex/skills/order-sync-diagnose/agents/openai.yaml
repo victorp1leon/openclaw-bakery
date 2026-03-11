@@ -1,0 +1,4 @@
+interface:
+  display_name: "Order Sync Diagnose"
+  short_description: "Diagnose Trello-Sheets order sync failures"
+  default_prompt: "Use this skill when order update/cancel/lifecycle smoke fails and root cause is unclear."

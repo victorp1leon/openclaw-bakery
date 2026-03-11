@@ -1,0 +1,4 @@
+interface:
+  display_name: "Order Lifecycle Live Smoke"
+  short_description: "Run live create/update/cancel smoke flow"
+  default_prompt: "Use this skill when the user asks to validate order lifecycle behavior in live mode."

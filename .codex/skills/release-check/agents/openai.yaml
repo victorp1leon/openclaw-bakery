@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Check"
+  short_description: "Run pre-commit readiness checks"
+  default_prompt: "Use this skill when the user asks whether current changes are ready for commit or release."

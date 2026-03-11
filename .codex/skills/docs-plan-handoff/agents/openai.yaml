@@ -1,0 +1,4 @@
+interface:
+  display_name: "Docs Plan Handoff"
+  short_description: "Maintain plan/index/handoff docs"
+  default_prompt: "Use this skill when a task needs plan updates, index sync, and session handoff closure."
