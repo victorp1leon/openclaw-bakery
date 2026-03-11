@@ -1,0 +1,4 @@
+interface:
+  display_name: "Smoke Integration Test"
+  short_description: "Run smoke+integration summary workflow"
+  default_prompt: "Use this skill when the user asks to validate smoke or integration flows."

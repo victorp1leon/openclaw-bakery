@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git Commit"
+  short_description: "Create clean commits in this repo"
+  default_prompt: "Use this skill when the user asks to commit current changes."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Unit Test"
+  short_description: "Run focused or full Vitest unit suites"
+  default_prompt: "Use this skill when the user asks to run unit tests and summarize results."
