@@ -3,7 +3,7 @@
 > **Type:** `Implementation`
 > **Status:** `In Progress`
 > **Created:** `2026-03-09`
-> **Last Updated:** `2026-03-09`
+> **Last Updated:** `2026-03-11`
 
 ## Cross-References
 | Documento | Ruta | Uso |
@@ -41,11 +41,11 @@ Ya se cubrio `order.create`, `order.lookup` y reportes por periodo (`day/week/mo
 | # | Paso | Estado | Notas |
 |---|---|---|---|
 | 1 | Aterrizar contratos (`*.spec.md`) de `order.update/cancel/status/payment.record` | Completed | Specs draft creadas en `Tools/Specs/` |
-| 2 | Actualizar spec de runtime para routing e intenciones | Completed | `order.status` ya documentado como ruta activa sin confirm flow |
-| 3 | Implementar tools + wiring en runtime/skills | In Progress | `order.status` implementado (`src/tools/order/orderStatus.ts`) |
-| 4 | Agregar tests unitarios e integracion de runtime | In Progress | Cobertura completa para `order.status` (tool + runtime) |
-| 5 | Agregar smoke tests (mock default, live opcional) | In Progress | `smoke:status` agregado; faltan mutaciones lifecycle |
-| 6 | Cierre documental y handoff de sesion | In Progress | `_index` + matriz DDD ya actualizados; faltan cierre final y handoff |
+| 2 | Actualizar spec de runtime para routing e intenciones | Completed | `order.status`, `order.update` y `order.cancel` documentados con reglas de confirm flow |
+| 3 | Implementar tools + wiring en runtime/skills | In Progress | `order.status` + `order.update` + `order.cancel` implementados |
+| 4 | Agregar tests unitarios e integracion de runtime | In Progress | Cobertura completa para `order.status` + `order.update` + `order.cancel` (tool + runtime) |
+| 5 | Agregar smoke tests (mock default, live opcional) | In Progress | `smoke:status` + `smoke:update` + `smoke:cancel`; falta smoke lifecycle compuesto y `payment.record` |
+| 6 | Cierre documental y handoff de sesion | In Progress | Docs y matriz actualizadas para `order.update/order.cancel`; falta `payment.record` |
 
 ## Decisions & Trade-offs
 | Decision | Rationale | Date |
@@ -55,11 +55,14 @@ Ya se cubrio `order.create`, `order.lookup` y reportes por periodo (`day/week/mo
 
 ## Validation
 - Tests a ejecutar:
-  - `npm test -- src/runtime/conversationProcessor.test.ts src/tools/order/*.test.ts`
-  - `npm run smoke:order-lifecycle` (nuevo)
+  - `npm test -- src/tools/order/updateOrder.test.ts src/tools/order/cancelOrder.test.ts src/runtime/conversationProcessor.test.ts`
+  - `npm run smoke:update`
+  - `npm run smoke:cancel`
 - Criterio de aceptacion:
   - Mutaciones solo ejecutan tras `confirmar`.
   - `order.status` responde sin mutacion ni confirm flow.
+  - `order.update` genera resumen y ejecuta tras confirmacion con referencia + patch validos.
+  - `order.cancel` agrega marker `[CANCELADO]` y retorna no-op deterministico cuando ya estaba cancelado.
   - Cambios quedan trazables por `operation_id` y sin duplicados accidentales.
 
 ## Outcome

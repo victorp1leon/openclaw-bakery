@@ -13,10 +13,20 @@ import { registerPendingOperation, upsertOperation } from "../state/operations";
 import { clearPending, getState, setState } from "../state/stateStore";
 import { appendExpenseTool } from "../tools/expense/appendExpense";
 import { appendOrderTool } from "../tools/order/appendOrder";
+import {
+  createCancelOrderTool,
+  type OrderCancelExecutionPayload,
+  type OrderCancelReference
+} from "../tools/order/cancelOrder";
 import { createCardTool } from "../tools/order/createCard";
 import { createLookupOrderTool, type OrderLookupResult } from "../tools/order/lookupOrder";
 import { createOrderStatusTool, type OrderStatusResult } from "../tools/order/orderStatus";
 import { createReportOrdersTool, type OrderReportPeriod, type OrderReportResult } from "../tools/order/reportOrders";
+import {
+  createUpdateOrderTool,
+  type OrderUpdateExecutionPayload,
+  type OrderUpdateReference
+} from "../tools/order/updateOrder";
 import { type WebPublishPayload, createPublishSiteTool } from "../tools/web/publishSite";
 import { createBotCopy, type BotPersona } from "./persona";
 
@@ -69,6 +79,32 @@ type ProcessorDeps = {
     chat_id: string;
     query: string;
   }) => Promise<OrderStatusResult>;
+  executeOrderUpdateFn?: (args: {
+    operation_id: string;
+    chat_id: string;
+    reference: OrderUpdateReference;
+    patch: unknown;
+    dryRun?: boolean;
+  }) => Promise<{
+    ok: boolean;
+    dry_run: boolean;
+    operation_id: string;
+    payload: OrderUpdateExecutionPayload;
+    detail: string;
+  }>;
+  executeOrderCancelFn?: (args: {
+    operation_id: string;
+    chat_id: string;
+    reference: OrderCancelReference;
+    motivo?: string;
+    dryRun?: boolean;
+  }) => Promise<{
+    ok: boolean;
+    dry_run: boolean;
+    operation_id: string;
+    payload: OrderCancelExecutionPayload;
+    detail: string;
+  }>;
   orderReportTimezone?: string;
   botPersona?: BotPersona;
   webChatEnabled?: boolean;
@@ -133,6 +169,23 @@ const MONTH_LABELS = [
   "noviembre",
   "diciembre"
 ];
+
+const ORDER_UPDATE_PATCH_FIELDS = new Set([
+  "fecha_hora_entrega",
+  "nombre_cliente",
+  "telefono",
+  "producto",
+  "descripcion_producto",
+  "cantidad",
+  "sabor_pan",
+  "sabor_relleno",
+  "tipo_envio",
+  "direccion",
+  "estado_pago",
+  "total",
+  "moneda",
+  "notas"
+]);
 
 function toDateKeyFromDate(date: Date, timezone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -571,6 +624,154 @@ function parseInlineJsonObject(text: string): { ok: true; value: Record<string, 
   }
 }
 
+function trimString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const out = value.trim();
+  return out.length > 0 ? out : undefined;
+}
+
+function extractOrderReferenceFromText(text: string): { folio?: string; operation_id_ref?: string } {
+  const folio = text.match(/\bfolio\s*[:=]?\s*([a-z0-9_-]{3,})\b/i)?.[1]?.trim();
+  const operationId = text.match(/\b(?:operation_id|operacion|id)\s*[:=]?\s*([a-z0-9_-]{3,})\b/i)?.[1]?.trim();
+  return {
+    folio: folio && folio.length > 0 ? folio : undefined,
+    operation_id_ref: operationId && operationId.length > 0 ? operationId : undefined
+  };
+}
+
+function parseOrderUpdateRequest(text: string):
+  | { matched: false }
+  | { matched: true; result: ParseResult } {
+  const normalized = normalizeForMatch(text);
+  const hasOrderWord = /\bpedidos?\b/.test(normalized);
+  const hasMutationVerb = /\b(actualiza|actualizar|actualizacion|modifica|modificar|cambia|cambiar)\b/.test(normalized);
+  if (!hasOrderWord || !hasMutationVerb) {
+    return { matched: false };
+  }
+
+  const inline = parseInlineJsonObject(text.trim());
+  if (inline.ok === false) {
+    return {
+      matched: true,
+      result: { ok: false, source: "fallback", error: "order_update_payload_json_invalid" }
+    };
+  }
+
+  const reference: OrderUpdateReference = {};
+  let patch: Record<string, unknown> | undefined;
+
+  if (inline.ok === true) {
+    const payload = inline.value;
+
+    if (isObjectRecord(payload.reference)) {
+      reference.folio = trimString(payload.reference.folio);
+      reference.operation_id_ref = trimString(payload.reference.operation_id_ref);
+    } else {
+      reference.folio = trimString(payload.folio);
+      reference.operation_id_ref = trimString(payload.operation_id_ref);
+    }
+
+    if (isObjectRecord(payload.patch)) {
+      patch = { ...payload.patch };
+    } else {
+      const filteredEntries = Object.entries(payload).filter(([key]) => ORDER_UPDATE_PATCH_FIELDS.has(key));
+      if (filteredEntries.length > 0) {
+        patch = Object.fromEntries(filteredEntries);
+      }
+    }
+  }
+
+  const fromText = extractOrderReferenceFromText(text);
+  if (!reference.folio) reference.folio = fromText.folio;
+  if (!reference.operation_id_ref) reference.operation_id_ref = fromText.operation_id_ref;
+
+  if (!reference.folio && !reference.operation_id_ref) {
+    return {
+      matched: true,
+      result: { ok: false, source: "fallback", error: "order_update_reference_missing" }
+    };
+  }
+
+  if (!patch || Object.keys(patch).length === 0) {
+    return {
+      matched: true,
+      result: { ok: false, source: "fallback", error: "order_update_patch_missing" }
+    };
+  }
+
+  return {
+    matched: true,
+    result: {
+      ok: true,
+      source: "fallback",
+      payload: {
+        reference,
+        patch
+      }
+    }
+  };
+}
+
+function parseOrderCancelRequest(text: string):
+  | { matched: false }
+  | { matched: true; result: ParseResult } {
+  const normalized = normalizeForMatch(text);
+  const hasOrderWord = /\bpedidos?\b/.test(normalized);
+  const hasCancelVerb = /\b(cancela|cancelar|cancelame|anula|anular)\b/.test(normalized);
+  if (!hasOrderWord || !hasCancelVerb) {
+    return { matched: false };
+  }
+
+  const inline = parseInlineJsonObject(text.trim());
+  if (inline.ok === false) {
+    return {
+      matched: true,
+      result: { ok: false, source: "fallback", error: "order_cancel_payload_json_invalid" }
+    };
+  }
+
+  const reference: OrderCancelReference = {};
+  let motivo = text.match(/\bmotivo\s*[:=]\s*(.+)$/i)?.[1]?.trim();
+
+  if (inline.ok === true) {
+    const payload = inline.value;
+
+    if (isObjectRecord(payload.reference)) {
+      reference.folio = trimString(payload.reference.folio);
+      reference.operation_id_ref = trimString(payload.reference.operation_id_ref);
+    } else {
+      reference.folio = trimString(payload.folio);
+      reference.operation_id_ref = trimString(payload.operation_id_ref);
+    }
+
+    const motivoInline = trimString(payload.motivo);
+    if (motivoInline) motivo = motivoInline;
+  }
+
+  const fromText = extractOrderReferenceFromText(text);
+  if (!reference.folio) reference.folio = fromText.folio;
+  if (!reference.operation_id_ref) reference.operation_id_ref = fromText.operation_id_ref;
+
+  if (!reference.folio && !reference.operation_id_ref) {
+    return {
+      matched: true,
+      result: { ok: false, source: "fallback", error: "order_cancel_reference_missing" }
+    };
+  }
+
+  return {
+    matched: true,
+    result: {
+      ok: true,
+      source: "fallback",
+      payload: {
+        reference,
+        ...(motivo ? { motivo } : {})
+      }
+    }
+  };
+}
+
 async function parseWebRequest(text: string): Promise<ParseResult> {
   const normalized = text.trim();
   const lower = normalized.toLowerCase();
@@ -691,6 +892,8 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeOrderReportFn = deps.executeOrderReportFn ?? createReportOrdersTool();
   const executeOrderLookupFn = deps.executeOrderLookupFn ?? createLookupOrderTool();
   const executeOrderStatusFn = deps.executeOrderStatusFn ?? createOrderStatusTool();
+  const executeOrderUpdateFn = deps.executeOrderUpdateFn ?? createUpdateOrderTool();
+  const executeOrderCancelFn = deps.executeOrderCancelFn ?? createCancelOrderTool();
   const orderReportTimezone = deps.orderReportTimezone?.trim() || REPORT_DEFAULT_TIMEZONE;
   const copy = createBotCopy(deps.botPersona);
   const webChatEnabled = deps.webChatEnabled ?? true;
@@ -904,6 +1107,170 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           }
         }
 
+        if (st.pending.action.intent === "order.update") {
+          const payload = st.pending.action.payload;
+          if (!isObjectRecord(payload) || !isObjectRecord(payload.reference) || !isObjectRecord(payload.patch)) {
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "failed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "order_update_execute_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "order.update",
+              detail: "payload_validation_failed"
+            });
+
+            return [
+              copy.orderFailed(st.pending.operation_id)
+            ];
+          }
+
+          try {
+            const execution = await executeOrderUpdateFn({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              reference: payload.reference as OrderUpdateReference,
+              patch: payload.patch
+            });
+            if (!execution.ok) {
+              throw new Error(execution.detail || "order_update_failed");
+            }
+
+            st.pending.action.payload = execution.payload as unknown as Record<string, unknown>;
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "executed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "order_update_execute_succeeded",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "order.update",
+              detail: execution.detail
+            });
+
+            clearPending(msg.chat_id);
+            return [copy.executed(st.pending.operation_id, execution.dry_run)];
+          } catch (err) {
+            const safeDetail = err instanceof Error ? err.message : String(err);
+
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "failed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "order_update_execute_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "order.update",
+              detail: safeDetail
+            });
+
+            return [
+              copy.orderFailed(st.pending.operation_id)
+            ];
+          }
+        }
+
+        if (st.pending.action.intent === "order.cancel") {
+          const payload = st.pending.action.payload;
+          if (!isObjectRecord(payload) || !isObjectRecord(payload.reference)) {
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "failed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "order_cancel_execute_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "order.cancel",
+              detail: "payload_validation_failed"
+            });
+
+            return [
+              copy.orderFailed(st.pending.operation_id)
+            ];
+          }
+
+          try {
+            const execution = await executeOrderCancelFn({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              reference: payload.reference as OrderCancelReference,
+              motivo: typeof payload.motivo === "string" ? payload.motivo : undefined
+            });
+            if (!execution.ok) {
+              throw new Error(execution.detail || "order_cancel_failed");
+            }
+
+            st.pending.action.payload = execution.payload as unknown as Record<string, unknown>;
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "executed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "order_cancel_execute_succeeded",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "order.cancel",
+              detail: execution.detail
+            });
+
+            clearPending(msg.chat_id);
+            return [copy.executed(st.pending.operation_id, execution.dry_run)];
+          } catch (err) {
+            const safeDetail = err instanceof Error ? err.message : String(err);
+
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "failed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "order_cancel_execute_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "order.cancel",
+              detail: safeDetail
+            });
+
+            return [
+              copy.orderFailed(st.pending.operation_id)
+            ];
+          }
+        }
+
         if (st.pending.action.intent === "web") {
           const vWeb = validateWebPayloadDraft(st.pending.action.payload as Record<string, unknown>);
           if (!vWeb.ok) {
@@ -977,11 +1344,12 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           }
         }
 
+        const fallbackAction = st.pending.action as { intent: string; payload: Record<string, unknown> };
         upsertOperation({
           operation_id: st.pending.operation_id,
           chat_id: msg.chat_id,
-          intent: st.pending.action.intent,
-          payload: st.pending.action.payload,
+          intent: fallbackAction.intent,
+          payload: fallbackAction.payload,
           status: "executed",
           idempotency_key: idempotencyKey
         });
@@ -1079,6 +1447,112 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       }
 
       return [copy.pendingOperation(st.pending.operation_id)];
+    }
+
+    const orderUpdateDraft = parseOrderUpdateRequest(msg.text);
+    if (orderUpdateDraft.matched) {
+      if (!orderUpdateDraft.result.ok) {
+        deps.onTrace?.({
+          event: "parse_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "order.update",
+          intent_source: "fallback",
+          parse_source: orderUpdateDraft.result.source ?? "fallback",
+          detail: orderUpdateDraft.result.error
+        });
+        return [copy.parseError(orderUpdateDraft.result.error)];
+      }
+
+      const operation_id = newOperationId();
+      const payload = orderUpdateDraft.result.payload as Record<string, unknown>;
+      const pending = {
+        operation_id,
+        idempotency_key: operation_id,
+        action: { intent: "order.update" as const, payload },
+        missing: [],
+        asked: undefined
+      };
+
+      setState(msg.chat_id, { pending });
+      const register = registerPendingOperation({
+        operation_id,
+        chat_id: msg.chat_id,
+        intent: "order.update",
+        payload,
+        idempotency_key: operation_id
+      });
+
+      if (!register.inserted) {
+        clearPending(msg.chat_id);
+        return [
+          copy.duplicate(register.operation.operation_id, register.operation.status)
+        ];
+      }
+
+      deps.onTrace?.({
+        event: "parse_succeeded",
+        chat_id: msg.chat_id,
+        strict_mode,
+        intent: "order.update",
+        intent_source: "fallback",
+        parse_source: orderUpdateDraft.result.source ?? "fallback"
+      });
+
+      return [copy.summary("order.update", payload, operation_id)];
+    }
+
+    const orderCancelDraft = parseOrderCancelRequest(msg.text);
+    if (orderCancelDraft.matched) {
+      if (!orderCancelDraft.result.ok) {
+        deps.onTrace?.({
+          event: "parse_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "order.cancel",
+          intent_source: "fallback",
+          parse_source: orderCancelDraft.result.source ?? "fallback",
+          detail: orderCancelDraft.result.error
+        });
+        return [copy.parseError(orderCancelDraft.result.error)];
+      }
+
+      const operation_id = newOperationId();
+      const payload = orderCancelDraft.result.payload as Record<string, unknown>;
+      const pending = {
+        operation_id,
+        idempotency_key: operation_id,
+        action: { intent: "order.cancel" as const, payload },
+        missing: [],
+        asked: undefined
+      };
+
+      setState(msg.chat_id, { pending });
+      const register = registerPendingOperation({
+        operation_id,
+        chat_id: msg.chat_id,
+        intent: "order.cancel",
+        payload,
+        idempotency_key: operation_id
+      });
+
+      if (!register.inserted) {
+        clearPending(msg.chat_id);
+        return [
+          copy.duplicate(register.operation.operation_id, register.operation.status)
+        ];
+      }
+
+      deps.onTrace?.({
+        event: "parse_succeeded",
+        chat_id: msg.chat_id,
+        strict_mode,
+        intent: "order.cancel",
+        intent_source: "fallback",
+        parse_source: orderCancelDraft.result.source ?? "fallback"
+      });
+
+      return [copy.summary("order.cancel", payload, operation_id)];
     }
 
     const reportPeriod = detectOrderReportPeriod({

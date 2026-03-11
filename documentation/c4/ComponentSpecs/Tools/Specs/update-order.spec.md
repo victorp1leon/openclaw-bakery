@@ -1,7 +1,7 @@
 # Spec - update-order (Phase 3 lifecycle)
 
-Status: Draft
-Last Updated: 2026-03-09
+Status: MVP
+Last Updated: 2026-03-11
 
 ## Objective
 Update an existing order row in Google Sheets (`Pedidos`) after user confirmation.
@@ -95,4 +95,3 @@ This adapter mutates order data and must preserve traceability and idempotency.
 - `updates_only_allowed_fields_and_preserves_others`
 - `retries_on_transient_gws_failure_then_succeeds`
 - `fails_when_gws_command_unavailable`
-

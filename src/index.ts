@@ -9,10 +9,12 @@ import { buildTextPreview, REQUIRED_REDACTION_PATHS } from "./logging/loggingPol
 import { createConversationProcessor } from "./runtime/conversationProcessor";
 import { createAppendExpenseTool } from "./tools/expense/appendExpense";
 import { createAppendOrderTool } from "./tools/order/appendOrder";
+import { createCancelOrderTool } from "./tools/order/cancelOrder";
 import { createCreateCardTool } from "./tools/order/createCard";
 import { createLookupOrderTool } from "./tools/order/lookupOrder";
 import { createOrderStatusTool } from "./tools/order/orderStatus";
 import { createReportOrdersTool } from "./tools/order/reportOrders";
+import { createUpdateOrderTool } from "./tools/order/updateOrder";
 import { createPublishSiteTool } from "./tools/web/publishSite";
 
 dotenv.config();
@@ -187,6 +189,29 @@ const executeOrderStatus = createOrderStatusTool({
   timezone: appConfig.timezone
 });
 
+const executeOrderUpdate = createUpdateOrderTool({
+  dryRunDefault: appConfig.orderTool.sheets.dryRun,
+  gwsCommand: appConfig.orderTool.sheets.gws.command,
+  gwsCommandArgs: appConfig.orderTool.sheets.gws.commandArgs,
+  gwsSpreadsheetId: appConfig.orderTool.sheets.gws.spreadsheetId,
+  gwsRange: appConfig.orderTool.sheets.gws.range,
+  gwsValueInputOption: appConfig.orderTool.sheets.gws.valueInputOption,
+  timeoutMs: appConfig.orderTool.sheets.timeoutMs,
+  maxRetries: appConfig.orderTool.sheets.maxRetries,
+  timezone: appConfig.timezone
+});
+
+const executeOrderCancel = createCancelOrderTool({
+  dryRunDefault: appConfig.orderTool.sheets.dryRun,
+  gwsCommand: appConfig.orderTool.sheets.gws.command,
+  gwsCommandArgs: appConfig.orderTool.sheets.gws.commandArgs,
+  gwsSpreadsheetId: appConfig.orderTool.sheets.gws.spreadsheetId,
+  gwsRange: appConfig.orderTool.sheets.gws.range,
+  gwsValueInputOption: appConfig.orderTool.sheets.gws.valueInputOption,
+  timeoutMs: appConfig.orderTool.sheets.timeoutMs,
+  maxRetries: appConfig.orderTool.sheets.maxRetries
+});
+
 const executeWebPublish = createPublishSiteTool({
   webhookUrl: appConfig.webTool.publish.webhookUrl,
   apiKey: appConfig.webTool.publish.apiKey,
@@ -207,6 +232,8 @@ const tracedProcessor = createConversationProcessor({
   executeOrderReportFn: executeOrderReport,
   executeOrderLookupFn: executeOrderLookup,
   executeOrderStatusFn: executeOrderStatus,
+  executeOrderUpdateFn: executeOrderUpdate,
+  executeOrderCancelFn: executeOrderCancel,
   orderReportTimezone: appConfig.timezone,
   executeWebPublishFn: executeWebPublish,
   webChatEnabled: appConfig.webTool.chatEnabled,

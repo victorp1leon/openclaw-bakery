@@ -1,7 +1,7 @@
 # DDD Roadmap Coverage Matrix
 
 Status: In Progress
-Last Updated: 2026-03-09
+Last Updated: 2026-03-11
 
 ## Purpose
 Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
@@ -44,8 +44,8 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 | 3 | `order.create` Sheets row | `.../Tools/Specs/append-order.spec.md` (connector-ready) | `src/tools/order/appendOrder.test.ts` + runtime confirm tests | `src/tools/order/appendOrder.ts` (provider `apps_script`/`gws`, default Apps Script, dry-run + retries bounded) | Done | Validar smoke de provider `gws` en entorno controlado |
 | 4 | `web.publish` | `.../Tools/Specs/publish-site.spec.md` (connector-ready, catalog + Facebook source policy) | `src/tools/web/publishSite.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/web-smoke.ts` + `scripts/web/publish-site-from-content.ts` | `src/tools/web/publishSite.ts` + runtime `intent web` (flag `WEB_CHAT_ENABLE`) + flujo CLI/CI `web:publish` + webhook local con target Netlify publico opcional | Done | Mantener runbook operativo y monitoreo de deploys en Netlify |
 | 4 | `web.site.build` | Roadmap + content-driven plan | `npm run web:build` validation | `scripts/web/build-site-from-content.ts` + `scripts/web/import-facebook-images.ts` -> `site/dist/*` | Done | Cargar logo/tarjeta reales y curar galeria importada de Facebook |
-| 3 | `order.update` | `.../Tools/Specs/update-order.spec.md` | No | No | Partial | Implementar tool + wiring runtime + tests |
-| 3 | `order.cancel` | `.../Tools/Specs/cancel-order.spec.md` | No | No | Partial | Implementar tool + wiring runtime + tests |
+| 3 | `order.update` | `.../Tools/Specs/update-order.spec.md` | `src/tools/order/updateOrder.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/update-smoke.ts` | Mutacion de `Pedidos` via `gws` con confirm flow, referencia (`folio|operation_id_ref`), patch controlado, auditoria en `notas` e idempotencia por `operation_id` | Done | Monitorear uso real y agregar smoke live controlado cuando negocio lo apruebe |
+| 3 | `order.cancel` | `.../Tools/Specs/cancel-order.spec.md` | `src/tools/order/cancelOrder.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/cancel-smoke.ts` | Mutacion de cancelacion en `Pedidos` via `gws` con marker `[CANCELADO]`, idempotencia por marker existente y confirm flow en runtime | Done | Monitorear tasa de no-op (`already_canceled=true`) y validar smoke live controlado |
 | 3 | `order.status` | `.../Tools/Specs/order-status.spec.md` | `src/tools/order/orderStatus.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/status-smoke.ts` | Lectura read-only de `Pedidos` via `gws` + estado operativo derivado (`programado|hoy|atrasado|cancelado`) | Done | Monitorear precision de `estado_operativo` en datos legacy sin fecha ISO |
 | 3 | `order.lookup` | `.../Tools/Specs/lookup-order.spec.md` | `src/tools/order/lookupOrder.test.ts` + `src/runtime/conversationProcessor.test.ts` | Lectura read-only de `Pedidos` via `gws` + lookup por folio/nombre/producto | Done | Extender a estado enriquecido de pedido si se prioriza |
 | 3 | `payment.record` | `.../Tools/Specs/record-payment.spec.md` | No | No | Partial | Implementar tool + wiring runtime + tests |
@@ -64,7 +64,7 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 ## Immediate Design Backlog (Spec-First)
 1. Mantener `npm run web:rollback:drill` como control manual bajo demanda y conservar bitacora de tiempos por ejecucion.
 2. Fase 3 funcional:
-   - Implementar `order.update`, `order.cancel`, `payment.record` (specs ya creadas).
+   - Implementar `payment.record` (spec ya creada).
    - Definir spec de `quote.order`.
 3. Fases 5 y 6: analytics (`costing/profit/cashflow`) y admin skills.
 

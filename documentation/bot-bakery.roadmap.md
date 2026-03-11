@@ -1,7 +1,7 @@
 # OpenClaw Bakery Bot Roadmap (v1)
 
 Status: MVP
-Last Updated: 2026-03-09
+Last Updated: 2026-03-11
 
 ## 1) Project Goal
 
@@ -236,12 +236,14 @@ Current coverage (status):
 - `report.orders` v3: queries by dia/semana/mes/año (including explicit date and month references) reading Google Sheets (`Pedidos`) via `gws`.
 - `order.lookup` v1: read-only query by folio/nombre/producto over Google Sheets (`Pedidos`) via `gws`.
 - `order.status` v1: read-only query with `estado_pago` and derived `estado_operativo` (`programado|hoy|atrasado|cancelado`) over Google Sheets (`Pedidos`) via `gws`.
+- `order.update` v1: mutation by `folio|operation_id_ref` over Google Sheets (`Pedidos`) via `gws` with confirm flow, patch validation, and audit tag in `notas`.
+- `order.cancel` v1: mutation by `folio|operation_id_ref` over Google Sheets (`Pedidos`) via `gws` with cancel marker `[CANCELADO]` and idempotent no-op when already canceled.
 - `expense.add`: end-to-end completed (HTTP Apps Script live validated) with API key hardening and smoke validation.
 - `web.publish`: adapter + runtime flow integrated, with chat path behind feature flag and content-driven terminal/CI publish path enabled.
 - Static site scaffold generated from repository content (`site/CONTENT.json` -> `site/dist`) via `npm run web:build`.
 - Branding-ready scaffold (`logo` + `tarjeta`) and Facebook gallery import helper available (`npm run web:import:facebook`).
 - UI smoke coverage for conversion-critical flows available via Playwright-core (`npm run smoke:web:ui`), including desktop/mobile checks and WhatsApp CTA validation.
-- Pending: implementacion de `order.update`, `order.cancel`, `payment.record` (spec-first ya definido), mas reportes avanzados (reminders), scheduling, customers, costing/profitability, and inventory.
+- Pending: implementacion de `payment.record` (spec-first ya definido), mas reportes avanzados (reminders), scheduling, customers, costing/profitability, and inventory.
 
 Execution tracking source of truth:
 - `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md`

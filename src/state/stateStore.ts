@@ -3,7 +3,9 @@ import { db } from "./database";
 export type PendingAction =
   | { intent: "gasto"; payload: any }
   | { intent: "pedido"; payload: any }
-  | { intent: "web"; payload: any };
+  | { intent: "web"; payload: any }
+  | { intent: "order.update"; payload: any }
+  | { intent: "order.cancel"; payload: any };
 
 export type ConvoState = {
   pending?: {

@@ -171,6 +171,56 @@ let createConversationProcessor: (args: {
     }>;
     detail: string;
   }>;
+  executeOrderUpdateFn?: (args: {
+    operation_id: string;
+    chat_id: string;
+    reference: {
+      folio?: string;
+      operation_id_ref?: string;
+    };
+    patch: unknown;
+    dryRun?: boolean;
+  }) => Promise<{
+    ok: boolean;
+    dry_run: boolean;
+    operation_id: string;
+    payload: {
+      reference: {
+        folio?: string;
+        operation_id_ref?: string;
+      };
+      patch: Record<string, unknown>;
+      matched_row_index?: number;
+      updated_fields?: string[];
+      before?: Record<string, unknown>;
+      after?: Record<string, unknown>;
+    };
+    detail: string;
+  }>;
+  executeOrderCancelFn?: (args: {
+    operation_id: string;
+    chat_id: string;
+    reference: {
+      folio?: string;
+      operation_id_ref?: string;
+    };
+    motivo?: string;
+    dryRun?: boolean;
+  }) => Promise<{
+    ok: boolean;
+    dry_run: boolean;
+    operation_id: string;
+    payload: {
+      reference: {
+        folio?: string;
+        operation_id_ref?: string;
+      };
+      matched_row_index?: number;
+      already_canceled: boolean;
+      after?: Record<string, unknown>;
+    };
+    detail: string;
+  }>;
   botPersona?: "neutral" | "bakery_warm" | "concise";
   webChatEnabled?: boolean;
   onTrace?: (event: {
@@ -547,6 +597,175 @@ describe("conversation processor security flow", () => {
       chat_id: "chat-status-empty",
       query: "inexistente"
     });
+  });
+
+  it("inicia flujo de order.update con resumen y confirmacion", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+    const executeOrderUpdateFn = vi.fn(async ({ operation_id, reference, patch }) => ({
+      ok: true,
+      dry_run: false,
+      operation_id,
+      payload: {
+        reference,
+        patch: patch as Record<string, unknown>,
+        matched_row_index: 12,
+        updated_fields: ["cantidad", "notas"]
+      },
+      detail: "update-order executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-update"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-order-update",
+      routeIntentFn,
+      executeOrderUpdateFn
+    });
+
+    const summary = await processor.handleMessage({
+      chat_id: "chat-order-update",
+      text: 'actualiza pedido folio op-xyz-123 {"patch":{"cantidad":10}}'
+    });
+    expect(summary[0]).toContain("Resumen");
+    expect(summary[0]).toContain("order.update");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+
+    const done = await processor.handleMessage({ chat_id: "chat-order-update", text: "confirmar" });
+    expect(done[0]).toContain("Ejecutado");
+    expect(executeOrderUpdateFn).toHaveBeenCalledWith({
+      operation_id: "op-order-update",
+      chat_id: "chat-order-update",
+      reference: { folio: "op-xyz-123", operation_id_ref: undefined },
+      patch: { cantidad: 10 }
+    });
+    expect(getOperation("op-order-update")?.status).toBe("executed");
+  });
+
+  it("devuelve parse error cuando order.update no incluye patch", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-update-parse"]),
+      routeIntentFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-order-update-parse",
+      text: "actualiza pedido folio op-xyz-123"
+    });
+
+    expect(replies[0]).toContain("order_update_patch_missing");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+  });
+
+  it("mantiene pendiente y marca failed cuando falla order.update", async () => {
+    const executeOrderUpdateFn = vi.fn(async () => {
+      throw new Error("order_update_gws_write_rate_limit");
+    });
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-update-fail"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-order-update-fail",
+      routeIntentFn: async () => "pedido",
+      executeOrderUpdateFn
+    });
+
+    await processor.handleMessage({
+      chat_id: "chat-order-update-fail",
+      text: 'actualiza pedido folio op-xyz-123 {"patch":{"estado_pago":"pagado"}}'
+    });
+    const failed = await processor.handleMessage({ chat_id: "chat-order-update-fail", text: "confirmar" });
+
+    expect(failed[0]).toContain("No se pudo ejecutar el pedido");
+    expect(getOperation("op-order-update-fail")?.status).toBe("failed");
+    expect(getState("chat-order-update-fail").pending?.operation_id).toBe("op-order-update-fail");
+  });
+
+  it("inicia flujo de order.cancel con resumen y confirmacion", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+    const executeOrderCancelFn = vi.fn(async ({ operation_id, reference, motivo }) => ({
+      ok: true,
+      dry_run: false,
+      operation_id,
+      payload: {
+        reference,
+        matched_row_index: 9,
+        already_canceled: false,
+        after: {
+          folio: reference.folio ?? "",
+          notas: `[CANCELADO] op:${operation_id} motivo:${motivo ?? "n/a"}`
+        }
+      },
+      detail: "cancel-order executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-cancel"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-order-cancel",
+      routeIntentFn,
+      executeOrderCancelFn
+    });
+
+    const summary = await processor.handleMessage({
+      chat_id: "chat-order-cancel",
+      text: 'cancela pedido folio op-xyz-123 {"motivo":"cliente cancelo"}'
+    });
+    expect(summary[0]).toContain("Resumen");
+    expect(summary[0]).toContain("order.cancel");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+
+    const done = await processor.handleMessage({ chat_id: "chat-order-cancel", text: "confirmar" });
+    expect(done[0]).toContain("Ejecutado");
+    expect(executeOrderCancelFn).toHaveBeenCalledWith({
+      operation_id: "op-order-cancel",
+      chat_id: "chat-order-cancel",
+      reference: { folio: "op-xyz-123", operation_id_ref: undefined },
+      motivo: "cliente cancelo"
+    });
+    expect(getOperation("op-order-cancel")?.status).toBe("executed");
+  });
+
+  it("devuelve parse error cuando order.cancel no incluye referencia", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-cancel-parse"]),
+      routeIntentFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-order-cancel-parse",
+      text: 'cancela pedido {"motivo":"cliente cancelo"}'
+    });
+
+    expect(replies[0]).toContain("order_cancel_reference_missing");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+  });
+
+  it("mantiene pendiente y marca failed cuando falla order.cancel", async () => {
+    const executeOrderCancelFn = vi.fn(async () => {
+      throw new Error("order_cancel_gws_write_rate_limit");
+    });
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-cancel-fail"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-order-cancel-fail",
+      routeIntentFn: async () => "pedido",
+      executeOrderCancelFn
+    });
+
+    await processor.handleMessage({
+      chat_id: "chat-order-cancel-fail",
+      text: "cancela pedido folio op-xyz-123"
+    });
+    const failed = await processor.handleMessage({ chat_id: "chat-order-cancel-fail", text: "confirmar" });
+
+    expect(failed[0]).toContain("No se pudo ejecutar el pedido");
+    expect(getOperation("op-order-cancel-fail")?.status).toBe("failed");
+    expect(getState("chat-order-cancel-fail").pending?.operation_id).toBe("op-order-cancel-fail");
   });
 
   it("no confunde alta de pedido con consulta de reporte", async () => {

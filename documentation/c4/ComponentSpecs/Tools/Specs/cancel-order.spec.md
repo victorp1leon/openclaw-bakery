@@ -1,7 +1,7 @@
 # Spec - cancel-order (Phase 3 lifecycle)
 
-Status: Draft
-Last Updated: 2026-03-09
+Status: MVP
+Last Updated: 2026-03-11
 
 ## Objective
 Cancel an existing order in Google Sheets (`Pedidos`) without deleting history.
@@ -69,4 +69,3 @@ Cancellation must be explicit, auditable, and idempotent.
 - `returns_already_canceled_true_when_marker_exists`
 - `retries_on_transient_gws_failure_then_succeeds`
 - `fails_when_gws_command_unavailable`
-
