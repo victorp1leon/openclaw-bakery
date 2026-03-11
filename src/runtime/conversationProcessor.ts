@@ -21,6 +21,12 @@ import {
 import { createCardTool } from "../tools/order/createCard";
 import { createLookupOrderTool, type OrderLookupResult } from "../tools/order/lookupOrder";
 import { createOrderCardSyncTool, type TrelloCardSnapshot } from "../tools/order/orderCardSync";
+import {
+  createRecordPaymentTool,
+  type PaymentRecordExecutionPayload,
+  type PaymentRecordInput,
+  type PaymentRecordReference
+} from "../tools/order/recordPayment";
 import { createOrderStatusTool, type OrderStatusResult } from "../tools/order/orderStatus";
 import { createReportOrdersTool, type OrderReportPeriod, type OrderReportResult } from "../tools/order/reportOrders";
 import {
@@ -117,6 +123,19 @@ type ProcessorDeps = {
     dry_run: boolean;
     operation_id: string;
     payload: OrderCancelExecutionPayload;
+    detail: string;
+  }>;
+  executePaymentRecordFn?: (args: {
+    operation_id: string;
+    chat_id: string;
+    reference: PaymentRecordReference;
+    payment: PaymentRecordInput;
+    dryRun?: boolean;
+  }) => Promise<{
+    ok: boolean;
+    dry_run: boolean;
+    operation_id: string;
+    payload: PaymentRecordExecutionPayload;
     detail: string;
   }>;
   orderCardSync?: {
@@ -814,6 +833,124 @@ function parseOrderCancelRequest(text: string):
   };
 }
 
+function parsePaymentAmountFromText(text: string): number | undefined {
+  const amountMatch = text.match(/\b(?:monto|abono|pago)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\b/i);
+  if (!amountMatch?.[1]) return undefined;
+  const parsed = Number(amountMatch[1].replace(",", "."));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function parsePaymentRecordRequest(text: string):
+  | { matched: false }
+  | { matched: true; result: ParseResult } {
+  const normalized = normalizeForMatch(text);
+  const hasOrderWord = /\bpedidos?\b/.test(normalized);
+  const hasMutationVerb = /\b(registra|registrar|marca|marcar|aplica|aplicar|abona|abonar|liquida|liquidar)\b/.test(normalized);
+  const hasPaymentHint = /\b(pago|abono|liquidacion)\b/.test(normalized) || /\bestado\s+de\s+pago\b/.test(normalized);
+  if (!hasOrderWord || !hasMutationVerb || !hasPaymentHint) {
+    return { matched: false };
+  }
+
+  const inline = parseInlineJsonObject(text.trim());
+  if (inline.ok === false) {
+    return {
+      matched: true,
+      result: { ok: false, source: "fallback", error: "payment_record_payload_json_invalid" }
+    };
+  }
+
+  const reference: PaymentRecordReference = {};
+  let payment: Record<string, unknown> | undefined;
+
+  if (inline.ok === true) {
+    const payload = inline.value;
+    if (isObjectRecord(payload.patch)) {
+      return { matched: false };
+    }
+
+    if (isObjectRecord(payload.reference)) {
+      reference.folio = trimString(payload.reference.folio);
+      reference.operation_id_ref = trimString(payload.reference.operation_id_ref);
+    } else {
+      reference.folio = trimString(payload.folio);
+      reference.operation_id_ref = trimString(payload.operation_id_ref);
+    }
+
+    if (isObjectRecord(payload.payment)) {
+      payment = { ...payload.payment };
+    } else {
+      const inlinePayment: Record<string, unknown> = {};
+      const inlineEstado = trimString(payload.estado_pago);
+      if (inlineEstado) inlinePayment.estado_pago = inlineEstado;
+
+      const inlineMetodo = trimString(payload.metodo);
+      if (inlineMetodo) inlinePayment.metodo = inlineMetodo;
+
+      if (payload.monto != null && String(payload.monto).trim() !== "") {
+        inlinePayment.monto = payload.monto;
+      }
+
+      const inlineNotas = trimString(payload.notas);
+      if (inlineNotas) inlinePayment.notas = inlineNotas;
+
+      if (Object.keys(inlinePayment).length > 0) payment = inlinePayment;
+    }
+  }
+
+  const fromText = extractOrderReferenceFromText(text);
+  if (!reference.folio) reference.folio = fromText.folio;
+  if (!reference.operation_id_ref) reference.operation_id_ref = fromText.operation_id_ref;
+
+  if (!reference.folio && !reference.operation_id_ref) {
+    return {
+      matched: true,
+      result: { ok: false, source: "fallback", error: "payment_record_reference_missing" }
+    };
+  }
+
+  if (!payment) {
+    payment = {};
+    const estadoPago = normalized.match(/\b(pagado|pendiente|parcial)\b/)?.[1];
+    if (estadoPago) {
+      payment.estado_pago = estadoPago;
+    }
+
+    const monto = parsePaymentAmountFromText(text);
+    if (monto != null) {
+      payment.monto = monto;
+    }
+
+    const metodo = normalized.match(/\b(efectivo|transferencia|tarjeta|otro)\b/)?.[1];
+    if (metodo) {
+      payment.metodo = metodo;
+    }
+
+    const nota = text.match(/\bnota\s*[:=]\s*(.+)$/i)?.[1]?.trim();
+    if (nota) {
+      payment.notas = nota;
+    }
+  }
+
+  if (typeof payment.estado_pago !== "string" || payment.estado_pago.trim().length === 0) {
+    return {
+      matched: true,
+      result: { ok: false, source: "fallback", error: "payment_record_estado_pago_missing" }
+    };
+  }
+
+  return {
+    matched: true,
+    result: {
+      ok: true,
+      source: "fallback",
+      payload: {
+        reference,
+        payment
+      }
+    }
+  };
+}
+
 async function parseWebRequest(text: string): Promise<ParseResult> {
   const normalized = text.trim();
   const lower = normalized.toLowerCase();
@@ -936,6 +1073,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeOrderStatusFn = deps.executeOrderStatusFn ?? createOrderStatusTool();
   const executeOrderUpdateFn = deps.executeOrderUpdateFn ?? createUpdateOrderTool();
   const executeOrderCancelFn = deps.executeOrderCancelFn ?? createCancelOrderTool();
+  const executePaymentRecordFn = deps.executePaymentRecordFn ?? createRecordPaymentTool();
   const orderCardSync = deps.orderCardSync ?? createOrderCardSyncTool();
   const orderReportTimezone = deps.orderReportTimezone?.trim() || REPORT_DEFAULT_TIMEZONE;
   const copy = createBotCopy(deps.botPersona);
@@ -1393,6 +1531,88 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           }
         }
 
+        if (st.pending.action.intent === "payment.record") {
+          const payload = st.pending.action.payload;
+          if (!isObjectRecord(payload) || !isObjectRecord(payload.reference) || !isObjectRecord(payload.payment)) {
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "failed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "payment_record_execute_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "payment.record",
+              detail: "payload_validation_failed"
+            });
+
+            return [
+              copy.orderFailed(st.pending.operation_id)
+            ];
+          }
+
+          try {
+            const execution = await executePaymentRecordFn({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              reference: payload.reference as PaymentRecordReference,
+              payment: payload.payment as PaymentRecordInput
+            });
+            if (!execution.ok) {
+              throw new Error(execution.detail || "payment_record_failed");
+            }
+
+            st.pending.action.payload = execution.payload as unknown as Record<string, unknown>;
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "executed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "payment_record_execute_succeeded",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "payment.record",
+              detail: execution.detail
+            });
+
+            clearPending(msg.chat_id);
+            return [copy.executed(st.pending.operation_id, execution.dry_run)];
+          } catch (err) {
+            const safeDetail = err instanceof Error ? err.message : String(err);
+
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "failed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "payment_record_execute_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "payment.record",
+              detail: safeDetail
+            });
+
+            return [
+              copy.orderFailed(st.pending.operation_id)
+            ];
+          }
+        }
+
         if (st.pending.action.intent === "web") {
           const vWeb = validateWebPayloadDraft(st.pending.action.payload as Record<string, unknown>);
           if (!vWeb.ok) {
@@ -1569,6 +1789,59 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       }
 
       return [copy.pendingOperation(st.pending.operation_id)];
+    }
+
+    const paymentRecordDraft = parsePaymentRecordRequest(msg.text);
+    if (paymentRecordDraft.matched) {
+      if (!paymentRecordDraft.result.ok) {
+        deps.onTrace?.({
+          event: "parse_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "payment.record",
+          intent_source: "fallback",
+          parse_source: paymentRecordDraft.result.source ?? "fallback",
+          detail: paymentRecordDraft.result.error
+        });
+        return [copy.parseError(paymentRecordDraft.result.error)];
+      }
+
+      const operation_id = newOperationId();
+      const payload = paymentRecordDraft.result.payload as Record<string, unknown>;
+      const pending = {
+        operation_id,
+        idempotency_key: operation_id,
+        action: { intent: "payment.record" as const, payload },
+        missing: [],
+        asked: undefined
+      };
+
+      setState(msg.chat_id, { pending });
+      const register = registerPendingOperation({
+        operation_id,
+        chat_id: msg.chat_id,
+        intent: "payment.record",
+        payload,
+        idempotency_key: operation_id
+      });
+
+      if (!register.inserted) {
+        clearPending(msg.chat_id);
+        return [
+          copy.duplicate(register.operation.operation_id, register.operation.status)
+        ];
+      }
+
+      deps.onTrace?.({
+        event: "parse_succeeded",
+        chat_id: msg.chat_id,
+        strict_mode,
+        intent: "payment.record",
+        intent_source: "fallback",
+        parse_source: paymentRecordDraft.result.source ?? "fallback"
+      });
+
+      return [copy.summary("payment.record", payload, operation_id)];
     }
 
     const orderUpdateDraft = parseOrderUpdateRequest(msg.text);

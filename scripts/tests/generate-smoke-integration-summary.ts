@@ -526,6 +526,11 @@ function main(): void {
       env: smokeLive ? undefined : { SMOKE_CANCEL_LIVE: "0", SMOKE_CANCEL_DRY_RUN: "1" }
     },
     {
+      scenario: "smoke:payment",
+      npmScript: "smoke:payment",
+      env: smokeLive ? undefined : { SMOKE_PAYMENT_LIVE: "0", SMOKE_PAYMENT_DRY_RUN: "1" }
+    },
+    {
       scenario: "smoke:lifecycle",
       npmScript: "smoke:lifecycle",
       env: smokeLive

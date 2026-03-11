@@ -44,7 +44,7 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - For order status queries (e.g. `estado del pedido op-123`), route deterministically to `order-status` without entering confirm flow.
 - For `order.update`, detect update intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; apply Trello+Sheets with rollback on partial failure.
 - For `order.cancel`, detect cancel intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; apply Trello+Sheets with rollback on partial failure.
-- (Planned) For `payment.record`, require summary + explicit `confirmar/cancelar` before tool execution.
+- For `payment.record`, detect payment intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; persist payment movement in Sheets with audit trail in `notas`.
 - For `web`, execute `publish-site` adapter on confirm path.
 - `web` conversational flow may be feature-gated; when disabled, runtime must return a controlled message and suggest content-driven terminal/CI publish path.
 
@@ -92,5 +92,6 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - `returns_order_status_for_supported_queries`
 - `supports_order_update_summary_and_confirm_flow`
 - `supports_order_cancel_summary_and_confirm_flow`
+- `supports_payment_record_summary_and_confirm_flow`
 - `emits_allowlist_reject_trace`
 - `rejects_message_when_rate_limited`

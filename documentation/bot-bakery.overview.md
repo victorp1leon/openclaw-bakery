@@ -30,5 +30,4 @@ It centralizes common business operations in natural language:
 - Channels: console and Telegram (long polling)
 
 ## Next Scope (Priority)
-- `payment.record` end-to-end with Trello + Sheets consistency rules
 - advanced reporting and customer/inventory capabilities

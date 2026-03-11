@@ -48,7 +48,7 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 | 3 | `order.cancel` | `.../Tools/Specs/cancel-order.spec.md` | `src/tools/order/cancelOrder.test.ts` + `src/tools/order/orderCardSync.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/cancel-smoke.ts` | Cancelacion con confirm flow y consistencia Trello+Sheets: mover tarjeta a lista cancelados + marker en `notas` + `estado_pedido=cancelado`, con rollback en fallos parciales | Done | Monitorear tasa de no-op (`already_canceled=true`) y validar smoke live controlado |
 | 3 | `order.status` | `.../Tools/Specs/order-status.spec.md` | `src/tools/order/orderStatus.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/status-smoke.ts` | Lectura read-only de `Pedidos` via `gws` + estado operativo derivado (`programado|hoy|atrasado|cancelado`) | Done | Monitorear precision de `estado_operativo` en datos legacy sin fecha ISO |
 | 3 | `order.lookup` | `.../Tools/Specs/lookup-order.spec.md` | `src/tools/order/lookupOrder.test.ts` + `src/runtime/conversationProcessor.test.ts` | Lectura read-only de `Pedidos` via `gws` + lookup por folio/nombre/producto | Done | Extender a estado enriquecido de pedido si se prioriza |
-| 3 | `payment.record` | `.../Tools/Specs/record-payment.spec.md` | No | No | Partial | Implementar tool + wiring runtime + tests |
+| 3 | `payment.record` | `.../Tools/Specs/record-payment.spec.md` | `src/tools/order/recordPayment.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/payment-smoke.ts` | Mutacion de pago por `folio|operation_id_ref` via `gws` con confirm flow, actualizacion `estado_pago`, evento `[PAGO]` en `notas`, rechazo para pedidos cancelados e idempotencia por `operation_id` | Done | Monitorear pagos parciales y estandarizar conciliacion de montos |
 | 3 | `quote.order` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
 | 3 | `shopping.list.generate` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
 | 3 | `inventory.consume` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
@@ -64,7 +64,6 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 ## Immediate Design Backlog (Spec-First)
 1. Mantener `npm run web:rollback:drill` como control manual bajo demanda y conservar bitacora de tiempos por ejecucion.
 2. Fase 3 funcional:
-   - Implementar `payment.record` (spec ya creada).
    - Definir spec de `quote.order`.
 3. Fases 5 y 6: analytics (`costing/profit/cashflow`) y admin skills.
 

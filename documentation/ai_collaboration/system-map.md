@@ -56,7 +56,7 @@ Last Updated: 2026-03-11
 6. `order.status`: consulta de estado operativo/pago -> lectura Sheets (`gws`) -> respuesta resumida (sin confirmacion ni mutacion).
 7. `order.update`: mutacion por referencia -> confirmacion -> sync Trello + Sheets (`gws`) con rollback en fallos parciales -> persistencia/idempotencia.
 8. `order.cancel`: mutacion de cancelacion (marker `[CANCELADO]` + `estado_pedido=cancelado`) -> confirmacion -> mover tarjeta Trello a cancelados + escritura Sheets (`gws`) con rollback en fallos parciales -> persistencia/idempotencia.
-9. (Planned) `payment.record`: registro de movimiento de pago -> confirmacion -> escritura Sheets (`gws`) -> persistencia/idempotencia.
+9. `payment.record`: mutacion de pago por referencia -> confirmacion -> actualizacion de `estado_pago` + evento `[PAGO]` en `notas` via Sheets (`gws`) -> persistencia/idempotencia.
 
 ## Source Documents
 - `documentation/bot-bakery.overview.md`

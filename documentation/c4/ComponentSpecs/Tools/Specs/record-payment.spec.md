@@ -1,7 +1,7 @@
 # Spec - record-payment (Phase 3 lifecycle)
 
-Status: Draft
-Last Updated: 2026-03-09
+Status: MVP
+Last Updated: 2026-03-11
 
 ## Objective
 Register a payment movement for an existing order in Sheets `Pedidos`.
@@ -77,4 +77,3 @@ This adapter mutates payment fields and must preserve an auditable movement trai
 - `updates_estado_pago_and_appends_payment_event`
 - `retries_on_transient_gws_failure_then_succeeds`
 - `fails_when_gws_command_unavailable`
-

@@ -1,7 +1,7 @@
 # Phase 3 - Order Lifecycle Skills Spec-First
 
 > **Type:** `Implementation`
-> **Status:** `In Progress`
+> **Status:** `Complete`
 > **Created:** `2026-03-09`
 > **Last Updated:** `2026-03-11`
 
@@ -42,10 +42,10 @@ Ya se cubrio `order.create`, `order.lookup` y reportes por periodo (`day/week/mo
 |---|---|---|---|
 | 1 | Aterrizar contratos (`*.spec.md`) de `order.update/cancel/status/payment.record` | Completed | Specs draft creadas en `Tools/Specs/` |
 | 2 | Actualizar spec de runtime para routing e intenciones | Completed | `order.status`, `order.update` y `order.cancel` documentados con reglas de confirm flow |
-| 3 | Implementar tools + wiring en runtime/skills | In Progress | `order.status` + `order.update` + `order.cancel` implementados con sync Trello+Sheets y rollback; conectores de Sheets consolidados a `gws` only |
-| 4 | Agregar tests unitarios e integracion de runtime | In Progress | Cobertura para rollback/create/delete card + `order.status` + `order.update` + `order.cancel`; suite completa estable tras migracion `gws` |
-| 5 | Agregar smoke tests (mock default, live opcional) | In Progress | `smoke:status` + `smoke:update` + `smoke:cancel` + `smoke:lifecycle`; falta `payment.record` |
-| 6 | Cierre documental y handoff de sesion | In Progress | Docs y matriz actualizadas para `gws` only en gasto/pedido; falta `payment.record` |
+| 3 | Implementar tools + wiring en runtime/skills | Completed | `order.status` + `order.update` + `order.cancel` + `payment.record` implementados; mutaciones en `gws` con confirm flow y trazabilidad por `operation_id` |
+| 4 | Agregar tests unitarios e integracion de runtime | Completed | Cobertura de runtime/tool para `order.status` + `order.update` + `order.cancel` + `payment.record`, incluyendo fallos y retries |
+| 5 | Agregar smoke tests (mock default, live opcional) | Completed | `smoke:status` + `smoke:update` + `smoke:cancel` + `smoke:payment` + `smoke:lifecycle` integrados al resumen smoke/integration |
+| 6 | Cierre documental y handoff de sesion | Completed | Specs/runtime/system-map/roadmap/matriz DDD alineados al estado implementado |
 
 ## Decisions & Trade-offs
 | Decision | Rationale | Date |
@@ -56,16 +56,18 @@ Ya se cubrio `order.create`, `order.lookup` y reportes por periodo (`day/week/mo
 
 ## Validation
 - Tests a ejecutar:
-  - `npm test -- src/tools/order/orderCardSync.test.ts src/tools/order/updateOrder.test.ts src/tools/order/cancelOrder.test.ts src/runtime/conversationProcessor.test.ts src/health/healthcheck.test.ts`
+  - `npm test -- src/tools/order/orderCardSync.test.ts src/tools/order/updateOrder.test.ts src/tools/order/cancelOrder.test.ts src/tools/order/recordPayment.test.ts src/runtime/conversationProcessor.test.ts src/health/healthcheck.test.ts`
   - `npm run smoke:update`
   - `npm run smoke:cancel`
+  - `npm run smoke:payment`
 - Criterio de aceptacion:
   - Mutaciones solo ejecutan tras `confirmar`.
   - `order.status` responde sin mutacion ni confirm flow.
   - `order.update` genera resumen y ejecuta tras confirmacion con referencia + patch validos.
   - `order.cancel` agrega marker `[CANCELADO]` y retorna no-op deterministico cuando ya estaba cancelado.
+  - `payment.record` actualiza `estado_pago`, agrega evento `[PAGO]` en `notas`, rechaza pedidos cancelados y evita duplicar evento por `operation_id`.
   - `order.create`, `order.update` y `order.cancel` mantienen consistencia Trello+Sheets (si falla un lado, rollback del otro).
   - Cambios quedan trazables por `operation_id` y sin duplicados accidentales.
 
 ## Outcome
-Plan activo para implementar ciclo de vida de pedidos con enfoque spec-first y validacion operacional (tests + smokes), preservando el baseline de seguridad del runtime.
+Ciclo de vida de pedidos de Fase 3 completado (`order.update`, `order.cancel`, `order.status`, `payment.record`) con enfoque spec-first, validacion por tests+smokes y baseline operativo `gws` only.

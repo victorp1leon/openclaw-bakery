@@ -243,7 +243,7 @@ Current coverage (status):
 - Static site scaffold generated from repository content (`site/CONTENT.json` -> `site/dist`) via `npm run web:build`.
 - Branding-ready scaffold (`logo` + `tarjeta`) and Facebook gallery import helper available (`npm run web:import:facebook`).
 - UI smoke coverage for conversion-critical flows available via Playwright-core (`npm run smoke:web:ui`), including desktop/mobile checks and WhatsApp CTA validation.
-- Pending: implementacion de `payment.record` (spec-first ya definido), mas reportes avanzados (reminders), scheduling, customers, costing/profitability, and inventory.
+- Pending: reportes avanzados (reminders), scheduling, customers, costing/profitability, and inventory.
 
 Execution tracking source of truth:
 - `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md`

@@ -12,11 +12,11 @@ Execute external integrations based on actions that were already confirmed by th
 - `append-order`
 - `update-order`
 - `cancel-order`
+- `record-payment`
 - `report-orders`
 - `lookup-order`
 - `publish-site`
 - `order-status`
-- `record-payment` (draft, planned)
 
 ## Design Rules
 - Mutating tools execute only after prior confirmation.

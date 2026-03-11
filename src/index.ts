@@ -13,6 +13,7 @@ import { createCancelOrderTool } from "./tools/order/cancelOrder";
 import { createCreateCardTool } from "./tools/order/createCard";
 import { createLookupOrderTool } from "./tools/order/lookupOrder";
 import { createOrderCardSyncTool } from "./tools/order/orderCardSync";
+import { createRecordPaymentTool } from "./tools/order/recordPayment";
 import { createOrderStatusTool } from "./tools/order/orderStatus";
 import { createReportOrdersTool } from "./tools/order/reportOrders";
 import { createUpdateOrderTool } from "./tools/order/updateOrder";
@@ -212,6 +213,17 @@ const executeOrderCancel = createCancelOrderTool({
   maxRetries: appConfig.orderTool.sheets.maxRetries
 });
 
+const executePaymentRecord = createRecordPaymentTool({
+  dryRunDefault: appConfig.orderTool.sheets.dryRun,
+  gwsCommand: appConfig.orderTool.sheets.gws.command,
+  gwsCommandArgs: appConfig.orderTool.sheets.gws.commandArgs,
+  gwsSpreadsheetId: appConfig.orderTool.sheets.gws.spreadsheetId,
+  gwsRange: appConfig.orderTool.sheets.gws.range,
+  gwsValueInputOption: appConfig.orderTool.sheets.gws.valueInputOption,
+  timeoutMs: appConfig.orderTool.sheets.timeoutMs,
+  maxRetries: appConfig.orderTool.sheets.maxRetries
+});
+
 const executeWebPublish = createPublishSiteTool({
   webhookUrl: appConfig.webTool.publish.webhookUrl,
   apiKey: appConfig.webTool.publish.apiKey,
@@ -234,6 +246,7 @@ const tracedProcessor = createConversationProcessor({
   executeOrderStatusFn: executeOrderStatus,
   executeOrderUpdateFn: executeOrderUpdate,
   executeOrderCancelFn: executeOrderCancel,
+  executePaymentRecordFn: executePaymentRecord,
   orderCardSync,
   orderReportTimezone: appConfig.timezone,
   executeWebPublishFn: executeWebPublish,

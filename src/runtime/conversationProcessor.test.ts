@@ -234,6 +234,41 @@ let createConversationProcessor: (args: {
     };
     detail: string;
   }>;
+  executePaymentRecordFn?: (args: {
+    operation_id: string;
+    chat_id: string;
+    reference: {
+      folio?: string;
+      operation_id_ref?: string;
+    };
+    payment: {
+      estado_pago: "pagado" | "pendiente" | "parcial";
+      monto?: number;
+      metodo?: "efectivo" | "transferencia" | "tarjeta" | "otro";
+      notas?: string;
+    };
+    dryRun?: boolean;
+  }) => Promise<{
+    ok: boolean;
+    dry_run: boolean;
+    operation_id: string;
+    payload: {
+      reference: {
+        folio?: string;
+        operation_id_ref?: string;
+      };
+      matched_row_index?: number;
+      before: {
+        estado_pago?: string;
+      };
+      after: {
+        estado_pago?: string;
+      };
+      payment_event: string;
+      already_recorded: boolean;
+    };
+    detail: string;
+  }>;
   orderCardSync?: {
     updateCardForOrder: (args: {
       operation_id: string;
@@ -877,6 +912,96 @@ describe("conversation processor security flow", () => {
       snapshot: { card_id: "card-1" },
       dryRun: false
     });
+  });
+
+  it("inicia flujo de payment.record con resumen y confirmacion", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+    const executePaymentRecordFn = vi.fn(async ({ operation_id, reference, payment }) => ({
+      ok: true,
+      dry_run: false,
+      operation_id,
+      payload: {
+        reference,
+        matched_row_index: 11,
+        before: { estado_pago: "pendiente" },
+        after: { estado_pago: payment.estado_pago },
+        payment_event: `[PAGO] 2026-03-11T12:00:00.000Z op:${operation_id} estado:${payment.estado_pago} monto:${payment.monto ?? "n/a"} metodo:${payment.metodo ?? "n/a"} nota:${payment.notas ?? "n/a"}`,
+        already_recorded: false
+      },
+      detail: "record-payment executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-payment-record"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-payment-record",
+      routeIntentFn,
+      executePaymentRecordFn
+    });
+
+    const summary = await processor.handleMessage({
+      chat_id: "chat-payment-record",
+      text: 'registra pago del pedido folio op-xyz-123 {"payment":{"estado_pago":"parcial","monto":350,"metodo":"transferencia","notas":"anticipo"}}'
+    });
+    expect(summary[0]).toContain("Resumen");
+    expect(summary[0]).toContain("payment.record");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+
+    const done = await processor.handleMessage({ chat_id: "chat-payment-record", text: "confirmar" });
+    expect(done[0]).toContain("Ejecutado");
+    expect(executePaymentRecordFn).toHaveBeenCalledWith({
+      operation_id: "op-payment-record",
+      chat_id: "chat-payment-record",
+      reference: { folio: "op-xyz-123", operation_id_ref: undefined },
+      payment: {
+        estado_pago: "parcial",
+        monto: 350,
+        metodo: "transferencia",
+        notas: "anticipo"
+      }
+    });
+    expect(getOperation("op-payment-record")?.status).toBe("executed");
+  });
+
+  it("devuelve parse error cuando payment.record no incluye estado_pago", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-payment-record-parse"]),
+      routeIntentFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-payment-record-parse",
+      text: 'registra pago del pedido folio op-xyz-123 {"payment":{"monto":100}}'
+    });
+
+    expect(replies[0]).toContain("payment_record_estado_pago_missing");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+  });
+
+  it("mantiene pendiente y marca failed cuando falla payment.record", async () => {
+    const executePaymentRecordFn = vi.fn(async () => {
+      throw new Error("payment_record_gws_write_rate_limit");
+    });
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-payment-record-fail"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-payment-record-fail",
+      routeIntentFn: async () => "pedido",
+      executePaymentRecordFn
+    });
+
+    await processor.handleMessage({
+      chat_id: "chat-payment-record-fail",
+      text: 'registra pago del pedido folio op-xyz-123 {"payment":{"estado_pago":"pagado","monto":100}}'
+    });
+    const failed = await processor.handleMessage({ chat_id: "chat-payment-record-fail", text: "confirmar" });
+
+    expect(failed[0]).toContain("No se pudo ejecutar el pedido");
+    expect(getOperation("op-payment-record-fail")?.status).toBe("failed");
+    expect(getState("chat-payment-record-fail").pending?.operation_id).toBe("op-payment-record-fail");
   });
 
   it("no confunde alta de pedido con consulta de reporte", async () => {
