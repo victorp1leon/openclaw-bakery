@@ -48,7 +48,11 @@ describe("quote-order tool", () => {
 
     const optionRows = [
       ["categoria", "clave", "nombre", "precio_extra_mxn", "modo_calculo", "aplica_a", "activo", "notas"],
-      ["EXTRA", "decoracion_personalizada", "Decoracion personalizada", "120", "fijo", "pedido", "1", ""]
+      ["SABOR_PAN", "pan_vainilla", "Vainilla", "0", "fijo", "pasteles", "1", ""],
+      ["RELLENO", "relleno_oreo", "Oreo", "0", "fijo", "pasteles", "1", ""],
+      ["TIPO_BETUN", "betun_buttercream", "Buttercream", "0", "fijo", "pasteles", "1", ""],
+      ["TOPPING", "topping_fresas", "Fresas", "0", "fijo", "pasteles", "1", ""],
+      ["EXTRA", "decoracion_personalizada", "Decoracion personalizada", "$120 MXN", "fijo", "pasteles", "1", ""]
     ];
 
     const referenceRows = [
@@ -93,6 +97,12 @@ describe("quote-order tool", () => {
     expect(result.referenceContext).toEqual({
       matched: 2,
       averagePrice: 800
+    });
+    expect(result.optionSuggestions).toEqual({
+      quote_sabor_pan: ["Vainilla"],
+      quote_sabor_relleno: ["Oreo"],
+      quote_tipo_betun: ["Buttercream"],
+      quote_topping: ["Fresas"]
     });
     expect(gwsRunner).toHaveBeenCalledTimes(3);
   });

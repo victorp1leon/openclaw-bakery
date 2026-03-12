@@ -21,7 +21,12 @@ import {
 import { createCardTool } from "../tools/order/createCard";
 import { createLookupOrderTool, type OrderLookupResult } from "../tools/order/lookupOrder";
 import { createOrderCardSyncTool, type TrelloCardSnapshot } from "../tools/order/orderCardSync";
-import { createQuoteOrderTool, type QuoteOrderResult } from "../tools/order/quoteOrder";
+import {
+  createQuoteOrderTool,
+  type QuoteCustomizationField,
+  type QuoteOptionSuggestions,
+  type QuoteOrderResult
+} from "../tools/order/quoteOrder";
 import {
   createRecordPaymentTool,
   type PaymentRecordExecutionPayload,
@@ -634,9 +639,100 @@ function parseQuoteShippingFromText(text: string): "envio_domicilio" | "recoger_
   return undefined;
 }
 
+const QUOTE_CUSTOMIZATION_FIELDS: QuoteCustomizationField[] = [
+  "quote_sabor_pan",
+  "quote_sabor_relleno",
+  "quote_tipo_betun",
+  "quote_topping"
+];
+
+function hasQuotePanInfo(text: string): boolean {
+  const normalized = normalizeForMatch(text);
+  return /\b(sabor(?:\s+de)?\s+pan|pan\s+de|sin\s+pan)\b/.test(normalized);
+}
+
+function hasQuoteFillingInfo(text: string): boolean {
+  const normalized = normalizeForMatch(text);
+  return /\b(relleno|sin\s+relleno)\b/.test(normalized);
+}
+
+function hasQuoteFrostingInfo(text: string): boolean {
+  const normalized = normalizeForMatch(text);
+  return /\b(betun|buttercream|chantilly|merengue|ganache|frosting|sin\s+betun)\b/.test(normalized);
+}
+
+function hasQuoteToppingInfo(text: string): boolean {
+  const normalized = normalizeForMatch(text);
+  return /\b(topping|topper|chispas|sprinkles|fruta|fresas|nuez|almendra|sin\s+topping)\b/.test(normalized);
+}
+
+function nextQuoteCustomizationField(query: string): QuoteCustomizationField | undefined {
+  if (!hasQuotePanInfo(query)) return "quote_sabor_pan";
+  if (!hasQuoteFillingInfo(query)) return "quote_sabor_relleno";
+  if (!hasQuoteFrostingInfo(query)) return "quote_tipo_betun";
+  if (!hasQuoteToppingInfo(query)) return "quote_topping";
+  return undefined;
+}
+
+function quotePromptForField(field: QuoteCustomizationField, suggestions?: string[]): string {
+  let prompt = "¿Qué topping llevará?";
+  if (field === "quote_sabor_pan") prompt = "¿Qué sabor será el pan?";
+  if (field === "quote_sabor_relleno") prompt = "¿Qué sabor de relleno deseas?";
+  if (field === "quote_tipo_betun") prompt = "¿Qué tipo de betún quieres?";
+
+  if (!suggestions || suggestions.length === 0) return prompt;
+  return `${prompt}\nOpciones: ${suggestions.join(", ")}.`;
+}
+
+function quoteHintLabelForField(field: QuoteCustomizationField): string {
+  if (field === "quote_sabor_pan") return "sabor de pan";
+  if (field === "quote_sabor_relleno") return "relleno";
+  if (field === "quote_tipo_betun") return "betun";
+  return "topping";
+}
+
+function isQuoteSkipAnswer(text: string): boolean {
+  const normalized = normalizeForMatch(text);
+  return /\b(sin|ninguno|ninguna|n\/a|no aplica|omitir|skip)\b/.test(normalized);
+}
+
+function parseQuoteCustomizationAnswer(text: string): string | undefined {
+  const answer = text.trim();
+  if (answer.length < 2) return undefined;
+  return answer;
+}
+
 function appendQuoteHint(query: string, hint: string): string {
   const merged = `${query} ${hint}`.trim();
   return merged.replace(/\s+/g, " ");
+}
+
+function parseQuoteOptionSuggestions(value: unknown): QuoteOptionSuggestions | undefined {
+  if (!isObjectRecord(value)) return undefined;
+
+  const out: QuoteOptionSuggestions = {};
+  for (const field of QUOTE_CUSTOMIZATION_FIELDS) {
+    const raw = value[field];
+    if (!Array.isArray(raw)) continue;
+
+    const seen = new Set<string>();
+    const labels = raw
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+      .filter((item) => {
+        const normalized = normalizeForMatch(item);
+        if (seen.has(normalized)) return false;
+        seen.add(normalized);
+        return true;
+      });
+
+    if (labels.length > 0) {
+      out[field] = labels;
+    }
+  }
+
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 function formatOrderReportReply(report: OrderReportResult): string {
@@ -1316,6 +1412,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         const payload = isObjectRecord(st.pending.action.payload) ? { ...st.pending.action.payload } : {};
         let query = trimString(payload.query) ?? "";
         const asked = st.pending.asked;
+        const payloadSuggestions = parseQuoteOptionSuggestions(payload.quote_option_suggestions);
 
         if (asked === "quote_product") {
           const productText = msg.text.trim();
@@ -1341,6 +1438,21 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           query = appendQuoteHint(query, shipping === "recoger_en_tienda" ? "recoger en tienda" : "envio a domicilio");
           payload.query = query;
           st.pending.action.payload = payload;
+        } else if (
+          asked === "quote_sabor_pan" ||
+          asked === "quote_sabor_relleno" ||
+          asked === "quote_tipo_betun" ||
+          asked === "quote_topping"
+        ) {
+          const answer = parseQuoteCustomizationAnswer(msg.text);
+          if (!answer) {
+            return [quotePromptForField(asked, payloadSuggestions?.[asked])];
+          }
+          const label = quoteHintLabelForField(asked);
+          const hint = isQuoteSkipAnswer(answer) ? `sin ${label}` : `${label} ${answer}`;
+          query = appendQuoteHint(query, hint);
+          payload.query = query;
+          st.pending.action.payload = payload;
         }
 
         const qty = parseQuoteQuantityFromText(query);
@@ -1359,23 +1471,12 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           return ["¿La entrega será para recoger en tienda o envío a domicilio?"];
         }
 
+        let quote: QuoteOrderResult;
         try {
-          const quote = await executeQuoteOrderFn({
+          quote = await executeQuoteOrderFn({
             chat_id: msg.chat_id,
             query
           });
-
-          deps.onTrace?.({
-            event: "quote_order_succeeded",
-            chat_id: msg.chat_id,
-            strict_mode,
-            intent: "quote.order",
-            intent_source: "fallback",
-            detail: `product=${quote.product.key};total=${quote.total}`
-          });
-
-          clearPending(msg.chat_id);
-          return [formatQuoteOrderReply(quote)];
         } catch (err) {
           const safeDetail = err instanceof Error ? err.message : String(err);
 
@@ -1398,6 +1499,31 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           clearPending(msg.chat_id);
           return ["No pude generar la cotización en este momento. Intenta de nuevo en unos minutos."];
         }
+
+        const customizationField = nextQuoteCustomizationField(query);
+        if (customizationField) {
+          const nextSuggestions = quote.optionSuggestions ?? payloadSuggestions;
+          if (nextSuggestions) {
+            payload.quote_option_suggestions = nextSuggestions;
+            st.pending.action.payload = payload;
+          }
+          st.pending.asked = customizationField;
+          st.pending.missing = [customizationField];
+          setState(msg.chat_id, st);
+          return [quotePromptForField(customizationField, nextSuggestions?.[customizationField])];
+        }
+
+        deps.onTrace?.({
+          event: "quote_order_succeeded",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "quote.order",
+          intent_source: "fallback",
+          detail: `product=${quote.product.key};total=${quote.total}`
+        });
+
+        clearPending(msg.chat_id);
+        return [formatQuoteOrderReply(quote)];
       }
 
       if (st.pending.asked && isConfirm(msg.text)) {
@@ -2575,22 +2701,12 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         return ["¿La entrega será para recoger en tienda o envío a domicilio?"];
       }
 
+      let quote: QuoteOrderResult;
       try {
-        const quote = await executeQuoteOrderFn({
+        quote = await executeQuoteOrderFn({
           chat_id: msg.chat_id,
           query: quoteQuery
         });
-
-        deps.onTrace?.({
-          event: "quote_order_succeeded",
-          chat_id: msg.chat_id,
-          strict_mode,
-          intent: "quote.order",
-          intent_source: "fallback",
-          detail: `product=${quote.product.key};total=${quote.total}`
-        });
-
-        return [formatQuoteOrderReply(quote)];
       } catch (err) {
         const safeDetail = err instanceof Error ? err.message : String(err);
 
@@ -2622,6 +2738,39 @@ export function createConversationProcessor(deps: ProcessorDeps) {
 
         return ["No pude generar la cotización en este momento. Intenta de nuevo en unos minutos."];
       }
+
+      const customizationField = nextQuoteCustomizationField(quoteQuery);
+      if (customizationField) {
+        const operation_id = newOperationId();
+        const nextPayload: Record<string, unknown> = { query: quoteQuery };
+        if (quote.optionSuggestions) {
+          nextPayload.quote_option_suggestions = quote.optionSuggestions;
+        }
+        setState(msg.chat_id, {
+          pending: {
+            operation_id,
+            idempotency_key: operation_id,
+            action: {
+              intent: "quote.order",
+              payload: nextPayload
+            },
+            missing: [customizationField],
+            asked: customizationField
+          }
+        });
+        return [quotePromptForField(customizationField, quote.optionSuggestions?.[customizationField])];
+      }
+
+      deps.onTrace?.({
+        event: "quote_order_succeeded",
+        chat_id: msg.chat_id,
+        strict_mode,
+        intent: "quote.order",
+        intent_source: "fallback",
+        detail: `product=${quote.product.key};total=${quote.total}`
+      });
+
+      return [formatQuoteOrderReply(quote)];
     }
 
     if (lookupQuery) {

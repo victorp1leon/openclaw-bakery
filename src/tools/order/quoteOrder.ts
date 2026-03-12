@@ -9,6 +9,10 @@ export type QuoteOrderLine = {
   amount: number;
 };
 
+export type QuoteCustomizationField = "quote_sabor_pan" | "quote_sabor_relleno" | "quote_tipo_betun" | "quote_topping";
+
+export type QuoteOptionSuggestions = Partial<Record<QuoteCustomizationField, string[]>>;
+
 export type QuoteOrderResult = {
   query: string;
   currency: string;
@@ -25,6 +29,7 @@ export type QuoteOrderResult = {
   suggestedDeposit?: number;
   quoteValidityHours?: number;
   assumptions: string[];
+  optionSuggestions?: QuoteOptionSuggestions;
   referenceContext?: {
     matched: number;
     averagePrice?: number;
@@ -201,9 +206,34 @@ function makeQuoteError(message: string, retriable = false): QuoteOrderError {
 
 function toNumberMaybe(value: string | undefined): number | undefined {
   if (!value) return undefined;
-  const normalized = value.trim().replace(",", ".");
+  const raw = value.trim();
+  if (!raw) return undefined;
+
+  let normalized = raw
+    .replace(/[^\d,.\-+]/g, "")
+    .replace(/(?!^)[+-]/g, "");
+  if (!normalized) return undefined;
+
+  const commaCount = (normalized.match(/,/g) ?? []).length;
+  const dotCount = (normalized.match(/\./g) ?? []).length;
+  if (commaCount > 0 && dotCount > 0) {
+    const lastComma = normalized.lastIndexOf(",");
+    const lastDot = normalized.lastIndexOf(".");
+    if (lastComma > lastDot) {
+      normalized = normalized.replace(/\./g, "").replace(",", ".");
+    } else {
+      normalized = normalized.replace(/,/g, "");
+    }
+  } else if (commaCount > 0) {
+    normalized = commaCount > 1
+      ? normalized.replace(/,/g, "")
+      : normalized.replace(",", ".");
+  } else if (dotCount > 1) {
+    normalized = normalized.replace(/\./g, "");
+  }
+
   if (!/^[-+]?\d+(?:\.\d+)?$/.test(normalized)) return undefined;
-  const parsed = Number(normalized);
+  const parsed = Number.parseFloat(normalized);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
@@ -435,9 +465,84 @@ function isAppliesToProduct(appliesTo: string | undefined, product: PricingRow):
   const appliesPhrase = normalizePhrase(appliesTo);
   if (productPhrase && appliesPhrase && productPhrase.includes(appliesPhrase)) return true;
 
-  const productTokens = keywordTokens({ key: product.key, name: product.name });
-  const appliesTokens = keywordTokens({ key: appliesTo });
-  return appliesTokens.some((token) => productTokens.includes(token));
+  const normalizeToken = (token: string): string =>
+    token
+      .replace(/es$/i, "")
+      .replace(/s$/i, "")
+      .trim();
+
+  const productTokens = keywordTokens({ key: product.key, name: product.name }).map(normalizeToken);
+  const appliesTokens = keywordTokens({ key: appliesTo }).map(normalizeToken);
+
+  return appliesTokens.some((token) => {
+    if (!token) return false;
+    if (productTokens.includes(token)) return true;
+    return productTokens.some((productToken) => productToken.includes(token) || token.includes(productToken));
+  });
+}
+
+function detectSuggestionFieldFromCategory(value: string | undefined): QuoteCustomizationField | undefined {
+  const category = normalizePhrase(value);
+  if (!category) return undefined;
+
+  if (/\brelleno\b/.test(category)) return "quote_sabor_relleno";
+  if (/\b(betun|frosting|cobertura|icing)\b/.test(category)) return "quote_tipo_betun";
+  if (/\b(topping|topper)\b/.test(category)) return "quote_topping";
+  if (/\b(pan|bizcocho|masa)\b/.test(category)) return "quote_sabor_pan";
+  return undefined;
+}
+
+function detectSuggestionFieldFromText(value: string): QuoteCustomizationField | undefined {
+  const text = normalizePhrase(value);
+  if (!text) return undefined;
+
+  if (/\brelleno\b/.test(text)) return "quote_sabor_relleno";
+  if (/\b(betun|buttercream|chantilly|merengue|ganache|frosting|cobertura|icing)\b/.test(text)) {
+    return "quote_tipo_betun";
+  }
+  if (/\b(topping|topper|sprinkles|chispas)\b/.test(text)) return "quote_topping";
+  if (/\b(sabor pan|sabor de pan|pan|bizcocho|masa)\b/.test(text)) return "quote_sabor_pan";
+  return undefined;
+}
+
+function collectOptionSuggestions(args: { options: OptionRow[]; product: PricingRow }): QuoteOptionSuggestions | undefined {
+  const buckets: Record<QuoteCustomizationField, string[]> = {
+    quote_sabor_pan: [],
+    quote_sabor_relleno: [],
+    quote_tipo_betun: [],
+    quote_topping: []
+  };
+  const seenByField = new Map<QuoteCustomizationField, Set<string>>();
+
+  for (const option of args.options) {
+    if (!isAppliesToProduct(option.appliesTo, args.product)) continue;
+
+    const field =
+      detectSuggestionFieldFromCategory(option.category) ??
+      detectSuggestionFieldFromText(`${option.key} ${option.name}`);
+    if (!field) continue;
+
+    const label = option.name.trim() || option.key.trim();
+    if (!label) continue;
+
+    const normalizedLabel = normalizeForMatch(label);
+    const seen = seenByField.get(field) ?? new Set<string>();
+    if (seen.has(normalizedLabel)) continue;
+    seen.add(normalizedLabel);
+    seenByField.set(field, seen);
+
+    buckets[field].push(label);
+  }
+
+  const out: QuoteOptionSuggestions = {};
+  const fields: QuoteCustomizationField[] = ["quote_sabor_pan", "quote_sabor_relleno", "quote_tipo_betun", "quote_topping"];
+  for (const field of fields) {
+    if (buckets[field].length > 0) {
+      out[field] = buckets[field];
+    }
+  }
+
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 function findBestProduct(args: { query: string; quantity: number; rows: PricingRow[] }): PricingRow | undefined {
@@ -788,6 +893,10 @@ export function createQuoteOrderTool(config: QuoteOrderToolConfig = {}) {
           references: referenceRows,
           product
         });
+        const optionSuggestions = collectOptionSuggestions({
+          options: optionRows,
+          product
+        });
 
         return {
           query: args.query,
@@ -805,6 +914,7 @@ export function createQuoteOrderTool(config: QuoteOrderToolConfig = {}) {
           ...(suggestedDeposit != null ? { suggestedDeposit } : {}),
           ...(quoteValidityHours != null ? { quoteValidityHours } : {}),
           assumptions,
+          ...(optionSuggestions ? { optionSuggestions } : {}),
           ...(referenceContext ? { referenceContext } : {}),
           detail: `quote-order executed (provider=gws, attempt=${attempt}, ts=${now().toISOString()})`
         };

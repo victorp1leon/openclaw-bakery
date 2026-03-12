@@ -55,6 +55,12 @@ const executeQuoteOrder = liveMode
         subtotal: total,
         total,
         assumptions: [],
+        optionSuggestions: {
+          quote_sabor_pan: ["Vainilla", "Chocolate"],
+          quote_sabor_relleno: ["Oreo", "Cajeta"],
+          quote_tipo_betun: ["Buttercream", "Chantilly"],
+          quote_topping: ["Chispas", "Fresas"]
+        },
         detail: "quote-smoke mock execution"
       };
     }
@@ -76,6 +82,12 @@ const executeQuoteOrder = liveMode
       suggestedDeposit: Math.round(base * 0.5),
       quoteValidityHours: 72,
       assumptions: [],
+      optionSuggestions: {
+        quote_sabor_pan: ["Vainilla", "Chocolate"],
+        quote_sabor_relleno: ["Oreo", "Cajeta"],
+        quote_tipo_betun: ["Buttercream", "Chantilly"],
+        quote_topping: ["Chispas", "Fresas"]
+      },
       detail: "quote-smoke mock execution"
     };
   };
@@ -101,7 +113,7 @@ async function main() {
 
   const direct = await processor.handleMessage({
     chat_id: chatId,
-    text: "dame una cotizacion de un pastel mediano x1 recoger en tienda"
+    text: "dame una cotizacion de un pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas"
   });
   const directOk = (direct[0] ?? "").includes("Cotizacion estimada");
   console.log(JSON.stringify({ event: "quote_smoke_case", input: "direct", reply: direct[0], ok: directOk }, null, 2));
@@ -127,8 +139,42 @@ async function main() {
     chat_id: chatId,
     text: "recoger en tienda"
   });
-  const completedOk = (completed[0] ?? "").includes("Cotizacion estimada");
-  console.log(JSON.stringify({ event: "quote_smoke_case", input: "guided_quote_completed", reply: completed[0], ok: completedOk }, null, 2));
+  const askPanOk = (completed[0] ?? "").toLowerCase().includes("sabor");
+  const askPanOptionsOk = (completed[0] ?? "").toLowerCase().includes("opciones");
+  console.log(JSON.stringify({ event: "quote_smoke_case", input: "guided_quote_ask_pan", reply: completed[0], ok: askPanOk }, null, 2));
+  if (!askPanOk) throw new Error("quote_smoke_guided_ask_pan_unexpected_reply");
+  if (!askPanOptionsOk) throw new Error("quote_smoke_guided_ask_pan_missing_options");
+
+  const askRelleno = await processor.handleMessage({
+    chat_id: chatId,
+    text: "vainilla"
+  });
+  const askRellenoOk = (askRelleno[0] ?? "").toLowerCase().includes("relleno");
+  console.log(JSON.stringify({ event: "quote_smoke_case", input: "guided_quote_ask_relleno", reply: askRelleno[0], ok: askRellenoOk }, null, 2));
+  if (!askRellenoOk) throw new Error("quote_smoke_guided_ask_relleno_unexpected_reply");
+
+  const askBetun = await processor.handleMessage({
+    chat_id: chatId,
+    text: "oreo"
+  });
+  const askBetunOk = (askBetun[0] ?? "").toLowerCase().includes("bet");
+  console.log(JSON.stringify({ event: "quote_smoke_case", input: "guided_quote_ask_betun", reply: askBetun[0], ok: askBetunOk }, null, 2));
+  if (!askBetunOk) throw new Error("quote_smoke_guided_ask_betun_unexpected_reply");
+
+  const askTopping = await processor.handleMessage({
+    chat_id: chatId,
+    text: "buttercream"
+  });
+  const askToppingOk = (askTopping[0] ?? "").toLowerCase().includes("topping");
+  console.log(JSON.stringify({ event: "quote_smoke_case", input: "guided_quote_ask_topping", reply: askTopping[0], ok: askToppingOk }, null, 2));
+  if (!askToppingOk) throw new Error("quote_smoke_guided_ask_topping_unexpected_reply");
+
+  const completedFinal = await processor.handleMessage({
+    chat_id: chatId,
+    text: "chispas"
+  });
+  const completedOk = (completedFinal[0] ?? "").includes("Cotizacion estimada");
+  console.log(JSON.stringify({ event: "quote_smoke_case", input: "guided_quote_completed", reply: completedFinal[0], ok: completedOk }, null, 2));
   if (!completedOk) throw new Error("quote_smoke_guided_completed_unexpected_reply");
 
   const askProduct = await processor.handleMessage({
@@ -141,7 +187,7 @@ async function main() {
 
   const resolvedProduct = await processor.handleMessage({
     chat_id: chatId,
-    text: "pastel mediano"
+    text: "pastel mediano sabor de pan vainilla relleno oreo betun buttercream topping fresas"
   });
   const resolvedProductOk = (resolvedProduct[0] ?? "").includes("Cotizacion estimada");
   console.log(JSON.stringify({ event: "quote_smoke_case", input: "missing_product_resolved", reply: resolvedProduct[0], ok: resolvedProductOk }, null, 2));

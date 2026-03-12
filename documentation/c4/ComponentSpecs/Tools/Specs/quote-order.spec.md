@@ -26,6 +26,7 @@ Generate a read-only order quote from Google Sheets pricing catalogs (`CatalogoP
   - `total`
   - optional `suggestedDeposit`
   - optional `quoteValidityHours`
+  - optional `optionSuggestions` (listas por categoria para flujo guiado: pan/relleno/betun/topping)
   - optional `referenceContext` (informational only, no arithmetic impact)
   - `assumptions[]`
 - Deterministic errors (`quote_order_*`) on config/provider/matching failures.

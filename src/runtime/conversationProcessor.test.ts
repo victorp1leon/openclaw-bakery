@@ -782,7 +782,7 @@ describe("conversation processor security flow", () => {
 
     const replies = await processor.handleMessage({
       chat_id: "chat-quote",
-      text: "cotiza pastel mediano x1 con decoracion personalizada y envio a domicilio"
+      text: "cotiza pastel mediano x1 con decoracion personalizada y envio a domicilio sabor de pan vainilla relleno oreo betun buttercream topping fresas"
     });
 
     expect(replies[0]).toContain("Cotizacion estimada (MXN)");
@@ -791,7 +791,7 @@ describe("conversation processor security flow", () => {
     expect(routeIntentFn).not.toHaveBeenCalled();
     expect(executeQuoteOrderFn).toHaveBeenCalledWith({
       chat_id: "chat-quote",
-      query: "cotiza pastel mediano x1 con decoracion personalizada y envio a domicilio"
+      query: "cotiza pastel mediano x1 con decoracion personalizada y envio a domicilio sabor de pan vainilla relleno oreo betun buttercream topping fresas"
     });
   });
 
@@ -811,6 +811,12 @@ describe("conversation processor security flow", () => {
       subtotal: 540,
       total: 540,
       assumptions: [],
+      optionSuggestions: {
+        quote_sabor_pan: ["Vainilla", "Chocolate"],
+        quote_sabor_relleno: ["Oreo", "Cajeta"],
+        quote_tipo_betun: ["Buttercream", "Chantilly"],
+        quote_topping: ["Chispas", "Fresas"]
+      },
       detail: "quote-order executed (provider=gws, attempt=1)"
     }));
 
@@ -832,16 +838,45 @@ describe("conversation processor security flow", () => {
     });
     expect(askShipping[0].toLowerCase()).toContain("recoger en tienda");
 
-    const quote = await processor.handleMessage({
+    const askPan = await processor.handleMessage({
       chat_id: "chat-quote-missing",
       text: "recoger en tienda"
     });
+    expect(askPan[0].toLowerCase()).toContain("sabor");
+    expect(askPan[0]).toContain("Opciones:");
+    expect(askPan[0]).toContain("Vainilla");
+
+    const askRelleno = await processor.handleMessage({
+      chat_id: "chat-quote-missing",
+      text: "vainilla"
+    });
+    expect(askRelleno[0].toLowerCase()).toContain("sabor de relleno");
+    expect(askRelleno[0]).toContain("Oreo");
+
+    const askBetun = await processor.handleMessage({
+      chat_id: "chat-quote-missing",
+      text: "oreo"
+    });
+    expect(askBetun[0].toLowerCase()).toContain("bet");
+    expect(askBetun[0]).toContain("Buttercream");
+
+    const askTopping = await processor.handleMessage({
+      chat_id: "chat-quote-missing",
+      text: "buttercream"
+    });
+    expect(askTopping[0].toLowerCase()).toContain("topping");
+    expect(askTopping[0]).toContain("Fresas");
+
+    const quote = await processor.handleMessage({
+      chat_id: "chat-quote-missing",
+      text: "chispas"
+    });
 
     expect(quote[0]).toContain("Cotizacion estimada");
-    expect(executeQuoteOrderFn).toHaveBeenCalledTimes(1);
-    expect(executeQuoteOrderFn.mock.calls[0]?.[0]).toEqual({
+    expect(executeQuoteOrderFn).toHaveBeenCalledTimes(5);
+    expect(executeQuoteOrderFn.mock.calls[4]?.[0]).toEqual({
       chat_id: "chat-quote-missing",
-      query: "hazme una cotizacion de cupcakes x12 recoger en tienda"
+      query: "hazme una cotizacion de cupcakes x12 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping chispas"
     });
     expect(routeIntentFn).not.toHaveBeenCalled();
   });
@@ -883,7 +918,7 @@ describe("conversation processor security flow", () => {
 
     const resolved = await processor.handleMessage({
       chat_id: "chat-quote-not-found",
-      text: "pastel mediano"
+      text: "pastel mediano sabor de pan vainilla relleno oreo betun buttercream topping fresas"
     });
 
     expect(resolved[0]).toContain("Cotizacion estimada");
