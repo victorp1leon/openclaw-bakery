@@ -707,6 +707,95 @@ function appendQuoteHint(query: string, hint: string): string {
   return merged.replace(/\s+/g, " ");
 }
 
+const QUOTE_TO_ORDER_CONFIRM_FIELD = "quote_to_order_confirm";
+
+function extractQuoteCustomizationSegment(args: {
+  query: string;
+  labelPattern: RegExp;
+  nextLabels: string[];
+}): string | undefined {
+  const normalized = normalizeForMatch(args.query);
+  const match = normalized.match(args.labelPattern);
+  if (!match?.[1]) return undefined;
+
+  let value = match[1].trim();
+  for (const nextLabel of args.nextLabels) {
+    const index = value.indexOf(` ${nextLabel} `);
+    if (index >= 0) {
+      value = value.slice(0, index).trim();
+      break;
+    }
+    if (value.endsWith(` ${nextLabel}`)) {
+      value = value.slice(0, value.length - (` ${nextLabel}`).length).trim();
+      break;
+    }
+  }
+
+  return value.length > 0 ? value : undefined;
+}
+
+function parseOrderFlavorPanFromQuery(query: string): "vainilla" | "chocolate" | "red_velvet" | "otro" | undefined {
+  const segment = extractQuoteCustomizationSegment({
+    query,
+    labelPattern: /sabor(?:\s+de)?\s+pan\s+(.+)$/,
+    nextLabels: ["relleno", "betun", "topping"]
+  });
+  if (!segment || /\bsin\s+pan\b/.test(segment)) return undefined;
+  if (/\bred\s*velvet\b/.test(segment)) return "red_velvet";
+  if (/\bchocolate\b/.test(segment)) return "chocolate";
+  if (/\bvainilla\b/.test(segment)) return "vainilla";
+  return "otro";
+}
+
+function parseOrderFlavorFillingFromQuery(query: string): "cajeta" | "mermelada_fresa" | "oreo" | undefined {
+  const segment = extractQuoteCustomizationSegment({
+    query,
+    labelPattern: /\brelleno\s+(.+)$/,
+    nextLabels: ["betun", "topping"]
+  });
+  if (!segment || /\bsin\s+relleno\b/.test(segment)) return undefined;
+  if (/\boreo\b/.test(segment)) return "oreo";
+  if (/\bcajeta\b/.test(segment)) return "cajeta";
+  if (/\b(mermelada\s+de\s+fresa|mermelada\s+fresa|fresa)\b/.test(segment)) return "mermelada_fresa";
+  return undefined;
+}
+
+function buildOrderPayloadFromQuote(args: { query: string; quote: QuoteOrderResult }): Record<string, unknown> {
+  const nonBaseLabels = args.quote.lines.filter((line) => line.kind !== "base").map((line) => line.label.trim()).filter((label) => label.length > 0);
+  const payload: Record<string, unknown> = {
+    producto: args.quote.product.name,
+    cantidad: args.quote.quantity,
+    total: args.quote.total,
+    moneda: args.quote.currency,
+    estado_pago: "pendiente",
+    notas: "Creado desde cotizacion"
+  };
+
+  if (args.quote.shippingMode === "envio_domicilio" || args.quote.shippingMode === "recoger_en_tienda") {
+    payload.tipo_envio = args.quote.shippingMode;
+  }
+
+  if (nonBaseLabels.length > 0) {
+    payload.descripcion_producto = nonBaseLabels.join(", ");
+  }
+
+  const saborPan = parseOrderFlavorPanFromQuery(args.query);
+  if (saborPan) {
+    payload.sabor_pan = saborPan;
+  }
+
+  const saborRelleno = parseOrderFlavorFillingFromQuery(args.query);
+  if (saborRelleno) {
+    payload.sabor_relleno = saborRelleno;
+  }
+
+  return payload;
+}
+
+function formatQuoteReplyWithOrderCta(quote: QuoteOrderResult): string {
+  return `${formatQuoteOrderReply(quote)}\n\n¿Deseas crear el pedido con esta cotización? Responde confirmar o cancelar.`;
+}
+
 function parseQuoteOptionSuggestions(value: unknown): QuoteOptionSuggestions | undefined {
   if (!isObjectRecord(value)) return undefined;
 
@@ -1378,6 +1467,52 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const webChatEnabled = deps.webChatEnabled ?? true;
   const rateLimiter = deps.rateLimiter;
 
+  function startPendingOrderFlow(args: {
+    chat_id: string;
+    operation_id: string;
+    payload: Record<string, unknown>;
+  }): string[] {
+    const v = validateWith(OrderSchema, args.payload);
+    const pending = {
+      operation_id: args.operation_id,
+      action: { intent: "pedido" as const, payload: args.payload },
+      missing: v.ok ? [] : v.missing,
+      asked: v.ok ? undefined : pickOneMissing(v.missing)
+    };
+
+    setState(args.chat_id, { pending });
+
+    if (!v.ok) {
+      return [copy.askFor(pending.asked ?? "unknown")];
+    }
+
+    const dedupe = registerPendingWithDedupe({
+      operation_id: args.operation_id,
+      chat_id: args.chat_id,
+      intent: "pedido",
+      payload: v.data,
+      timestampMs: nowMs()
+    });
+
+    if (!dedupe.ok) {
+      clearPending(args.chat_id);
+      return [copy.duplicate(dedupe.duplicate_of.operation_id, dedupe.duplicate_of.status)];
+    }
+
+    const full = v.data;
+    setState(args.chat_id, {
+      pending: {
+        ...pending,
+        idempotency_key: dedupe.idempotency_key,
+        action: { intent: "pedido", payload: full },
+        missing: [],
+        asked: undefined
+      }
+    });
+
+    return [copy.summary("pedido", full, args.operation_id)];
+  }
+
   async function handleMessage(msg: { chat_id: string; text: string }): Promise<string[]> {
     if (!deps.allowedChatIds.has(msg.chat_id)) {
       deps.onTrace?.({
@@ -1413,6 +1548,35 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         let query = trimString(payload.query) ?? "";
         const asked = st.pending.asked;
         const payloadSuggestions = parseQuoteOptionSuggestions(payload.quote_option_suggestions);
+
+        if (asked === QUOTE_TO_ORDER_CONFIRM_FIELD) {
+          if (!isConfirm(msg.text)) {
+            return ["¿Deseas crear el pedido con esta cotización? Responde confirmar o cancelar."];
+          }
+
+          const orderPayload = isObjectRecord(payload.quote_order_payload)
+            ? { ...payload.quote_order_payload }
+            : undefined;
+          if (!orderPayload) {
+            clearPending(msg.chat_id);
+            return ["No pude recuperar la cotización para crear el pedido. Pídeme una nueva cotización."];
+          }
+
+          deps.onTrace?.({
+            event: "quote_to_order_confirmed",
+            chat_id: msg.chat_id,
+            strict_mode,
+            intent: "pedido",
+            intent_source: "fallback",
+            detail: "quote_to_order_confirmed"
+          });
+
+          return startPendingOrderFlow({
+            chat_id: msg.chat_id,
+            operation_id: newOperationId(),
+            payload: orderPayload
+          });
+        }
 
         if (asked === "quote_product") {
           const productText = msg.text.trim();
@@ -1522,8 +1686,14 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           detail: `product=${quote.product.key};total=${quote.total}`
         });
 
-        clearPending(msg.chat_id);
-        return [formatQuoteOrderReply(quote)];
+        const orderPayload = buildOrderPayloadFromQuote({ query, quote });
+        payload.query = query;
+        payload.quote_order_payload = orderPayload;
+        st.pending.action.payload = payload;
+        st.pending.asked = QUOTE_TO_ORDER_CONFIRM_FIELD;
+        st.pending.missing = [QUOTE_TO_ORDER_CONFIRM_FIELD];
+        setState(msg.chat_id, st);
+        return [formatQuoteReplyWithOrderCta(quote)];
       }
 
       if (st.pending.asked && isConfirm(msg.text)) {
@@ -2770,7 +2940,27 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         detail: `product=${quote.product.key};total=${quote.total}`
       });
 
-      return [formatQuoteOrderReply(quote)];
+      const operation_id = newOperationId();
+      const quoteOrderPayload = buildOrderPayloadFromQuote({
+        query: quoteQuery,
+        quote
+      });
+      setState(msg.chat_id, {
+        pending: {
+          operation_id,
+          idempotency_key: operation_id,
+          action: {
+            intent: "quote.order",
+            payload: {
+              query: quoteQuery,
+              quote_order_payload: quoteOrderPayload
+            }
+          },
+          missing: [QUOTE_TO_ORDER_CONFIRM_FIELD],
+          asked: QUOTE_TO_ORDER_CONFIRM_FIELD
+        }
+      });
+      return [formatQuoteReplyWithOrderCta(quote)];
     }
 
     if (lookupQuery) {
@@ -2997,47 +3187,11 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       parse_source: parsed.source ?? "custom"
     });
 
-    const v = validateWith(OrderSchema, parsed.payload);
-    const pending = {
+    return startPendingOrderFlow({
+      chat_id: msg.chat_id,
       operation_id,
-      action: { intent: "pedido" as const, payload: parsed.payload },
-      missing: v.ok ? [] : v.missing,
-      asked: v.ok ? undefined : pickOneMissing(v.missing)
-    };
-
-    setState(msg.chat_id, { pending });
-
-    if (v.ok) {
-      const dedupe = registerPendingWithDedupe({
-        operation_id,
-        chat_id: msg.chat_id,
-        intent,
-        payload: v.data,
-        timestampMs: nowMs()
-      });
-
-      if (!dedupe.ok) {
-        clearPending(msg.chat_id);
-        return [
-          copy.duplicate(dedupe.duplicate_of.operation_id, dedupe.duplicate_of.status)
-        ];
-      }
-
-      const full = v.data;
-      setState(msg.chat_id, {
-        pending: {
-          ...pending,
-          idempotency_key: dedupe.idempotency_key,
-          action: { intent: "pedido", payload: full },
-          missing: [],
-          asked: undefined
-        }
-      });
-
-      return [copy.summary(intent, full, operation_id)];
-    }
-
-    return [copy.askFor(pending.asked ?? "unknown")];
+      payload: parsed.payload
+    });
   }
 
   return { handleMessage };

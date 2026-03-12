@@ -788,6 +788,7 @@ describe("conversation processor security flow", () => {
     expect(replies[0]).toContain("Cotizacion estimada (MXN)");
     expect(replies[0]).toContain("Total estimado: 840 MXN");
     expect(replies[0]).toContain("Anticipo sugerido: 420 MXN");
+    expect(replies[0]).toContain("¿Deseas crear el pedido con esta cotización?");
     expect(routeIntentFn).not.toHaveBeenCalled();
     expect(executeQuoteOrderFn).toHaveBeenCalledWith({
       chat_id: "chat-quote",
@@ -873,6 +874,7 @@ describe("conversation processor security flow", () => {
     });
 
     expect(quote[0]).toContain("Cotizacion estimada");
+    expect(quote[0]).toContain("¿Deseas crear el pedido con esta cotización?");
     expect(executeQuoteOrderFn).toHaveBeenCalledTimes(5);
     expect(executeQuoteOrderFn.mock.calls[4]?.[0]).toEqual({
       chat_id: "chat-quote-missing",
@@ -922,8 +924,107 @@ describe("conversation processor security flow", () => {
     });
 
     expect(resolved[0]).toContain("Cotizacion estimada");
+    expect(resolved[0]).toContain("¿Deseas crear el pedido con esta cotización?");
     expect(executeQuoteOrderFn).toHaveBeenCalledTimes(2);
     expect(routeIntentFn).not.toHaveBeenCalled();
+  });
+
+  it("convierte cotizacion confirmada en flujo de pedido hasta ejecutar order.create", async () => {
+    const ids = ["op-quote-ready", "op-order-from-quote"];
+    const executeQuoteOrderFn = vi.fn(async ({ query }) => ({
+      query,
+      currency: "MXN",
+      quantity: 1,
+      shippingMode: "recoger_en_tienda" as const,
+      product: {
+        key: "pastel_mediano",
+        name: "Pastel mediano",
+        unitAmount: 650
+      },
+      lines: [{ kind: "base" as const, key: "pastel_mediano", label: "Pastel mediano", amount: 650 }],
+      subtotal: 650,
+      total: 650,
+      assumptions: [],
+      detail: "quote-order executed (provider=gws, attempt=1)"
+    }));
+    const executeCreateCardFn = vi.fn(async ({ operation_id }) => ({
+      ok: true,
+      dry_run: true,
+      operation_id,
+      detail: "create-card dry-run",
+      payload: {
+        trello_card_id: "card-quote-order",
+        trello_card_created: false
+      }
+    }));
+    const executeAppendOrderFn = vi.fn(async ({ operation_id }) => ({
+      ok: true,
+      dry_run: true,
+      operation_id,
+      detail: "append-order dry-run"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-quote-to-order"]),
+      routeIntentFn: async () => "pedido",
+      newOperationId: () => ids.shift() ?? "op-fallback",
+      executeQuoteOrderFn,
+      executeCreateCardFn,
+      executeAppendOrderFn
+    });
+
+    const quoteReply = await processor.handleMessage({
+      chat_id: "chat-quote-to-order",
+      text: "cotiza pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas"
+    });
+    expect(quoteReply[0]).toContain("Cotizacion estimada");
+    expect(quoteReply[0]).toContain("¿Deseas crear el pedido con esta cotización?");
+
+    const askCustomer = await processor.handleMessage({
+      chat_id: "chat-quote-to-order",
+      text: "confirmar"
+    });
+    expect(askCustomer[0]).toContain("Nombre del cliente");
+
+    const askDelivery = await processor.handleMessage({
+      chat_id: "chat-quote-to-order",
+      text: "Ana"
+    });
+    expect(askDelivery[0]).toContain("Fecha/hora de entrega");
+
+    const summary = await processor.handleMessage({
+      chat_id: "chat-quote-to-order",
+      text: "2026-03-20 17:00"
+    });
+    expect(summary[0]).toContain("\"intent\": \"pedido\"");
+
+    const executed = await processor.handleMessage({
+      chat_id: "chat-quote-to-order",
+      text: "confirmar"
+    });
+    expect(executed[0]).toContain("Ejecutado");
+    expect(executeCreateCardFn).toHaveBeenCalledTimes(1);
+    expect(executeCreateCardFn).toHaveBeenCalledWith(expect.objectContaining({
+      operation_id: "op-order-from-quote",
+      chat_id: "chat-quote-to-order",
+      payload: expect.objectContaining({
+        nombre_cliente: "Ana",
+        producto: "Pastel mediano",
+        cantidad: 1,
+        tipo_envio: "recoger_en_tienda",
+        fecha_hora_entrega: "2026-03-20 17:00",
+        estado_pago: "pendiente",
+        total: 650,
+        moneda: "MXN",
+        sabor_pan: "vainilla",
+        sabor_relleno: "oreo"
+      })
+    }));
+    expect(executeAppendOrderFn).toHaveBeenCalledWith(expect.objectContaining({
+      operation_id: "op-order-from-quote",
+      chat_id: "chat-quote-to-order",
+      estado_pedido: "activo"
+    }));
   });
 
   it("inicia flujo de order.update con resumen y confirmacion", async () => {

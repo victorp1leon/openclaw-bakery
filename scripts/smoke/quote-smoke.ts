@@ -116,8 +116,18 @@ async function main() {
     text: "dame una cotizacion de un pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas"
   });
   const directOk = (direct[0] ?? "").includes("Cotizacion estimada");
+  const directConfirmOk = (direct[0] ?? "").toLowerCase().includes("deseas crear el pedido");
   console.log(JSON.stringify({ event: "quote_smoke_case", input: "direct", reply: direct[0], ok: directOk }, null, 2));
   if (!directOk) throw new Error("quote_smoke_direct_unexpected_reply");
+  if (!directConfirmOk) throw new Error("quote_smoke_direct_missing_order_cta");
+
+  const closeDirect = await processor.handleMessage({
+    chat_id: chatId,
+    text: "cancelar"
+  });
+  const closeDirectOk = (closeDirect[0] ?? "").toLowerCase().includes("cotización cancelada");
+  console.log(JSON.stringify({ event: "quote_smoke_case", input: "direct_cancel", reply: closeDirect[0], ok: closeDirectOk }, null, 2));
+  if (!closeDirectOk) throw new Error("quote_smoke_direct_cancel_unexpected_reply");
 
   const askQty = await processor.handleMessage({
     chat_id: chatId,
@@ -174,8 +184,18 @@ async function main() {
     text: "chispas"
   });
   const completedOk = (completedFinal[0] ?? "").includes("Cotizacion estimada");
+  const completedConfirmOk = (completedFinal[0] ?? "").toLowerCase().includes("deseas crear el pedido");
   console.log(JSON.stringify({ event: "quote_smoke_case", input: "guided_quote_completed", reply: completedFinal[0], ok: completedOk }, null, 2));
   if (!completedOk) throw new Error("quote_smoke_guided_completed_unexpected_reply");
+  if (!completedConfirmOk) throw new Error("quote_smoke_guided_completed_missing_order_cta");
+
+  const closeGuided = await processor.handleMessage({
+    chat_id: chatId,
+    text: "cancelar"
+  });
+  const closeGuidedOk = (closeGuided[0] ?? "").toLowerCase().includes("cotización cancelada");
+  console.log(JSON.stringify({ event: "quote_smoke_case", input: "guided_quote_cancel", reply: closeGuided[0], ok: closeGuidedOk }, null, 2));
+  if (!closeGuidedOk) throw new Error("quote_smoke_guided_cancel_unexpected_reply");
 
   const askProduct = await processor.handleMessage({
     chat_id: chatId,
@@ -192,6 +212,14 @@ async function main() {
   const resolvedProductOk = (resolvedProduct[0] ?? "").includes("Cotizacion estimada");
   console.log(JSON.stringify({ event: "quote_smoke_case", input: "missing_product_resolved", reply: resolvedProduct[0], ok: resolvedProductOk }, null, 2));
   if (!resolvedProductOk) throw new Error("quote_smoke_missing_product_resolved_unexpected_reply");
+
+  const closeResolved = await processor.handleMessage({
+    chat_id: chatId,
+    text: "cancelar"
+  });
+  const closeResolvedOk = (closeResolved[0] ?? "").toLowerCase().includes("cotización cancelada");
+  console.log(JSON.stringify({ event: "quote_smoke_case", input: "missing_product_cancel", reply: closeResolved[0], ok: closeResolvedOk }, null, 2));
+  if (!closeResolvedOk) throw new Error("quote_smoke_missing_product_cancel_unexpected_reply");
 
   const askQty2 = await processor.handleMessage({
     chat_id: chatId,
