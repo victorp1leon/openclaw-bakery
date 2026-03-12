@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature Delivery Flow"
+  short_description: "Orquesta flujo completo de features"
+  default_prompt: "Use this skill when delivering roadmap features end-to-end: scope, spec, verification, implementation, unit tests, smoke summary, operational checks, and manual business validation."
