@@ -516,6 +516,11 @@ function main(): void {
       env: smokeLive ? undefined : { SMOKE_STATUS_LIVE: "0" }
     },
     {
+      scenario: "smoke:quote",
+      npmScript: "smoke:quote",
+      env: smokeLive ? undefined : { SMOKE_QUOTE_LIVE: "0" }
+    },
+    {
       scenario: "smoke:update",
       npmScript: "smoke:update",
       env: smokeLive ? undefined : { SMOKE_UPDATE_LIVE: "0", SMOKE_UPDATE_DRY_RUN: "1" }

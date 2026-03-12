@@ -129,6 +129,9 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 - Dry-run order smoke (safe default): `npm run smoke:order`
 - Live Trello+Sheets attempt:
   - `ORDER_TRELLO_DRY_RUN=0 ORDER_SHEETS_DRY_RUN=0 npm run smoke:order`
+- Quote smoke (safe default, guided missing-data flow): `npm run smoke:quote`
+- Quote smoke live against real pricing catalogs:
+  - `SMOKE_QUOTE_LIVE=1 npm run smoke:quote`
 - Full lifecycle smoke (`create -> update -> cancel`, with Trello+Sheets cross-validation):
   - Mock default: `npm run smoke:lifecycle`
   - Live: `SMOKE_LIFECYCLE_LIVE=1 SMOKE_LIFECYCLE_DRY_RUN=0 npm run smoke:lifecycle`

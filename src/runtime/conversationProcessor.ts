@@ -609,6 +609,36 @@ function detectQuoteOrderQuery(text: string): string | undefined {
   return query;
 }
 
+function parseQuoteQuantityFromText(text: string): number | undefined {
+  const normalized = normalizeForMatch(text);
+  const raw =
+    normalized.match(/^(\d{1,3})$/)?.[1] ??
+    normalized.match(/\bx\s*(\d{1,3})\b/)?.[1] ??
+    normalized.match(/\b(\d{1,3})\s*(?:piezas?|porciones?|unidades?|cupcakes?|pasteles?)\b/)?.[1] ??
+    normalized.match(/\b(?:cantidad|piezas?|porciones?|unidades?)\s*(?:de|:|=)?\s*(\d{1,3})\b/)?.[1];
+
+  if (!raw) return undefined;
+  const qty = Number(raw);
+  if (!Number.isInteger(qty) || qty <= 0) return undefined;
+  return qty;
+}
+
+function parseQuoteShippingFromText(text: string): "envio_domicilio" | "recoger_en_tienda" | undefined {
+  const normalized = normalizeForMatch(text);
+  if (/\b(recoger|recoge|retiro|en tienda|paso por)\b/.test(normalized)) {
+    return "recoger_en_tienda";
+  }
+  if (/\b(envio|enviar|domicilio|a domicilio|entrega)\b/.test(normalized)) {
+    return "envio_domicilio";
+  }
+  return undefined;
+}
+
+function appendQuoteHint(query: string, hint: string): string {
+  const merged = `${query} ${hint}`.trim();
+  return merged.replace(/\s+/g, " ");
+}
+
 function formatOrderReportReply(report: OrderReportResult): string {
   const label = report.period.label;
   if (report.total === 0) {
@@ -1277,6 +1307,99 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     const st = getState(msg.chat_id);
 
     if (st.pending) {
+      if (st.pending.action.intent === "quote.order") {
+        if (isCancel(msg.text)) {
+          clearPending(msg.chat_id);
+          return ["Cotización cancelada."];
+        }
+
+        const payload = isObjectRecord(st.pending.action.payload) ? { ...st.pending.action.payload } : {};
+        let query = trimString(payload.query) ?? "";
+        const asked = st.pending.asked;
+
+        if (asked === "quote_product") {
+          const productText = msg.text.trim();
+          if (productText.length < 3) {
+            return ["¿Qué producto base quieres cotizar? Ejemplo: pastel mediano o caja de 12 cupcakes."];
+          }
+          query = appendQuoteHint(query, productText);
+          payload.query = query;
+          st.pending.action.payload = payload;
+        } else if (asked === "quote_quantity") {
+          const qty = parseQuoteQuantityFromText(msg.text);
+          if (!qty) {
+            return ["¿Para cuántas piezas/porciones lo cotizo?"];
+          }
+          query = appendQuoteHint(query, `x${qty}`);
+          payload.query = query;
+          st.pending.action.payload = payload;
+        } else if (asked === "quote_shipping") {
+          const shipping = parseQuoteShippingFromText(msg.text);
+          if (!shipping) {
+            return ["¿La entrega será para recoger en tienda o envío a domicilio?"];
+          }
+          query = appendQuoteHint(query, shipping === "recoger_en_tienda" ? "recoger en tienda" : "envio a domicilio");
+          payload.query = query;
+          st.pending.action.payload = payload;
+        }
+
+        const qty = parseQuoteQuantityFromText(query);
+        if (!qty) {
+          st.pending.asked = "quote_quantity";
+          st.pending.missing = ["quote.quantity"];
+          setState(msg.chat_id, st);
+          return ["¿Para cuántas piezas/porciones lo cotizo?"];
+        }
+
+        const shipping = parseQuoteShippingFromText(query);
+        if (!shipping) {
+          st.pending.asked = "quote_shipping";
+          st.pending.missing = ["quote.shipping"];
+          setState(msg.chat_id, st);
+          return ["¿La entrega será para recoger en tienda o envío a domicilio?"];
+        }
+
+        try {
+          const quote = await executeQuoteOrderFn({
+            chat_id: msg.chat_id,
+            query
+          });
+
+          deps.onTrace?.({
+            event: "quote_order_succeeded",
+            chat_id: msg.chat_id,
+            strict_mode,
+            intent: "quote.order",
+            intent_source: "fallback",
+            detail: `product=${quote.product.key};total=${quote.total}`
+          });
+
+          clearPending(msg.chat_id);
+          return [formatQuoteOrderReply(quote)];
+        } catch (err) {
+          const safeDetail = err instanceof Error ? err.message : String(err);
+
+          deps.onTrace?.({
+            event: "quote_order_failed",
+            chat_id: msg.chat_id,
+            strict_mode,
+            intent: "quote.order",
+            intent_source: "fallback",
+            detail: safeDetail
+          });
+
+          if (safeDetail === "quote_order_product_not_found") {
+            st.pending.asked = "quote_product";
+            st.pending.missing = ["quote.product"];
+            setState(msg.chat_id, st);
+            return ["No pude identificar el producto base. ¿Qué producto quieres cotizar? Ejemplo: pastel mediano o caja de 12 cupcakes."];
+          }
+
+          clearPending(msg.chat_id);
+          return ["No pude generar la cotización en este momento. Intenta de nuevo en unos minutos."];
+        }
+      }
+
       if (st.pending.asked && isConfirm(msg.text)) {
         return [copy.askFor(st.pending.asked)];
       }
@@ -2416,6 +2539,42 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     }
 
     if (quoteQuery) {
+      const qty = parseQuoteQuantityFromText(quoteQuery);
+      if (!qty) {
+        const operation_id = newOperationId();
+        setState(msg.chat_id, {
+          pending: {
+            operation_id,
+            idempotency_key: operation_id,
+            action: {
+              intent: "quote.order",
+              payload: { query: quoteQuery }
+            },
+            missing: ["quote.quantity"],
+            asked: "quote_quantity"
+          }
+        });
+        return ["¿Para cuántas piezas/porciones lo cotizo?"];
+      }
+
+      const shipping = parseQuoteShippingFromText(quoteQuery);
+      if (!shipping) {
+        const operation_id = newOperationId();
+        setState(msg.chat_id, {
+          pending: {
+            operation_id,
+            idempotency_key: operation_id,
+            action: {
+              intent: "quote.order",
+              payload: { query: quoteQuery }
+            },
+            missing: ["quote.shipping"],
+            asked: "quote_shipping"
+          }
+        });
+        return ["¿La entrega será para recoger en tienda o envío a domicilio?"];
+      }
+
       try {
         const quote = await executeQuoteOrderFn({
           chat_id: msg.chat_id,
@@ -2445,7 +2604,20 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         });
 
         if (safeDetail === "quote_order_product_not_found") {
-          return ["No pude identificar el producto base para cotizar. Indícame producto y cantidad (por ejemplo: pastel mediano x1)."];
+          const operation_id = newOperationId();
+          setState(msg.chat_id, {
+            pending: {
+              operation_id,
+              idempotency_key: operation_id,
+              action: {
+                intent: "quote.order",
+                payload: { query: quoteQuery }
+              },
+              missing: ["quote.product"],
+              asked: "quote_product"
+            }
+          });
+          return ["No pude identificar el producto base. ¿Qué producto quieres cotizar? Ejemplo: pastel mediano o caja de 12 cupcakes."];
         }
 
         return ["No pude generar la cotización en este momento. Intenta de nuevo en unos minutos."];

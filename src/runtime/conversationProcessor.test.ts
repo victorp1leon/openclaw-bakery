@@ -782,7 +782,7 @@ describe("conversation processor security flow", () => {
 
     const replies = await processor.handleMessage({
       chat_id: "chat-quote",
-      text: "cotiza pastel mediano con decoracion personalizada y envio a domicilio"
+      text: "cotiza pastel mediano x1 con decoracion personalizada y envio a domicilio"
     });
 
     expect(replies[0]).toContain("Cotizacion estimada (MXN)");
@@ -791,15 +791,82 @@ describe("conversation processor security flow", () => {
     expect(routeIntentFn).not.toHaveBeenCalled();
     expect(executeQuoteOrderFn).toHaveBeenCalledWith({
       chat_id: "chat-quote",
-      query: "cotiza pastel mediano con decoracion personalizada y envio a domicilio"
+      query: "cotiza pastel mediano x1 con decoracion personalizada y envio a domicilio"
     });
   });
 
-  it("responde mensaje guiado cuando quote.order no encuentra producto", async () => {
+  it("pide datos faltantes para quote.order y luego cotiza", async () => {
     const routeIntentFn = vi.fn(async () => "pedido" as const);
-    const executeQuoteOrderFn = vi.fn(async () => {
-      throw new Error("quote_order_product_not_found");
+    const executeQuoteOrderFn = vi.fn(async ({ query }) => ({
+      query,
+      currency: "MXN",
+      quantity: 12,
+      shippingMode: "recoger_en_tienda" as const,
+      product: {
+        key: "cupcake_pieza",
+        name: "Cupcake clasico",
+        unitAmount: 45
+      },
+      lines: [{ kind: "base" as const, key: "cupcake_pieza", label: "Cupcake clasico", amount: 540 }],
+      subtotal: 540,
+      total: 540,
+      assumptions: [],
+      detail: "quote-order executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-quote-missing"]),
+      routeIntentFn,
+      executeQuoteOrderFn
     });
+
+    const askQty = await processor.handleMessage({
+      chat_id: "chat-quote-missing",
+      text: "hazme una cotizacion de cupcakes"
+    });
+    expect(askQty[0].toLowerCase()).toContain("piezas/porciones");
+
+    const askShipping = await processor.handleMessage({
+      chat_id: "chat-quote-missing",
+      text: "12"
+    });
+    expect(askShipping[0].toLowerCase()).toContain("recoger en tienda");
+
+    const quote = await processor.handleMessage({
+      chat_id: "chat-quote-missing",
+      text: "recoger en tienda"
+    });
+
+    expect(quote[0]).toContain("Cotizacion estimada");
+    expect(executeQuoteOrderFn).toHaveBeenCalledTimes(1);
+    expect(executeQuoteOrderFn.mock.calls[0]?.[0]).toEqual({
+      chat_id: "chat-quote-missing",
+      query: "hazme una cotizacion de cupcakes x12 recoger en tienda"
+    });
+    expect(routeIntentFn).not.toHaveBeenCalled();
+  });
+
+  it("pide producto cuando quote.order no encuentra coincidencia", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+    const executeQuoteOrderFn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("quote_order_product_not_found"))
+      .mockResolvedValueOnce({
+        query: "cotiza algo especial x2 recoger en tienda pastel mediano",
+        currency: "MXN",
+        quantity: 2,
+        shippingMode: "recoger_en_tienda" as const,
+        product: {
+          key: "pastel_mediano",
+          name: "Pastel mediano",
+          unitAmount: 650
+        },
+        lines: [{ kind: "base" as const, key: "pastel_mediano", label: "Pastel mediano", amount: 1300 }],
+        subtotal: 1300,
+        total: 1300,
+        assumptions: [],
+        detail: "quote-order executed (provider=gws, attempt=1)"
+      });
 
     const processor = createConversationProcessor({
       allowedChatIds: new Set(["chat-quote-not-found"]),
@@ -809,10 +876,18 @@ describe("conversation processor security flow", () => {
 
     const replies = await processor.handleMessage({
       chat_id: "chat-quote-not-found",
-      text: "cotiza algo especial"
+      text: "cotiza algo especial x2 recoger en tienda"
     });
 
-    expect(replies[0]).toContain("No pude identificar el producto base para cotizar");
+    expect(replies[0]).toContain("No pude identificar el producto base");
+
+    const resolved = await processor.handleMessage({
+      chat_id: "chat-quote-not-found",
+      text: "pastel mediano"
+    });
+
+    expect(resolved[0]).toContain("Cotizacion estimada");
+    expect(executeQuoteOrderFn).toHaveBeenCalledTimes(2);
     expect(routeIntentFn).not.toHaveBeenCalled();
   });
 
