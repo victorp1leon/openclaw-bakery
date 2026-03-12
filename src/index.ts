@@ -14,6 +14,7 @@ import { createCreateCardTool } from "./tools/order/createCard";
 import { createLookupOrderTool } from "./tools/order/lookupOrder";
 import { createOrderCardSyncTool } from "./tools/order/orderCardSync";
 import { createRecordPaymentTool } from "./tools/order/recordPayment";
+import { createQuoteOrderTool } from "./tools/order/quoteOrder";
 import { createOrderStatusTool } from "./tools/order/orderStatus";
 import { createReportOrdersTool } from "./tools/order/reportOrders";
 import { createUpdateOrderTool } from "./tools/order/updateOrder";
@@ -190,6 +191,14 @@ const executeOrderStatus = createOrderStatusTool({
   timezone: appConfig.timezone
 });
 
+const executeQuoteOrder = createQuoteOrderTool({
+  gwsCommand: appConfig.orderTool.sheets.gws.command,
+  gwsCommandArgs: appConfig.orderTool.sheets.gws.commandArgs,
+  gwsSpreadsheetId: appConfig.orderTool.sheets.gws.spreadsheetId,
+  timeoutMs: appConfig.orderTool.sheets.timeoutMs,
+  maxRetries: appConfig.orderTool.sheets.maxRetries
+});
+
 const executeOrderUpdate = createUpdateOrderTool({
   dryRunDefault: appConfig.orderTool.sheets.dryRun,
   gwsCommand: appConfig.orderTool.sheets.gws.command,
@@ -244,6 +253,7 @@ const tracedProcessor = createConversationProcessor({
   executeOrderReportFn: executeOrderReport,
   executeOrderLookupFn: executeOrderLookup,
   executeOrderStatusFn: executeOrderStatus,
+  executeQuoteOrderFn: executeQuoteOrder,
   executeOrderUpdateFn: executeOrderUpdate,
   executeOrderCancelFn: executeOrderCancel,
   executePaymentRecordFn: executePaymentRecord,

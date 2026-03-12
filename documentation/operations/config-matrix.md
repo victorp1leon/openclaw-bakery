@@ -1,7 +1,7 @@
 # Bot Bakery Configuration Matrix
 
 Status: MVP
-Last Updated: 2026-03-11
+Last Updated: 2026-03-12
 
 This matrix documents environment variables, defaults, requiredness, and runtime impact.
 
@@ -52,6 +52,14 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 | `ORDER_SHEETS_GWS_VALUE_INPUT_OPTION` | `USER_ENTERED` | No | order Sheets adapter | Sheets `valueInputOption` (`USER_ENTERED` or `RAW`). |
 | `ORDER_SHEETS_TIMEOUT_MS` | `5000` | No | order Sheets adapter | HTTP timeout per order Sheets request attempt. |
 | `ORDER_SHEETS_MAX_RETRIES` | `2` | No | order Sheets adapter | Bounded retry count for transient order Sheets errors. |
+| `PRICING_CATALOG_APPLY` | `0` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | Safety gate: `0` preview only, `1` applies changes in Google Sheets. |
+| `PRICING_CATALOG_OVERWRITE` | `0` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | When tab already has data, allows overwrite (`1`) instead of safe skip. |
+| `PRICING_CATALOG_TAB_NAME` | `CatalogoPrecios` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | Title of the pricing catalog tab to create/update. |
+| `PRICING_CATALOG_GWS_SPREADSHEET_ID` | fallback `ORDER_SHEETS_GWS_SPREADSHEET_ID` | Recommended | `scripts/sheets/init-pricing-catalog-tab.ts` | Spreadsheet id for pricing catalog bootstrap. |
+| `PRICING_CATALOG_GWS_COMMAND` | fallback `ORDER_SHEETS_GWS_COMMAND` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | Binary used to invoke `googleworkspace/cli` for pricing catalog bootstrap. |
+| `PRICING_CATALOG_GWS_COMMAND_ARGS` | fallback `ORDER_SHEETS_GWS_COMMAND_ARGS` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | Comma-separated prefix args injected before Sheets subcommands. |
+| `PRICING_CATALOG_GWS_VALUE_INPUT_OPTION` | fallback `ORDER_SHEETS_GWS_VALUE_INPUT_OPTION` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | `valueInputOption` for `values.update` (`USER_ENTERED` or `RAW`). |
+| `PRICING_CATALOG_TIMEOUT_MS` | fallback `ORDER_SHEETS_TIMEOUT_MS` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | Timeout per `gws` command invocation for pricing bootstrap. |
 | `WEB_PUBLISH_DRY_RUN` | `1` | No | web publish adapter, healthcheck | Safe default mode for `web.publish`; no external publish when enabled. |
 | `WEB_CHAT_ENABLE` | `0` | No | conversation runtime, healthcheck | Enables `web` commands through chat runtime (`1`=enabled, `0`=disabled). Security-first default is disabled. |
 | `WEB_CONTENT_PATH` | `site/CONTENT.json` | No | terminal/CI publish script, healthcheck | Repository path for canonical website content JSON. |
@@ -128,6 +136,14 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 - If live mode fails with `order_trello_api_key_missing`, `order_trello_token_missing`, `order_trello_list_id_missing`, or `order_trello_cancel_list_id_missing`, configure matching `ORDER_TRELLO_*` vars and retry.
 - Live order `gws` smoke attempt:
   - `ORDER_TRELLO_DRY_RUN=0 ORDER_SHEETS_DRY_RUN=0 ORDER_SHEETS_GWS_SPREADSHEET_ID=<id> ORDER_SHEETS_GWS_RANGE=Pedidos!A1 npm run smoke:order`
+- Pricing catalog tab bootstrap (safe preview):
+  - `npm run sheets:pricing:init`
+- Pricing catalog tab bootstrap apply (creates tab + seed rows):
+  - `PRICING_CATALOG_APPLY=1 npm run sheets:pricing:init`
+- Pricing catalog overwrite (when tab already has data):
+  - `PRICING_CATALOG_APPLY=1 PRICING_CATALOG_OVERWRITE=1 npm run sheets:pricing:init`
+- Pricing catalog tabs validation (headers + duplicate keys):
+  - `npm run sheets:pricing:validate`
 - Dry-run web smoke (safe default): `npm run smoke:web`
 - Start local webhook for controlled live validation:
   - `WEB_LOCAL_PUBLISH_API_KEY=<secret> npm run web:publish:webhook:local`
@@ -177,6 +193,7 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 
 ## Integration Notes
 - Google writes use `gws` only (`googleworkspace/cli` Sheets append/get/update); ensure host auth/session is configured before live mode.
+- Pricing catalog bootstrap uses the same `gws` path and writes to a dedicated tab (default: `CatalogoPrecios`) in the configured spreadsheet.
 - `report.orders` reads Google Sheets via `gws` (`values.get`) using `ORDER_SHEETS_GWS_SPREADSHEET_ID` and a read range derived from `ORDER_SHEETS_GWS_RANGE` (`Pedidos!A1` -> `Pedidos!A:U`), preferring `fecha_hora_entrega_iso` for filtering when that column exists.
 - Web publish adapter sanitizes media URLs by removing query/hash and only accepts `https` image URLs from approved domains.
 - Chat-based `web` flow is disabled by default (`WEB_CHAT_ENABLE=0`); preferred operation mode is content-driven via repository + terminal/CI.

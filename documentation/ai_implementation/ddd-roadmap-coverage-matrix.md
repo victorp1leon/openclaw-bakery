@@ -1,7 +1,7 @@
 # DDD Roadmap Coverage Matrix
 
 Status: In Progress
-Last Updated: 2026-03-11
+Last Updated: 2026-03-12
 
 ## Purpose
 Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
@@ -49,7 +49,7 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 | 3 | `order.status` | `.../Tools/Specs/order-status.spec.md` | `src/tools/order/orderStatus.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/status-smoke.ts` | Lectura read-only de `Pedidos` via `gws` + estado operativo derivado (`programado|hoy|atrasado|cancelado`) | Done | Monitorear precision de `estado_operativo` en datos legacy sin fecha ISO |
 | 3 | `order.lookup` | `.../Tools/Specs/lookup-order.spec.md` | `src/tools/order/lookupOrder.test.ts` + `src/runtime/conversationProcessor.test.ts` | Lectura read-only de `Pedidos` via `gws` + lookup por folio/nombre/producto | Done | Extender a estado enriquecido de pedido si se prioriza |
 | 3 | `payment.record` | `.../Tools/Specs/record-payment.spec.md` | `src/tools/order/recordPayment.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/payment-smoke.ts` | Mutacion de pago por `folio|operation_id_ref` via `gws` con confirm flow, actualizacion `estado_pago`, evento `[PAGO]` en `notas`, rechazo para pedidos cancelados e idempotencia por `operation_id` | Done | Monitorear pagos parciales y estandarizar conciliacion de montos |
-| 3 | `quote.order` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
+| 3 | `quote.order` | `.../Tools/Specs/quote-order.spec.md` | `src/tools/order/quoteOrder.test.ts` + `src/runtime/conversationProcessor.test.ts` | Lectura read-only de `CatalogoPrecios/Opciones/Referencias` via `gws` + cotizacion deterministica (base, extras, envio, urgencia, anticipo/vigencia) por fallback `quote.order` | Done | Monitorear precision de matching de producto/extras y ajustar catalogo segun feedback operativo |
 | 3 | `shopping.list.generate` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
 | 3 | `inventory.consume` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
 | 3 | `schedule.day_view` / `schedule.week_view` | Roadmap only | No | No | Planned | Crear specs de reporting/scheduling |
@@ -64,7 +64,7 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 ## Immediate Design Backlog (Spec-First)
 1. Mantener `npm run web:rollback:drill` como control manual bajo demanda y conservar bitacora de tiempos por ejecucion.
 2. Fase 3 funcional:
-   - Definir spec de `quote.order`.
+   - Definir specs de `shopping.list.generate`, `inventory.consume`, `schedule.*`.
 3. Fases 5 y 6: analytics (`costing/profit/cashflow`) y admin skills.
 
 ## Exit Criteria: "Sistema completamente disenado"

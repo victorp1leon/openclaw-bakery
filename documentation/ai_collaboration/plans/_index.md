@@ -1,6 +1,6 @@
 # Plans Index (AI Collaboration)
 
-Last Updated: 2026-03-11
+Last Updated: 2026-03-12
 
 ## Active Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
@@ -9,6 +9,9 @@ Last Updated: 2026-03-11
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `runtime/implementation/phase3-quote-order-gws-catalog-v1.md` | Implementation | Complete | 2026-03-12 |
+| `runtime/implementation/phase3-pricing-catalog-tab-hardening.md` | Implementation | Complete | 2026-03-12 |
+| `runtime/implementation/phase3-quote-pricing-catalog-sheets-tab-foundation.md` | Implementation | Complete | 2026-03-12 |
 | `runtime/implementation/phase3-order-lifecycle-skills-spec-first.md` | Implementation | Complete | 2026-03-11 |
 | `platform/implementation/codex-skills-rules-acceleration-foundation.md` | Implementation | Complete | 2026-03-11 |
 | `runtime/implementation/phase3-report-year-and-lookup-smoke.md` | Implementation | Complete | 2026-03-09 |

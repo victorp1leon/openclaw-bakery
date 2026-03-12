@@ -21,6 +21,7 @@ import {
 import { createCardTool } from "../tools/order/createCard";
 import { createLookupOrderTool, type OrderLookupResult } from "../tools/order/lookupOrder";
 import { createOrderCardSyncTool, type TrelloCardSnapshot } from "../tools/order/orderCardSync";
+import { createQuoteOrderTool, type QuoteOrderResult } from "../tools/order/quoteOrder";
 import {
   createRecordPaymentTool,
   type PaymentRecordExecutionPayload,
@@ -97,6 +98,10 @@ type ProcessorDeps = {
     chat_id: string;
     query: string;
   }) => Promise<OrderStatusResult>;
+  executeQuoteOrderFn?: (args: {
+    chat_id: string;
+    query: string;
+  }) => Promise<QuoteOrderResult>;
   executeOrderUpdateFn?: (args: {
     operation_id: string;
     chat_id: string;
@@ -592,6 +597,18 @@ function detectOrderStatusQuery(text: string): string | undefined {
   return undefined;
 }
 
+function detectQuoteOrderQuery(text: string): string | undefined {
+  const normalized = normalizeForMatch(text);
+  const hasQuoteVerb = /\b(cotiza|cotizar|cotizacion|cuanto\s+cuesta|cuanto\s+sale|cuanto\s+vale|presupuesto|precio\s+de)\b/.test(
+    normalized
+  );
+  if (!hasQuoteVerb) return undefined;
+
+  const query = text.trim();
+  if (query.length < 3) return undefined;
+  return query;
+}
+
 function formatOrderReportReply(report: OrderReportResult): string {
   const label = report.period.label;
   if (report.total === 0) {
@@ -645,6 +662,41 @@ function formatOrderStatusReply(result: OrderStatusResult): string {
 
   const extra = result.total > shown.length ? `\n... y ${result.total - shown.length} más` : "";
   return `Estado de pedidos para "${result.query}" (${result.total}):\n${lines.join("\n")}${extra}`;
+}
+
+function formatQuoteOrderReply(result: QuoteOrderResult): string {
+  const base = result.lines.find((line) => line.kind === "base");
+  const nonBase = result.lines.filter((line) => line.kind !== "base");
+  const lines: string[] = [];
+
+  lines.push(`Cotizacion estimada (${result.currency}):`);
+  lines.push(`Producto: ${result.product.name} (x${result.quantity})`);
+  lines.push(`Base: ${base ? `${base.amount} ${result.currency}` : `0 ${result.currency}`}`);
+
+  for (const line of nonBase) {
+    lines.push(`+ ${line.label}: ${line.amount} ${result.currency}`);
+  }
+
+  lines.push(`Subtotal: ${result.subtotal} ${result.currency}`);
+  lines.push(`Total estimado: ${result.total} ${result.currency}`);
+
+  if (result.suggestedDeposit != null) {
+    lines.push(`Anticipo sugerido: ${result.suggestedDeposit} ${result.currency}`);
+  }
+  if (result.quoteValidityHours != null) {
+    lines.push(`Vigencia: ${result.quoteValidityHours} horas`);
+  }
+  if (result.referenceContext?.matched) {
+    const average = result.referenceContext.averagePrice != null
+      ? ` (promedio ref: ${result.referenceContext.averagePrice} ${result.currency})`
+      : "";
+    lines.push(`Referencias consultadas: ${result.referenceContext.matched}${average}`);
+  }
+  if (result.assumptions.length > 0) {
+    lines.push(`Supuestos: ${result.assumptions.join(" | ")}`);
+  }
+
+  return lines.join("\n");
 }
 
 function normalizeTipoEnvioInput(raw: string): string {
@@ -1190,6 +1242,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeOrderReportFn = deps.executeOrderReportFn ?? createReportOrdersTool();
   const executeOrderLookupFn = deps.executeOrderLookupFn ?? createLookupOrderTool();
   const executeOrderStatusFn = deps.executeOrderStatusFn ?? createOrderStatusTool();
+  const executeQuoteOrderFn = deps.executeQuoteOrderFn ?? createQuoteOrderTool();
   const executeOrderUpdateFn = deps.executeOrderUpdateFn ?? createUpdateOrderTool();
   const executeOrderCancelFn = deps.executeOrderCancelFn ?? createCancelOrderTool();
   const executePaymentRecordFn = deps.executePaymentRecordFn ?? createRecordPaymentTool();
@@ -2311,6 +2364,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     const lookupQuery = detectOrderLookupQuery(msg.text);
     const lookupNeedsQuery = detectOrderLookupRequestWithoutQuery(msg.text);
     const statusQuery = detectOrderStatusQuery(msg.text);
+    const quoteQuery = detectQuoteOrderQuery(msg.text);
     if (lookupNeedsQuery) {
       const operation_id = newOperationId();
       setState(msg.chat_id, {
@@ -2358,6 +2412,43 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         });
 
         return ["No pude consultar el estado de ese pedido en este momento. Intenta de nuevo en unos minutos."];
+      }
+    }
+
+    if (quoteQuery) {
+      try {
+        const quote = await executeQuoteOrderFn({
+          chat_id: msg.chat_id,
+          query: quoteQuery
+        });
+
+        deps.onTrace?.({
+          event: "quote_order_succeeded",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "quote.order",
+          intent_source: "fallback",
+          detail: `product=${quote.product.key};total=${quote.total}`
+        });
+
+        return [formatQuoteOrderReply(quote)];
+      } catch (err) {
+        const safeDetail = err instanceof Error ? err.message : String(err);
+
+        deps.onTrace?.({
+          event: "quote_order_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "quote.order",
+          intent_source: "fallback",
+          detail: safeDetail
+        });
+
+        if (safeDetail === "quote_order_product_not_found") {
+          return ["No pude identificar el producto base para cotizar. Indícame producto y cantidad (por ejemplo: pastel mediano x1)."];
+        }
+
+        return ["No pude generar la cotización en este momento. Intenta de nuevo en unos minutos."];
       }
     }
 

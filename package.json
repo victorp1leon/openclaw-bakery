@@ -17,6 +17,8 @@
     "smoke:payment": "npx ts-node --transpile-only scripts/smoke/payment-smoke.ts",
     "smoke:lifecycle": "npx ts-node --transpile-only scripts/smoke/lifecycle-smoke.ts",
     "smoke:gws:live": "bash -lc 'set -euo pipefail; npm run smoke:report; SMOKE_LOOKUP_LIVE=1 npm run smoke:lookup; SMOKE_STATUS_LIVE=1 npm run smoke:status'",
+    "sheets:pricing:init": "npx ts-node --transpile-only scripts/sheets/init-pricing-catalog-tab.ts",
+    "sheets:pricing:validate": "npx ts-node --transpile-only scripts/sheets/validate-pricing-catalog-tabs.ts",
     "smoke:web": "npx ts-node --transpile-only scripts/smoke/web-smoke.ts",
     "smoke:web:ui": "npm run web:build && npx ts-node --transpile-only scripts/smoke/web-ui-playwright-smoke.ts",
     "gws:auth:status": "bash -lc 'set -euo pipefail; set -a; source .env; set +a; npx -y --cache /tmp/.npm-cache @googleworkspace/cli auth status'",

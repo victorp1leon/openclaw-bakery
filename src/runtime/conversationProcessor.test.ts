@@ -182,6 +182,36 @@ let createConversationProcessor: (args: {
     }>;
     detail: string;
   }>;
+  executeQuoteOrderFn?: (args: {
+    chat_id: string;
+    query: string;
+  }) => Promise<{
+    query: string;
+    currency: string;
+    quantity: number;
+    shippingMode: "envio_domicilio" | "recoger_en_tienda" | "sin_definir";
+    product: {
+      key: string;
+      name: string;
+      unitAmount: number;
+    };
+    lines: Array<{
+      kind: "base" | "option" | "extra" | "shipping" | "urgency";
+      key: string;
+      label: string;
+      amount: number;
+    }>;
+    subtotal: number;
+    total: number;
+    suggestedDeposit?: number;
+    quoteValidityHours?: number;
+    assumptions: string[];
+    referenceContext?: {
+      matched: number;
+      averagePrice?: number;
+    };
+    detail: string;
+  }>;
   executeOrderUpdateFn?: (args: {
     operation_id: string;
     chat_id: string;
@@ -717,6 +747,73 @@ describe("conversation processor security flow", () => {
       chat_id: "chat-status-empty",
       query: "inexistente"
     });
+  });
+
+  it("resuelve quote.order por fallback sin pasar por intent router", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+    const executeQuoteOrderFn = vi.fn(async ({ query }) => ({
+      query,
+      currency: "MXN",
+      quantity: 1,
+      shippingMode: "envio_domicilio" as const,
+      product: {
+        key: "pastel_mediano",
+        name: "Pastel mediano",
+        unitAmount: 650
+      },
+      lines: [
+        { kind: "base" as const, key: "pastel_mediano", label: "Pastel mediano", amount: 650 },
+        { kind: "option" as const, key: "decoracion_personalizada", label: "Decoracion personalizada", amount: 120 },
+        { kind: "shipping" as const, key: "zona_villa_alvarez", label: "Envio Villa de Alvarez", amount: 70 }
+      ],
+      subtotal: 840,
+      total: 840,
+      suggestedDeposit: 420,
+      quoteValidityHours: 72,
+      assumptions: [],
+      detail: "quote-order executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-quote"]),
+      routeIntentFn,
+      executeQuoteOrderFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-quote",
+      text: "cotiza pastel mediano con decoracion personalizada y envio a domicilio"
+    });
+
+    expect(replies[0]).toContain("Cotizacion estimada (MXN)");
+    expect(replies[0]).toContain("Total estimado: 840 MXN");
+    expect(replies[0]).toContain("Anticipo sugerido: 420 MXN");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+    expect(executeQuoteOrderFn).toHaveBeenCalledWith({
+      chat_id: "chat-quote",
+      query: "cotiza pastel mediano con decoracion personalizada y envio a domicilio"
+    });
+  });
+
+  it("responde mensaje guiado cuando quote.order no encuentra producto", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+    const executeQuoteOrderFn = vi.fn(async () => {
+      throw new Error("quote_order_product_not_found");
+    });
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-quote-not-found"]),
+      routeIntentFn,
+      executeQuoteOrderFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-quote-not-found",
+      text: "cotiza algo especial"
+    });
+
+    expect(replies[0]).toContain("No pude identificar el producto base para cotizar");
+    expect(routeIntentFn).not.toHaveBeenCalled();
   });
 
   it("inicia flujo de order.update con resumen y confirmacion", async () => {
