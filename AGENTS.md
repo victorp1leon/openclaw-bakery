@@ -27,6 +27,10 @@ Reglas operativas para colaborar con Codex en este repositorio sin perder contin
 - Preferir cambios pequenos y verificables.
 - Si no puedes validar con tests/lint, declarar explicitamente la limitacion.
 
+## Approval Gates
+- No iniciar implementacion de cambios (edicion de codigo/archivos del repo) sin aprobacion explicita del usuario en el mensaje, incluyendo la palabra `apruebo` (ej.: `dale, apruebo`, `continua, apruebo`).
+- No crear commits ni ejecutar flujo de commit salvo que el usuario lo indique explicitamente en el mensaje incluyendo la palabra `apruebo` (ej.: `haz commit, apruebo`, `commit apruebo`).
+
 ## Core Project Map
 - Runtime: `src/runtime/`
 - Guards: `src/guards/`

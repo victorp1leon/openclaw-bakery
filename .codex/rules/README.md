@@ -8,6 +8,7 @@ Estas reglas complementan `AGENTS.md` para acelerar desarrollo y reducir regresi
 - `live-flags-gate.md`: live tests/operaciones solo con flags explicitos.
 - `mandatory-validation.md`: validacion minima segun el tipo de cambio.
 - `secrets-never-commit.md`: manejo seguro de secretos y staging.
+- `approval-keyword-gate.md`: implementar o commitear solo con confirmacion explicita que incluya `apruebo`.
 
 ## Usage
 1. Aplicar estas reglas por defecto en cambios de bot/runtime.
