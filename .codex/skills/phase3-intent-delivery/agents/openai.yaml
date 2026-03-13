@@ -1,0 +1,4 @@
+interface:
+  display_name: "Phase 3 Intent Delivery"
+  short_description: "Entrega intents nuevos con smoke obligatorio"
+  default_prompt: "Use this skill when implementing a new roadmap intent so the delivery includes spec-first docs, runtime/tool wiring, tests, smoke registration, and plan/handoff closure."
