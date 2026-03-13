@@ -30,6 +30,8 @@ Bot de operaciones para panaderia con runtime conversacional, integraciones (She
   - `INVENTORY_TABS_APPLY=1 npm run sheets:inventory:init`
 - Generic schema-driven bootstrap:
   - `SHEETS_SCHEMA_PATH=scripts/sheets/schemas/inventory-tabs.tabs.json npm run sheets:tabs:init:schema`
+- Schema files validation (`scripts/sheets/schemas/*.tabs.json`):
+  - `npm run sheets:tabs:validate:schema`
 
 ## Repo Map
 - Runtime: `src/runtime/`

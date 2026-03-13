@@ -199,6 +199,8 @@ This matrix documents environment variables, defaults, requiredness, and runtime
   - `SHEETS_SCHEMA_PATH=scripts/sheets/schemas/inventory-tabs.tabs.json npm run sheets:tabs:init:schema`
 - Generic schema bootstrap apply:
   - `SHEETS_SCHEMA_APPLY=1 SHEETS_SCHEMA_PATH=scripts/sheets/schemas/inventory-tabs.tabs.json npm run sheets:tabs:init:schema`
+- Generic tabs schema validation (required before apply in CI/manual flow):
+  - `npm run sheets:tabs:validate:schema`
 - Pricing catalog tabs validation (headers + duplicate keys):
   - `npm run sheets:pricing:validate`
 - Dry-run web smoke (safe default): `npm run smoke:web`
@@ -254,6 +256,7 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 - Recipes catalog bootstrap uses the same `gws` path and writes to a dedicated tab (default: `CatalogoRecetas`) in the configured spreadsheet.
 - Inventory tabs bootstrap uses the same `gws` path and creates/updates `Inventario` + `MovimientosInventario` headers in the configured spreadsheet.
 - Generic schema bootstrap (`sheets:tabs:init:schema`) provides a manifest-driven path for future tabs using `scripts/sheets/schemas/*.tabs.json`.
+- Generic tabs schema validator (`sheets:tabs:validate:schema`) catches malformed manifest files (missing headers/tabs, duplicate keys/names, invalid row shapes/placeholders) before bootstrap.
 - `report.orders` reads Google Sheets via `gws` (`values.get`) using `ORDER_SHEETS_GWS_SPREADSHEET_ID` and a read range derived from `ORDER_SHEETS_GWS_RANGE` (`Pedidos!A1` -> `Pedidos!A:U`), preferring `fecha_hora_entrega_iso` for filtering when that column exists.
 - `shopping.list.generate` reads orders from `Pedidos` via `gws` and resolves recipe profiles from `ORDER_RECIPES_SOURCE`:
   - `inline`: built-in defaults for smoke/mock.

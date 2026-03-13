@@ -26,6 +26,7 @@
     "sheets:inventory:init": "npx ts-node --transpile-only scripts/sheets/init-inventory-tabs.ts",
     "sheets:inventory:preview": "INVENTORY_TABS_APPLY=0 INVENTORY_TABS_OVERWRITE=0 npm run sheets:inventory:init",
     "sheets:tabs:init:schema": "npx ts-node --transpile-only scripts/sheets/init-sheet-tabs-from-schema.ts",
+    "sheets:tabs:validate:schema": "npx ts-node --transpile-only scripts/sheets/validate-tabs-schemas.ts",
     "sheets:pricing:validate": "npx ts-node --transpile-only scripts/sheets/validate-pricing-catalog-tabs.ts",
     "smoke:web": "npx ts-node --transpile-only scripts/smoke/web-smoke.ts",
     "smoke:web:ui": "npm run web:build && npx ts-node --transpile-only scripts/smoke/web-ui-playwright-smoke.ts",
