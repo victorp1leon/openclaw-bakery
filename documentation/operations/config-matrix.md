@@ -59,6 +59,14 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 | `ORDER_RECIPES_GWS_RANGE` | `CatalogoRecetas!A:F` | No | shopping list tool | Read range for recipes catalog rows (`recipe_id, aliases_csv, insumo, unidad, cantidad_por_unidad, activo`). |
 | `ORDER_RECIPES_TIMEOUT_MS` | fallback `ORDER_SHEETS_TIMEOUT_MS` | No | shopping list tool | Timeout per recipe catalog read attempt. |
 | `ORDER_RECIPES_MAX_RETRIES` | fallback `ORDER_SHEETS_MAX_RETRIES` | No | shopping list tool | Bounded retry count for transient recipe catalog read failures. |
+| `RECIPES_CATALOG_APPLY` | `0` | No | `scripts/sheets/init-recipes-catalog-tab.ts` | Safety gate: `0` preview only, `1` applies changes in Google Sheets. |
+| `RECIPES_CATALOG_OVERWRITE` | `0` | No | `scripts/sheets/init-recipes-catalog-tab.ts` | When tab already has data, allows overwrite (`1`) instead of safe skip. |
+| `RECIPES_CATALOG_TAB_NAME` | `CatalogoRecetas` | No | `scripts/sheets/init-recipes-catalog-tab.ts` | Title of the recipes catalog tab to create/update. |
+| `RECIPES_CATALOG_GWS_SPREADSHEET_ID` | fallback `ORDER_RECIPES_GWS_SPREADSHEET_ID` then `ORDER_SHEETS_GWS_SPREADSHEET_ID` | Recommended | `scripts/sheets/init-recipes-catalog-tab.ts` | Spreadsheet id for recipes catalog bootstrap. |
+| `RECIPES_CATALOG_GWS_COMMAND` | fallback `ORDER_RECIPES_GWS_COMMAND` | No | `scripts/sheets/init-recipes-catalog-tab.ts` | Binary used to invoke `googleworkspace/cli` for recipes catalog bootstrap. |
+| `RECIPES_CATALOG_GWS_COMMAND_ARGS` | fallback `ORDER_RECIPES_GWS_COMMAND_ARGS` | No | `scripts/sheets/init-recipes-catalog-tab.ts` | Comma-separated prefix args injected before Sheets subcommands. |
+| `RECIPES_CATALOG_GWS_VALUE_INPUT_OPTION` | `USER_ENTERED` | No | `scripts/sheets/init-recipes-catalog-tab.ts` | `valueInputOption` for `values.update` (`USER_ENTERED` or `RAW`). |
+| `RECIPES_CATALOG_TIMEOUT_MS` | fallback `ORDER_RECIPES_TIMEOUT_MS` | No | `scripts/sheets/init-recipes-catalog-tab.ts` | Timeout per `gws` command invocation for recipes bootstrap. |
 | `PRICING_CATALOG_APPLY` | `0` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | Safety gate: `0` preview only, `1` applies changes in Google Sheets. |
 | `PRICING_CATALOG_OVERWRITE` | `0` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | When tab already has data, allows overwrite (`1`) instead of safe skip. |
 | `PRICING_CATALOG_TAB_NAME` | `CatalogoPrecios` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | Title of the pricing catalog tab to create/update. |
@@ -152,6 +160,12 @@ This matrix documents environment variables, defaults, requiredness, and runtime
   - `PRICING_CATALOG_APPLY=1 npm run sheets:pricing:init`
 - Pricing catalog overwrite (when tab already has data):
   - `PRICING_CATALOG_APPLY=1 PRICING_CATALOG_OVERWRITE=1 npm run sheets:pricing:init`
+- Recipes catalog tab bootstrap (safe preview):
+  - `npm run sheets:recipes:init`
+- Recipes catalog tab bootstrap apply (creates tab + seed rows):
+  - `RECIPES_CATALOG_APPLY=1 npm run sheets:recipes:init`
+- Recipes catalog overwrite (when tab already has data):
+  - `RECIPES_CATALOG_APPLY=1 RECIPES_CATALOG_OVERWRITE=1 npm run sheets:recipes:init`
 - Pricing catalog tabs validation (headers + duplicate keys):
   - `npm run sheets:pricing:validate`
 - Dry-run web smoke (safe default): `npm run smoke:web`
@@ -204,6 +218,7 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 ## Integration Notes
 - Google writes use `gws` only (`googleworkspace/cli` Sheets append/get/update); ensure host auth/session is configured before live mode.
 - Pricing catalog bootstrap uses the same `gws` path and writes to a dedicated tab (default: `CatalogoPrecios`) in the configured spreadsheet.
+- Recipes catalog bootstrap uses the same `gws` path and writes to a dedicated tab (default: `CatalogoRecetas`) in the configured spreadsheet.
 - `report.orders` reads Google Sheets via `gws` (`values.get`) using `ORDER_SHEETS_GWS_SPREADSHEET_ID` and a read range derived from `ORDER_SHEETS_GWS_RANGE` (`Pedidos!A1` -> `Pedidos!A:U`), preferring `fecha_hora_entrega_iso` for filtering when that column exists.
 - `shopping.list.generate` reads orders from `Pedidos` via `gws` and resolves recipe profiles from `ORDER_RECIPES_SOURCE`:
   - `inline`: built-in defaults for smoke/mock.

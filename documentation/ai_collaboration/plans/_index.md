@@ -9,6 +9,8 @@ Last Updated: 2026-03-13
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `runtime/implementation/phase3-sheets-bootstrap-gws-utils-refactor.md` | Refactoring | Complete | 2026-03-13 |
+| `runtime/implementation/phase3-recipes-catalog-bootstrap-automation.md` | Implementation | Complete | 2026-03-13 |
 | `runtime/implementation/phase3-shopping-list-recipes-gws-live-v1.md` | Implementation | Complete | 2026-03-13 |
 | `runtime/implementation/phase3-gws-read-helper-refactor-v1.md` | Refactoring | Complete | 2026-03-13 |
 | `runtime/implementation/phase3-shopping-list-generate-v1.md` | Implementation | Complete | 2026-03-13 |

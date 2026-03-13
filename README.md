@@ -18,6 +18,14 @@ Bot de operaciones para panaderia con runtime conversacional, integraciones (She
 - Full git history scan (requires `gitleaks` installed locally):
   - `npm run security:scan:history`
 
+## Sheets Catalog Bootstrap
+- Pricing catalog (preview/apply):
+  - `npm run sheets:pricing:init`
+  - `PRICING_CATALOG_APPLY=1 npm run sheets:pricing:init`
+- Recipes catalog (preview/apply):
+  - `npm run sheets:recipes:init`
+  - `RECIPES_CATALOG_APPLY=1 npm run sheets:recipes:init`
+
 ## Repo Map
 - Runtime: `src/runtime/`
 - Guards: `src/guards/`
