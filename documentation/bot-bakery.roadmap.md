@@ -238,7 +238,7 @@ Current coverage (status):
 - `order.status` v1: read-only query with `estado_pago` and derived `estado_operativo` (`programado|hoy|atrasado|cancelado`) over Google Sheets (`Pedidos`) via `gws`.
 - `order.update` v1: mutation by `folio|operation_id_ref` over Google Sheets (`Pedidos`) via `gws` with confirm flow, patch validation, and audit tag in `notas`.
 - `order.cancel` v1: mutation by `folio|operation_id_ref` over Google Sheets (`Pedidos`) via `gws` with cancel marker `[CANCELADO]` and idempotent no-op when already canceled.
-- `shopping.list.generate` v1: lista de insumos sugerida (read-only) por `day|week|order_ref|lookup` sobre `Pedidos` via `gws`, sin mutaciones ni confirm flow.
+- `shopping.list.generate` v1: lista de insumos sugerida (read-only) por `day|week|order_ref|lookup` sobre `Pedidos` via `gws`, con recetas `inline` (smoke/mock) o `CatalogoRecetas` via `gws` en live, sin mutaciones ni confirm flow.
 - `expense.add`: end-to-end completed (`gws` live validated) with dry-run safe defaults and smoke validation.
 - `web.publish`: adapter + runtime flow integrated, with chat path behind feature flag and content-driven terminal/CI publish path enabled.
 - Static site scaffold generated from repository content (`site/CONTENT.json` -> `site/dist`) via `npm run web:build`.

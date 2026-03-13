@@ -82,6 +82,17 @@ logger.info(
           rangeConfigured: Boolean(appConfig.orderTool.sheets.gws.range),
           valueInputOption: appConfig.orderTool.sheets.gws.valueInputOption
         }
+      },
+      recipes: {
+        source: appConfig.orderTool.recipes.source,
+        timeoutMs: appConfig.orderTool.recipes.timeoutMs,
+        maxRetries: appConfig.orderTool.recipes.maxRetries,
+        gws: {
+          command: appConfig.orderTool.recipes.gws.command,
+          commandArgs: appConfig.orderTool.recipes.gws.commandArgs,
+          spreadsheetIdConfigured: Boolean(appConfig.orderTool.recipes.gws.spreadsheetId),
+          rangeConfigured: Boolean(appConfig.orderTool.recipes.gws.range)
+        }
       }
     },
     web_tool: {
@@ -207,6 +218,13 @@ const executeShoppingList = createShoppingListGenerateTool({
   gwsRange: appConfig.orderTool.sheets.gws.range,
   timeoutMs: appConfig.orderTool.sheets.timeoutMs,
   maxRetries: appConfig.orderTool.sheets.maxRetries,
+  recipeSource: appConfig.orderTool.recipes.source,
+  recipesGwsCommand: appConfig.orderTool.recipes.gws.command,
+  recipesGwsCommandArgs: appConfig.orderTool.recipes.gws.commandArgs,
+  recipesGwsSpreadsheetId: appConfig.orderTool.recipes.gws.spreadsheetId,
+  recipesGwsRange: appConfig.orderTool.recipes.gws.range,
+  recipesTimeoutMs: appConfig.orderTool.recipes.timeoutMs,
+  recipesMaxRetries: appConfig.orderTool.recipes.maxRetries,
   timezone: appConfig.timezone
 });
 

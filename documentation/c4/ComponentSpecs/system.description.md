@@ -29,7 +29,7 @@ Last Updated: 2026-03-13
 - Stores conversation state, operations, and idempotency records in SQLite.
 
 5. `Tool Adapters`
-- Integrates with Sheets, Trello, and web publishing targets (including read-only order reports, lookup/status, and shopping-list generation via Sheets `gws`).
+- Integrates with Sheets, Trello, and web publishing targets (including read-only order reports, lookup/status, and shopping-list generation via Sheets `gws` with recipe profiles from `CatalogoRecetas` in live mode).
 
 6. `Config & Healthcheck`
 - Loads normalized runtime configuration and emits startup readiness checks.

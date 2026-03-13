@@ -19,6 +19,9 @@ It must not mutate orders, inventory, or confirmation state.
   - spreadsheet id
   - read range
   - timeout/retries
+- Recipe catalog source:
+  - `inline` (default): built-in recipe profiles for smoke/mock safety.
+  - `gws`: live recipe catalog via Google Sheets tab `CatalogoRecetas` (`A:F` by default).
 
 ## Outputs
 - Structured shopping list result:
@@ -40,6 +43,10 @@ It must not mutate orders, inventory, or confirmation state.
 - `order_ref` matching is exact over `folio` or `operation_id`.
 - `lookup` matching is accent-insensitive/case-insensitive over `folio`, `operation_id`, `nombre_cliente`, and `producto`.
 - Supplies list is suggestion-only and must include explicit assumptions when heuristics/default recipes are used.
+- When recipe source is `gws`, recipe rows are read from `CatalogoRecetas` with schema:
+  - `recipe_id`, `aliases_csv`, `insumo`, `unidad`, `cantidad_por_unidad`, `activo`
+- `recipe_id + aliases_csv` identify product matching aliases; each row contributes one supply line.
+- If `gws` recipe source is enabled and the catalog has no valid active recipe rows, fail deterministically.
 - Never expose credentials/tokens in user-facing messages.
 
 ## Error Handling Classification
@@ -50,6 +57,8 @@ It must not mutate orders, inventory, or confirmation state.
 - Non-retriable:
   - missing spreadsheet id
   - invalid scope payload
+  - missing recipes spreadsheet/range when recipe source is `gws`
+  - empty/invalid recipes catalog when recipe source is `gws`
   - command unavailable (`ENOENT`)
   - malformed non-JSON CLI payload
 

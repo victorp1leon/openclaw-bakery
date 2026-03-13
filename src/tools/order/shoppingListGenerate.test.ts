@@ -41,6 +41,16 @@ function buildRows(): string[][] {
   ];
 }
 
+function buildRecipeRows(): string[][] {
+  return [
+    ["recipe_id", "aliases_csv", "insumo", "unidad", "cantidad_por_unidad", "activo"],
+    ["cupcake", "cupcakes, cupcake clasico", "harina", "g", "50", "1"],
+    ["cupcake", "cupcakes, cupcake clasico", "azucar", "g", "30", "1"],
+    ["pastel", "pastel, cake", "harina", "g", "220", "1"],
+    ["pastel", "pastel, cake", "betun", "g", "180", "1"]
+  ];
+}
+
 describe("shopping-list-generate tool", () => {
   it("fails when spreadsheet id is missing", async () => {
     const tool = createShoppingListGenerateTool({
@@ -169,5 +179,61 @@ describe("shopping-list-generate tool", () => {
     await expect(
       tool({ chat_id: "chat-1", scope: { type: "day", dateKey: "2026-03-07", label: "hoy" } })
     ).rejects.toThrow("shopping_list_gws_command_unavailable");
+  });
+
+  it("loads recipe profiles from gws catalog when source is gws", async () => {
+    const gwsRunner = vi.fn().mockImplementation(async (args: { commandArgs: string[] }) => {
+      const paramsIndex = args.commandArgs.indexOf("--params");
+      const params = JSON.parse(args.commandArgs[paramsIndex + 1]) as { range: string };
+      if (params.range === "Pedidos!A:U") {
+        return okJson({ values: buildRows() });
+      }
+      if (params.range === "CatalogoRecetas!A:F") {
+        return okJson({ values: buildRecipeRows() });
+      }
+      return okJson({ values: [] });
+    });
+
+    const tool = createShoppingListGenerateTool({
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:U",
+      recipeSource: "gws",
+      recipesGwsRange: "CatalogoRecetas!A:F",
+      gwsRunner
+    });
+
+    const result = await tool({
+      chat_id: "chat-1",
+      scope: { type: "day", dateKey: "2026-03-07", label: "hoy" }
+    });
+
+    expect(result.totalOrders).toBe(1);
+    expect(result.supplies.some((item) => item.item === "harina" && item.amount === 600)).toBe(true);
+    expect(result.supplies.some((item) => item.item === "azucar" && item.amount === 360)).toBe(true);
+    expect(result.detail).toContain("recipe_source=gws");
+    expect(gwsRunner).toHaveBeenCalledTimes(2);
+  });
+
+  it("fails when recipe catalog is empty in gws mode", async () => {
+    const gwsRunner = vi.fn().mockImplementation(async (args: { commandArgs: string[] }) => {
+      const paramsIndex = args.commandArgs.indexOf("--params");
+      const params = JSON.parse(args.commandArgs[paramsIndex + 1]) as { range: string };
+      if (params.range === "Pedidos!A:U") {
+        return okJson({ values: buildRows() });
+      }
+      return okJson({ values: [] });
+    });
+
+    const tool = createShoppingListGenerateTool({
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:U",
+      recipeSource: "gws",
+      recipesGwsRange: "CatalogoRecetas!A:F",
+      gwsRunner
+    });
+
+    await expect(
+      tool({ chat_id: "chat-1", scope: { type: "day", dateKey: "2026-03-07", label: "hoy" } })
+    ).rejects.toThrow("shopping_list_recipes_catalog_empty");
   });
 });

@@ -39,6 +39,13 @@ describe("appConfig", () => {
     expect(config.orderTool.sheets.gws.spreadsheetId).toBeUndefined();
     expect(config.orderTool.sheets.gws.range).toBeUndefined();
     expect(config.orderTool.sheets.gws.valueInputOption).toBe("USER_ENTERED");
+    expect(config.orderTool.recipes.source).toBe("inline");
+    expect(config.orderTool.recipes.timeoutMs).toBe(5000);
+    expect(config.orderTool.recipes.maxRetries).toBe(2);
+    expect(config.orderTool.recipes.gws.command).toBe("gws");
+    expect(config.orderTool.recipes.gws.commandArgs).toEqual([]);
+    expect(config.orderTool.recipes.gws.spreadsheetId).toBeUndefined();
+    expect(config.orderTool.recipes.gws.range).toBe("CatalogoRecetas!A:F");
     expect(config.webTool.publish.dryRun).toBe(true);
     expect(config.webTool.chatEnabled).toBe(false);
     expect(config.webTool.contentPath).toBe("site/CONTENT.json");
@@ -140,7 +147,14 @@ describe("appConfig", () => {
       ORDER_SHEETS_GWS_COMMAND_ARGS: " auth,print-token ",
       ORDER_SHEETS_GWS_SPREADSHEET_ID: " order-sheet-id ",
       ORDER_SHEETS_GWS_RANGE: " Pedidos!A1 ",
-      ORDER_SHEETS_GWS_VALUE_INPUT_OPTION: "RAW"
+      ORDER_SHEETS_GWS_VALUE_INPUT_OPTION: "RAW",
+      ORDER_RECIPES_SOURCE: "gws",
+      ORDER_RECIPES_GWS_COMMAND: " gws-recipes ",
+      ORDER_RECIPES_GWS_COMMAND_ARGS: " auth,recipes-token ",
+      ORDER_RECIPES_GWS_SPREADSHEET_ID: " recipes-sheet-id ",
+      ORDER_RECIPES_GWS_RANGE: " CatalogoRecetas!A:F ",
+      ORDER_RECIPES_TIMEOUT_MS: "9400",
+      ORDER_RECIPES_MAX_RETRIES: "7"
     } as NodeJS.ProcessEnv);
 
     expect(config.orderTool.trello.dryRun).toBe(false);
@@ -161,6 +175,32 @@ describe("appConfig", () => {
     expect(config.orderTool.sheets.gws.spreadsheetId).toBe("order-sheet-id");
     expect(config.orderTool.sheets.gws.range).toBe("Pedidos!A1");
     expect(config.orderTool.sheets.gws.valueInputOption).toBe("RAW");
+
+    expect(config.orderTool.recipes.source).toBe("gws");
+    expect(config.orderTool.recipes.timeoutMs).toBe(9400);
+    expect(config.orderTool.recipes.maxRetries).toBe(7);
+    expect(config.orderTool.recipes.gws.command).toBe("gws-recipes");
+    expect(config.orderTool.recipes.gws.commandArgs).toEqual(["auth", "recipes-token"]);
+    expect(config.orderTool.recipes.gws.spreadsheetId).toBe("recipes-sheet-id");
+    expect(config.orderTool.recipes.gws.range).toBe("CatalogoRecetas!A:F");
+  });
+
+  it("uses order sheets defaults for recipes connector when recipe vars are missing", () => {
+    const config = loadAppConfig({
+      ORDER_SHEETS_GWS_COMMAND: "gws",
+      ORDER_SHEETS_GWS_COMMAND_ARGS: "auth,print-token",
+      ORDER_SHEETS_GWS_SPREADSHEET_ID: "orders-sheet-id",
+      ORDER_SHEETS_TIMEOUT_MS: "8100",
+      ORDER_SHEETS_MAX_RETRIES: "4"
+    } as NodeJS.ProcessEnv);
+
+    expect(config.orderTool.recipes.source).toBe("inline");
+    expect(config.orderTool.recipes.timeoutMs).toBe(8100);
+    expect(config.orderTool.recipes.maxRetries).toBe(4);
+    expect(config.orderTool.recipes.gws.command).toBe("gws");
+    expect(config.orderTool.recipes.gws.commandArgs).toEqual(["auth", "print-token"]);
+    expect(config.orderTool.recipes.gws.spreadsheetId).toBe("orders-sheet-id");
+    expect(config.orderTool.recipes.gws.range).toBe("CatalogoRecetas!A:F");
   });
 
   it("parses web publish connector settings", () => {

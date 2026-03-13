@@ -1,7 +1,7 @@
 # Bot Bakery Configuration Matrix
 
 Status: MVP
-Last Updated: 2026-03-12
+Last Updated: 2026-03-13
 
 This matrix documents environment variables, defaults, requiredness, and runtime impact.
 
@@ -52,6 +52,13 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 | `ORDER_SHEETS_GWS_VALUE_INPUT_OPTION` | `USER_ENTERED` | No | order Sheets adapter | Sheets `valueInputOption` (`USER_ENTERED` or `RAW`). |
 | `ORDER_SHEETS_TIMEOUT_MS` | `5000` | No | order Sheets adapter | HTTP timeout per order Sheets request attempt. |
 | `ORDER_SHEETS_MAX_RETRIES` | `2` | No | order Sheets adapter | Bounded retry count for transient order Sheets errors. |
+| `ORDER_RECIPES_SOURCE` | `inline` | No | shopping list tool | Source for recipe profiles used by `shopping.list.generate`: `inline` or `gws`. |
+| `ORDER_RECIPES_GWS_COMMAND` | fallback `ORDER_SHEETS_GWS_COMMAND` | No | shopping list tool | Binary used for recipe catalog reads when `ORDER_RECIPES_SOURCE=gws`. |
+| `ORDER_RECIPES_GWS_COMMAND_ARGS` | fallback `ORDER_SHEETS_GWS_COMMAND_ARGS` | No | shopping list tool | Comma-separated prefix args injected before Sheets read commands for recipes catalog. |
+| `ORDER_RECIPES_GWS_SPREADSHEET_ID` | fallback `ORDER_SHEETS_GWS_SPREADSHEET_ID` | Recommended when `ORDER_RECIPES_SOURCE=gws` | shopping list tool | Spreadsheet id containing recipes catalog tab (`CatalogoRecetas`). |
+| `ORDER_RECIPES_GWS_RANGE` | `CatalogoRecetas!A:F` | No | shopping list tool | Read range for recipes catalog rows (`recipe_id, aliases_csv, insumo, unidad, cantidad_por_unidad, activo`). |
+| `ORDER_RECIPES_TIMEOUT_MS` | fallback `ORDER_SHEETS_TIMEOUT_MS` | No | shopping list tool | Timeout per recipe catalog read attempt. |
+| `ORDER_RECIPES_MAX_RETRIES` | fallback `ORDER_SHEETS_MAX_RETRIES` | No | shopping list tool | Bounded retry count for transient recipe catalog read failures. |
 | `PRICING_CATALOG_APPLY` | `0` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | Safety gate: `0` preview only, `1` applies changes in Google Sheets. |
 | `PRICING_CATALOG_OVERWRITE` | `0` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | When tab already has data, allows overwrite (`1`) instead of safe skip. |
 | `PRICING_CATALOG_TAB_NAME` | `CatalogoPrecios` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | Title of the pricing catalog tab to create/update. |
@@ -198,6 +205,9 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 - Google writes use `gws` only (`googleworkspace/cli` Sheets append/get/update); ensure host auth/session is configured before live mode.
 - Pricing catalog bootstrap uses the same `gws` path and writes to a dedicated tab (default: `CatalogoPrecios`) in the configured spreadsheet.
 - `report.orders` reads Google Sheets via `gws` (`values.get`) using `ORDER_SHEETS_GWS_SPREADSHEET_ID` and a read range derived from `ORDER_SHEETS_GWS_RANGE` (`Pedidos!A1` -> `Pedidos!A:U`), preferring `fecha_hora_entrega_iso` for filtering when that column exists.
+- `shopping.list.generate` reads orders from `Pedidos` via `gws` and resolves recipe profiles from `ORDER_RECIPES_SOURCE`:
+  - `inline`: built-in defaults for smoke/mock.
+  - `gws`: recipe rows from `CatalogoRecetas` (`ORDER_RECIPES_GWS_RANGE`, default `CatalogoRecetas!A:F`).
 - Web publish adapter sanitizes media URLs by removing query/hash and only accepts `https` image URLs from approved domains.
 - Chat-based `web` flow is disabled by default (`WEB_CHAT_ENABLE=0`); preferred operation mode is content-driven via repository + terminal/CI.
 - Facebook import helper (`web:import:facebook`) only reads public page HTML and can fail due to anti-bot restrictions; manual image curation remains fallback.

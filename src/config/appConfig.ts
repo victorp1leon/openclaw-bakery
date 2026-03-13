@@ -3,6 +3,7 @@ import { parseBotPersona, type BotPersona } from "../runtime/persona";
 export type ChannelMode = "console" | "telegram";
 export type SheetsProvider = "gws";
 export type GwsValueInputOption = "RAW" | "USER_ENTERED";
+export type RecipeSource = "inline" | "gws";
 
 export type AppConfig = {
   botPersona: BotPersona;
@@ -71,6 +72,17 @@ export type AppConfig = {
         valueInputOption: GwsValueInputOption;
       };
     };
+    recipes: {
+      source: RecipeSource;
+      timeoutMs: number;
+      maxRetries: number;
+      gws: {
+        command: string;
+        commandArgs: string[];
+        spreadsheetId?: string;
+        range?: string;
+      };
+    };
   };
   webTool: {
     chatEnabled: boolean;
@@ -122,6 +134,12 @@ function parseGwsValueInputOption(raw: string | undefined, fallback: GwsValueInp
   return fallback;
 }
 
+function parseRecipeSource(raw: string | undefined): RecipeSource {
+  const value = raw?.trim().toLowerCase();
+  if (value === "gws") return "gws";
+  return "inline";
+}
+
 function parseCsv(raw: string | undefined): string[] {
   if (!raw) return [];
   return raw
@@ -132,6 +150,21 @@ function parseCsv(raw: string | undefined): string[] {
 
 export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const webAllowedImageDomains = parseCsv(env.WEB_PUBLISH_ALLOWED_IMAGE_DOMAINS).map((domain) => domain.toLowerCase());
+  const orderSheetsTimeoutMs = toPositiveInt(env.ORDER_SHEETS_TIMEOUT_MS, 5000);
+  const orderSheetsMaxRetries = toNonNegativeInt(env.ORDER_SHEETS_MAX_RETRIES, 2);
+  const orderSheetsGwsCommand = env.ORDER_SHEETS_GWS_COMMAND?.trim() || "gws";
+  const orderSheetsGwsCommandArgs = parseCsv(env.ORDER_SHEETS_GWS_COMMAND_ARGS);
+  const orderSheetsGwsSpreadsheetId = env.ORDER_SHEETS_GWS_SPREADSHEET_ID?.trim() || undefined;
+  const orderSheetsGwsRange = env.ORDER_SHEETS_GWS_RANGE?.trim() || undefined;
+  const orderRecipesSource = parseRecipeSource(env.ORDER_RECIPES_SOURCE);
+  const orderRecipesCommand = env.ORDER_RECIPES_GWS_COMMAND?.trim() || orderSheetsGwsCommand;
+  const orderRecipesCommandArgs = env.ORDER_RECIPES_GWS_COMMAND_ARGS != null
+    ? parseCsv(env.ORDER_RECIPES_GWS_COMMAND_ARGS)
+    : orderSheetsGwsCommandArgs;
+  const orderRecipesSpreadsheetId = env.ORDER_RECIPES_GWS_SPREADSHEET_ID?.trim() || orderSheetsGwsSpreadsheetId;
+  const orderRecipesRange = env.ORDER_RECIPES_GWS_RANGE?.trim() || "CatalogoRecetas!A:F";
+  const orderRecipesTimeoutMs = toPositiveInt(env.ORDER_RECIPES_TIMEOUT_MS, orderSheetsTimeoutMs);
+  const orderRecipesMaxRetries = toNonNegativeInt(env.ORDER_RECIPES_MAX_RETRIES, orderSheetsMaxRetries);
 
   return {
     botPersona: parseBotPersona(env.BOT_PERSONA),
@@ -190,14 +223,25 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       sheets: {
         dryRun: (env.ORDER_SHEETS_DRY_RUN ?? "1") === "1",
         provider: parseSheetsProvider(env.ORDER_SHEETS_PROVIDER, "gws"),
-        timeoutMs: toPositiveInt(env.ORDER_SHEETS_TIMEOUT_MS, 5000),
-        maxRetries: toNonNegativeInt(env.ORDER_SHEETS_MAX_RETRIES, 2),
+        timeoutMs: orderSheetsTimeoutMs,
+        maxRetries: orderSheetsMaxRetries,
         gws: {
-          command: env.ORDER_SHEETS_GWS_COMMAND?.trim() || "gws",
-          commandArgs: parseCsv(env.ORDER_SHEETS_GWS_COMMAND_ARGS),
-          spreadsheetId: env.ORDER_SHEETS_GWS_SPREADSHEET_ID?.trim() || undefined,
-          range: env.ORDER_SHEETS_GWS_RANGE?.trim() || undefined,
+          command: orderSheetsGwsCommand,
+          commandArgs: orderSheetsGwsCommandArgs,
+          spreadsheetId: orderSheetsGwsSpreadsheetId,
+          range: orderSheetsGwsRange,
           valueInputOption: parseGwsValueInputOption(env.ORDER_SHEETS_GWS_VALUE_INPUT_OPTION, "USER_ENTERED")
+        }
+      },
+      recipes: {
+        source: orderRecipesSource,
+        timeoutMs: orderRecipesTimeoutMs,
+        maxRetries: orderRecipesMaxRetries,
+        gws: {
+          command: orderRecipesCommand,
+          commandArgs: orderRecipesCommandArgs,
+          spreadsheetId: orderRecipesSpreadsheetId,
+          range: orderRecipesRange
         }
       }
     },

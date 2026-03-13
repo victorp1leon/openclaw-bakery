@@ -46,6 +46,8 @@ export type ShoppingListSupplyItem = {
   sourceProducts: string[];
 };
 
+export type ShoppingListRecipeSource = "inline" | "gws";
+
 export type ShoppingListResult = {
   scope: ShoppingListScope;
   timezone: string;
@@ -67,6 +69,15 @@ export type ShoppingListToolConfig = {
   retryBackoffMs?: number;
   timezone?: string;
   limit?: number;
+  recipeProfiles?: RecipeProfile[];
+  recipeSource?: ShoppingListRecipeSource;
+  recipesGwsCommand?: string;
+  recipesGwsCommandArgs?: string[];
+  recipesGwsSpreadsheetId?: string;
+  recipesGwsRange?: string;
+  recipesTimeoutMs?: number;
+  recipesMaxRetries?: number;
+  recipesRetryBackoffMs?: number;
   gwsRunner?: GwsCommandRunner;
 };
 
@@ -287,6 +298,91 @@ function mapRows(rows: string[][], timezone: string, assumptions: string[]): Par
     .filter((row) => row.fecha_hora_entrega && row.nombre_cliente && row.producto);
 }
 
+function isRecipeHeaderRow(row: string[]): boolean {
+  const normalized = row.map((cell) => normalizeForMatch(cell));
+  return normalized.includes("recipe_id") && normalized.includes("insumo");
+}
+
+function parseRecipeActive(value: string | undefined): boolean {
+  const normalized = normalizeForMatch(value ?? "");
+  if (!normalized) return true;
+  if (["0", "false", "no", "inactivo", "off"].includes(normalized)) return false;
+  return true;
+}
+
+function parseRecipeAliases(recipeId: string, aliasesCsv: string): string[] {
+  const items = [recipeId, ...aliasesCsv.split(/[;,]/g)]
+    .map((value) => normalizePhrase(value))
+    .filter((value) => value.length > 0);
+  return [...new Set(items)];
+}
+
+function parseRecipeProfiles(rows: string[][]): { profiles: RecipeProfile[]; assumptions: string[] } {
+  const assumptions: string[] = [];
+  const dataRows = rows.length > 0 && isRecipeHeaderRow(rows[0]) ? rows.slice(1) : rows;
+  const byRecipe = new Map<string, { id: string; aliases: Set<string>; items: Map<string, RecipeItem> }>();
+
+  for (let i = 0; i < dataRows.length; i += 1) {
+    const row = dataRows[i];
+    const rowNo = i + 1;
+    const rawRecipeId = row[0]?.trim() ?? "";
+    const rawAliases = row[1]?.trim() ?? "";
+    const rawItem = row[2]?.trim() ?? "";
+    const rawUnit = normalizeForMatch(row[3] ?? "").replace(/\s+/g, "");
+    const rawPerUnit = toNumberMaybe(row[4]);
+    const active = parseRecipeActive(row[5]);
+
+    if (!active) continue;
+    if (!rawItem || !rawUnit || rawPerUnit == null || rawPerUnit <= 0) {
+      assumptions.push(`fila receta ${rowNo} ignorada por campos inválidos`);
+      continue;
+    }
+
+    const aliases = parseRecipeAliases(rawRecipeId, rawAliases);
+    if (aliases.length === 0) {
+      assumptions.push(`fila receta ${rowNo} ignorada por aliases vacíos`);
+      continue;
+    }
+
+    const recipeId = normalizePhrase(rawRecipeId || aliases[0]).replace(/\s+/g, "_");
+    if (!recipeId) {
+      assumptions.push(`fila receta ${rowNo} ignorada por recipe_id inválido`);
+      continue;
+    }
+
+    if (!byRecipe.has(recipeId)) {
+      byRecipe.set(recipeId, {
+        id: recipeId,
+        aliases: new Set<string>(),
+        items: new Map<string, RecipeItem>()
+      });
+    }
+
+    const recipe = byRecipe.get(recipeId)!;
+    aliases.forEach((alias) => recipe.aliases.add(alias));
+
+    const itemKey = `${normalizePhrase(rawItem)}|${rawUnit}`;
+    if (!recipe.items.has(itemKey)) {
+      recipe.items.set(itemKey, { item: rawItem, unit: rawUnit, perUnit: 0 });
+    }
+    const item = recipe.items.get(itemKey)!;
+    item.perUnit += rawPerUnit;
+  }
+
+  const profiles = [...byRecipe.values()]
+    .map((recipe) => ({
+      id: recipe.id,
+      aliases: [...recipe.aliases],
+      items: [...recipe.items.values()]
+    }))
+    .filter((recipe) => recipe.aliases.length > 0 && recipe.items.length > 0);
+
+  return {
+    profiles,
+    assumptions
+  };
+}
+
 function matchesLookupQuery(row: ParsedOrderRow, query: string): boolean {
   const q = normalizeForMatch(query);
   if (!q || q.length < 2) return false;
@@ -337,13 +433,13 @@ function tokenize(value: string): string[] {
     .filter((token) => token.length > 0);
 }
 
-function findRecipeProfile(productName: string): RecipeProfile | undefined {
+function findRecipeProfile(productName: string, recipeProfiles: RecipeProfile[]): RecipeProfile | undefined {
   const normalized = normalizePhrase(productName);
   if (!normalized) return undefined;
 
   let best: { profile: RecipeProfile; score: number } | undefined;
 
-  for (const profile of DEFAULT_RECIPE_PROFILES) {
+  for (const profile of recipeProfiles) {
     const score = profile.aliases.reduce((acc, alias) => {
       const aliasPhrase = normalizePhrase(alias);
       if (!aliasPhrase) return acc;
@@ -369,7 +465,7 @@ function roundAmount(amount: number, unit: string): number {
   return Math.round(amount * 100) / 100;
 }
 
-function buildAggregation(args: { rows: ParsedOrderRow[]; assumptions: string[] }): {
+function buildAggregation(args: { rows: ParsedOrderRow[]; assumptions: string[]; recipeProfiles: RecipeProfile[] }): {
   products: ShoppingListProductItem[];
   supplies: ShoppingListSupplyItem[];
 } {
@@ -392,7 +488,7 @@ function buildAggregation(args: { rows: ParsedOrderRow[]; assumptions: string[] 
   }
 
   for (const product of productsMap.values()) {
-    const recipe = findRecipeProfile(product.product);
+    const recipe = findRecipeProfile(product.product, args.recipeProfiles);
     if (!recipe) {
       args.assumptions.push(`sin receta mapeada para "${product.product}"; se agregó empaque genérico`);
       const fallbackKey = "empaque_generico|pza";
@@ -458,6 +554,21 @@ export function createShoppingListGenerateTool(config: ShoppingListToolConfig = 
     : 150;
   const timezone = config.timezone?.trim() || "America/Mexico_City";
   const limit = Number.isFinite(config.limit) && (config.limit ?? -1) > 0 ? Math.trunc(config.limit!) : 100;
+  const recipeSource = config.recipeSource ?? "inline";
+  const inlineRecipeProfiles = config.recipeProfiles ?? DEFAULT_RECIPE_PROFILES;
+  const recipesGwsCommand = config.recipesGwsCommand?.trim() || gwsCommand;
+  const recipesGwsCommandArgs = config.recipesGwsCommandArgs ?? gwsCommandArgs;
+  const recipesGwsSpreadsheetId = config.recipesGwsSpreadsheetId?.trim() || gwsSpreadsheetId;
+  const recipesNormalizedRange = normalizeGwsReadRange(config.recipesGwsRange, "A:F") ?? "CatalogoRecetas!A:F";
+  const recipesTimeoutMs = Number.isFinite(config.recipesTimeoutMs) && (config.recipesTimeoutMs ?? 0) > 0
+    ? Math.trunc(config.recipesTimeoutMs!)
+    : timeoutMs;
+  const recipesMaxRetries = Number.isFinite(config.recipesMaxRetries) && (config.recipesMaxRetries ?? -1) >= 0
+    ? Math.trunc(config.recipesMaxRetries!)
+    : maxRetries;
+  const recipesRetryBackoffMs = Number.isFinite(config.recipesRetryBackoffMs) && (config.recipesRetryBackoffMs ?? -1) >= 0
+    ? Math.trunc(config.recipesRetryBackoffMs!)
+    : retryBackoffMs;
   const gwsRunner = config.gwsRunner ?? runGwsCommand;
 
   return async function shoppingListGenerate(args: {
@@ -501,6 +612,38 @@ export function createShoppingListGenerateTool(config: ShoppingListToolConfig = 
     });
 
     const assumptions: string[] = [];
+    let recipeProfiles: RecipeProfile[] = inlineRecipeProfiles;
+    if (recipeSource === "gws") {
+      if (!recipesGwsSpreadsheetId) {
+        throw new Error("shopping_list_recipes_gws_spreadsheet_id_missing");
+      }
+      if (!recipesNormalizedRange) {
+        throw new Error("shopping_list_recipes_gws_range_missing");
+      }
+
+      const recipesReadResult = await readGwsValuesWithRetries({
+        command: recipesGwsCommand,
+        commandArgs: recipesGwsCommandArgs,
+        spreadsheetId: recipesGwsSpreadsheetId,
+        range: recipesNormalizedRange,
+        timeoutMs: recipesTimeoutMs,
+        maxRetries: recipesMaxRetries,
+        retryBackoffMs: recipesRetryBackoffMs,
+        runner: gwsRunner,
+        errorPrefix: "shopping_list_recipes_gws",
+        invalidPayloadError: "shopping_list_recipes_gws_invalid_payload",
+        commandUnavailableError: "shopping_list_recipes_gws_command_unavailable",
+        failedError: "shopping_list_recipes_gws_failed"
+      });
+
+      const parsedRecipes = parseRecipeProfiles(recipesReadResult.rows);
+      assumptions.push(...parsedRecipes.assumptions);
+      if (parsedRecipes.profiles.length === 0) {
+        throw new Error("shopping_list_recipes_catalog_empty");
+      }
+      recipeProfiles = parsedRecipes.profiles;
+    }
+
     const parsedRows = mapRows(readResult.rows, timezone, assumptions);
     const maxRows = Number.isFinite(args.limit) && (args.limit ?? 0) > 0 ? Math.trunc(args.limit!) : limit;
     const filtered = parsedRows
@@ -510,7 +653,8 @@ export function createShoppingListGenerateTool(config: ShoppingListToolConfig = 
 
     const { products, supplies } = buildAggregation({
       rows: filtered,
-      assumptions
+      assumptions,
+      recipeProfiles
     });
 
     const orders = filtered.map(({ _dateKey: _ignoredDateKey, _matchKey: _ignoredMatchKey, _productKey: _ignoredProductKey, ...row }) => row);
@@ -522,7 +666,7 @@ export function createShoppingListGenerateTool(config: ShoppingListToolConfig = 
       products,
       supplies,
       assumptions: [...new Set(assumptions)],
-      detail: `shopping-list-generate executed (provider=gws, attempt=${readResult.attempt}, scope=${args.scope.type})`
+      detail: `shopping-list-generate executed (provider=gws, attempt=${readResult.attempt}, scope=${args.scope.type}, recipe_source=${recipeSource})`
     };
   };
 }
