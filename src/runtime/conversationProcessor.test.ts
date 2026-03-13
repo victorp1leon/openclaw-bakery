@@ -182,6 +182,44 @@ let createConversationProcessor: (args: {
     }>;
     detail: string;
   }>;
+  executeShoppingListFn?: (args: {
+    chat_id: string;
+    scope:
+      | { type: "day"; dateKey: string; label: string }
+      | { type: "week"; anchorDateKey: string; label: string }
+      | { type: "order_ref"; reference: string; label: string }
+      | { type: "lookup"; query: string; label: string };
+  }) => Promise<{
+    scope:
+      | { type: "day"; dateKey: string; label: string }
+      | { type: "week"; anchorDateKey: string; label: string }
+      | { type: "order_ref"; reference: string; label: string }
+      | { type: "lookup"; query: string; label: string };
+    timezone: string;
+    totalOrders: number;
+    orders: Array<{
+      folio: string;
+      operation_id?: string;
+      fecha_hora_entrega: string;
+      fecha_hora_entrega_iso?: string;
+      nombre_cliente: string;
+      producto: string;
+      cantidad: number;
+    }>;
+    products: Array<{
+      product: string;
+      quantity: number;
+      orders: number;
+    }>;
+    supplies: Array<{
+      item: string;
+      unit: string;
+      amount: number;
+      sourceProducts: string[];
+    }>;
+    assumptions: string[];
+    detail: string;
+  }>;
   executeQuoteOrderFn?: (args: {
     chat_id: string;
     query: string;
@@ -566,6 +604,120 @@ describe("conversation processor security flow", () => {
     expect(executeOrderReportFn).toHaveBeenCalledWith({
       chat_id: "chat-report-year",
       period: { type: "year", year: 2026, label: "este año" }
+    });
+  });
+
+  it("resuelve lista de insumos sin pasar por intent router", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+    const executeShoppingListFn = vi.fn(async () => ({
+      scope: { type: "day", dateKey: "2026-03-07", label: "hoy" } as const,
+      timezone: "America/Mexico_City",
+      totalOrders: 1,
+      orders: [
+        {
+          folio: "op-shop-1",
+          operation_id: "op-shop-1",
+          fecha_hora_entrega: "2026-03-07 14:00",
+          nombre_cliente: "Ana",
+          producto: "cupcakes",
+          cantidad: 12
+        }
+      ],
+      products: [
+        {
+          product: "cupcakes",
+          quantity: 12,
+          orders: 1
+        }
+      ],
+      supplies: [
+        {
+          item: "harina",
+          unit: "g",
+          amount: 540,
+          sourceProducts: ["cupcakes"]
+        }
+      ],
+      assumptions: [],
+      detail: "shopping-list-generate executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-shopping"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn,
+      executeShoppingListFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-shopping",
+      text: "dame lista de insumos para hoy"
+    });
+
+    expect(replies[0]).toContain("Lista de insumos para hoy");
+    expect(replies[0]).toContain("harina");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+    expect(executeShoppingListFn).toHaveBeenCalledWith({
+      chat_id: "chat-shopping",
+      scope: { type: "day", dateKey: "2026-03-07", label: "hoy" }
+    });
+  });
+
+  it("pide alcance faltante para lista de insumos y luego responde", async () => {
+    const executeShoppingListFn = vi.fn(async ({ scope }) => ({
+      scope,
+      timezone: "America/Mexico_City",
+      totalOrders: 1,
+      orders: [
+        {
+          folio: "op-shop-2",
+          operation_id: "op-shop-2",
+          fecha_hora_entrega: "2026-03-08 10:00",
+          nombre_cliente: "Ana",
+          producto: "pastel",
+          cantidad: 1
+        }
+      ],
+      products: [
+        {
+          product: "pastel",
+          quantity: 1,
+          orders: 1
+        }
+      ],
+      supplies: [
+        {
+          item: "harina",
+          unit: "g",
+          amount: 220,
+          sourceProducts: ["pastel"]
+        }
+      ],
+      assumptions: [],
+      detail: "shopping-list-generate executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-shopping-missing"]),
+      routeIntentFn: async () => "pedido",
+      executeShoppingListFn
+    });
+
+    const ask = await processor.handleMessage({
+      chat_id: "chat-shopping-missing",
+      text: "dame lista de insumos"
+    });
+    expect(ask[0].toLowerCase()).toContain("insumos");
+
+    const reply = await processor.handleMessage({
+      chat_id: "chat-shopping-missing",
+      text: "ana"
+    });
+
+    expect(reply[0]).toContain('Lista de insumos para "ana"');
+    expect(executeShoppingListFn).toHaveBeenCalledWith({
+      chat_id: "chat-shopping-missing",
+      scope: { type: "lookup", query: "ana", label: "\"ana\"" }
     });
   });
 

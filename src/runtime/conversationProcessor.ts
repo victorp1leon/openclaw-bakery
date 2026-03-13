@@ -36,6 +36,11 @@ import {
 import { createOrderStatusTool, type OrderStatusResult } from "../tools/order/orderStatus";
 import { createReportOrdersTool, type OrderReportPeriod, type OrderReportResult } from "../tools/order/reportOrders";
 import {
+  createShoppingListGenerateTool,
+  type ShoppingListResult,
+  type ShoppingListScope
+} from "../tools/order/shoppingListGenerate";
+import {
   createUpdateOrderTool,
   type OrderUpdateExecutionPayload,
   type OrderUpdateReference
@@ -103,6 +108,10 @@ type ProcessorDeps = {
     chat_id: string;
     query: string;
   }) => Promise<OrderStatusResult>;
+  executeShoppingListFn?: (args: {
+    chat_id: string;
+    scope: ShoppingListScope;
+  }) => Promise<ShoppingListResult>;
   executeQuoteOrderFn?: (args: {
     chat_id: string;
     query: string;
@@ -602,6 +611,88 @@ function detectOrderStatusQuery(text: string): string | undefined {
   return undefined;
 }
 
+function hasShoppingListHint(normalized: string): boolean {
+  return (
+    /\b(insumos|surtir|surtido|compras|shopping)\b/.test(normalized) ||
+    /\blista\s+de\s+(insumos|compras)\b/.test(normalized) ||
+    /\bque\s+necesito\s+comprar\b/.test(normalized)
+  );
+}
+
+function hasMeaningfulLookupQuery(value: string): boolean {
+  const normalized = normalizeForMatch(value);
+  if (normalized.length < 2) return false;
+  if (/^(pedido|pedidos|insumos|lista|compras|surtir)$/.test(normalized)) return false;
+  return true;
+}
+
+function detectShoppingListScope(args: {
+  text: string;
+  now: Date;
+  timezone: string;
+}): ShoppingListScope | undefined {
+  const normalized = normalizeForMatch(args.text);
+  if (!hasShoppingListHint(normalized)) return undefined;
+
+  const dayPeriod = parseOrderReportDayPeriod({
+    normalized,
+    now: args.now,
+    timezone: args.timezone
+  });
+  if (dayPeriod && dayPeriod.type === "day") {
+    return {
+      type: "day",
+      dateKey: dayPeriod.dateKey,
+      label: dayPeriod.label
+    };
+  }
+
+  const weekPeriod = parseOrderReportWeekPeriod({
+    normalized,
+    now: args.now,
+    timezone: args.timezone
+  });
+  if (weekPeriod && weekPeriod.type === "week") {
+    return {
+      type: "week",
+      anchorDateKey: weekPeriod.anchorDateKey,
+      label: weekPeriod.label
+    };
+  }
+
+  const ref =
+    normalized.match(/\b(?:folio|operation_id|operacion|id)\s*[:=]?\s*([a-z0-9_-]{3,})\b/)?.[1] ??
+    normalized.match(/\bpedido\s*[:=]?\s*([a-z0-9_-]{3,})\b/)?.[1];
+  if (ref && hasMeaningfulLookupQuery(ref)) {
+    return {
+      type: "order_ref",
+      reference: ref,
+      label: `pedido ${ref}`
+    };
+  }
+
+  const deMatch = normalized.match(/\b(?:de|del|para|por)\s+(.+?)\s*$/)?.[1]?.trim();
+  if (deMatch && hasMeaningfulLookupQuery(deMatch)) {
+    return {
+      type: "lookup",
+      query: deMatch,
+      label: `"${deMatch}"`
+    };
+  }
+
+  return undefined;
+}
+
+function detectShoppingListRequestWithoutScope(args: {
+  text: string;
+  now: Date;
+  timezone: string;
+}): boolean {
+  const normalized = normalizeForMatch(args.text);
+  if (!hasShoppingListHint(normalized)) return false;
+  return detectShoppingListScope(args) == null;
+}
+
 function detectQuoteOrderQuery(text: string): string | undefined {
   const normalized = normalizeForMatch(text);
   const hasQuoteVerb = /\b(cotiza|cotizar|cotizacion|cuanto\s+cuesta|cuanto\s+sale|cuanto\s+vale|presupuesto|precio\s+de)\b/.test(
@@ -877,6 +968,38 @@ function formatOrderStatusReply(result: OrderStatusResult): string {
 
   const extra = result.total > shown.length ? `\n... y ${result.total - shown.length} más` : "";
   return `Estado de pedidos para "${result.query}" (${result.total}):\n${lines.join("\n")}${extra}`;
+}
+
+function formatShoppingListReply(result: ShoppingListResult): string {
+  const label = result.scope.label;
+  if (result.totalOrders === 0) {
+    return `No encontré pedidos para armar la lista de insumos (${label}).`;
+  }
+
+  const maxSupplies = 12;
+  const shownSupplies = result.supplies.slice(0, maxSupplies);
+  const supplyLines = shownSupplies.map((supply, idx) => {
+    const source = supply.sourceProducts.length > 0 ? ` [${supply.sourceProducts.join(", ")}]` : "";
+    return `${idx + 1}. ${supply.item}: ${supply.amount} ${supply.unit}${source}`;
+  });
+  const supplyExtra = result.supplies.length > shownSupplies.length
+    ? `\n... y ${result.supplies.length - shownSupplies.length} insumos más`
+    : "";
+
+  const productSummary = result.products
+    .slice(0, 6)
+    .map((item) => `${item.product} x${item.quantity}`)
+    .join(" | ");
+  const assumptions =
+    result.assumptions.length > 0
+      ? `\nSupuestos: ${result.assumptions.join(" ; ")}`
+      : "";
+
+  return [
+    `Lista de insumos para ${label} (${result.totalOrders} pedidos):`,
+    supplyLines.join("\n") + supplyExtra,
+    `Productos considerados: ${productSummary}${result.products.length > 6 ? " | ..." : ""}${assumptions}`
+  ].join("\n");
 }
 
 function formatQuoteOrderReply(result: QuoteOrderResult): string {
@@ -1457,6 +1580,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeOrderReportFn = deps.executeOrderReportFn ?? createReportOrdersTool();
   const executeOrderLookupFn = deps.executeOrderLookupFn ?? createLookupOrderTool();
   const executeOrderStatusFn = deps.executeOrderStatusFn ?? createOrderStatusTool();
+  const executeShoppingListFn = deps.executeShoppingListFn ?? createShoppingListGenerateTool();
   const executeQuoteOrderFn = deps.executeQuoteOrderFn ?? createQuoteOrderTool();
   const executeOrderUpdateFn = deps.executeOrderUpdateFn ?? createUpdateOrderTool();
   const executeOrderCancelFn = deps.executeOrderCancelFn ?? createCancelOrderTool();
@@ -2310,6 +2434,50 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       }
 
       if (st.pending.asked) {
+        if (st.pending.action.intent === "shopping.list.generate") {
+          const query = msg.text.trim();
+          if (query.length < 2) {
+            return [copy.askFor("shopping_list_query")];
+          }
+
+          try {
+            const shoppingList = await executeShoppingListFn({
+              chat_id: msg.chat_id,
+              scope: {
+                type: "lookup",
+                query,
+                label: `"${normalizeForMatch(query)}"`
+              }
+            });
+
+            deps.onTrace?.({
+              event: "shopping_list_succeeded",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "shopping.list.generate",
+              intent_source: "fallback",
+              detail: `scope=${shoppingList.scope.type}:${shoppingList.scope.label};orders=${shoppingList.totalOrders}`
+            });
+
+            clearPending(msg.chat_id);
+            return [formatShoppingListReply(shoppingList)];
+          } catch (err) {
+            const safeDetail = err instanceof Error ? err.message : String(err);
+
+            deps.onTrace?.({
+              event: "shopping_list_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "shopping.list.generate",
+              intent_source: "fallback",
+              detail: safeDetail
+            });
+
+            clearPending(msg.chat_id);
+            return ["No pude generar la lista de insumos en este momento. Intenta de nuevo en unos minutos."];
+          }
+        }
+
         if (st.pending.action.intent === "order.lookup") {
           const query = msg.text.trim();
           if (query.length < 2) {
@@ -2777,6 +2945,66 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         });
 
         return ["No pude consultar pedidos en este momento. Intenta de nuevo en unos minutos."];
+      }
+    }
+
+    const shoppingScope = detectShoppingListScope({
+      text: msg.text,
+      now: new Date(nowMs()),
+      timezone: orderReportTimezone
+    });
+    const shoppingNeedsScope = detectShoppingListRequestWithoutScope({
+      text: msg.text,
+      now: new Date(nowMs()),
+      timezone: orderReportTimezone
+    });
+    if (shoppingNeedsScope) {
+      const operation_id = newOperationId();
+      setState(msg.chat_id, {
+        pending: {
+          operation_id,
+          idempotency_key: operation_id,
+          action: {
+            intent: "shopping.list.generate",
+            payload: {}
+          },
+          missing: ["shopping_list_query"],
+          asked: "shopping_list_query"
+        }
+      });
+      return [copy.askFor("shopping_list_query")];
+    }
+
+    if (shoppingScope) {
+      try {
+        const shoppingList = await executeShoppingListFn({
+          chat_id: msg.chat_id,
+          scope: shoppingScope
+        });
+
+        deps.onTrace?.({
+          event: "shopping_list_succeeded",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "shopping.list.generate",
+          intent_source: "fallback",
+          detail: `scope=${shoppingList.scope.type}:${shoppingList.scope.label};orders=${shoppingList.totalOrders}`
+        });
+
+        return [formatShoppingListReply(shoppingList)];
+      } catch (err) {
+        const safeDetail = err instanceof Error ? err.message : String(err);
+
+        deps.onTrace?.({
+          event: "shopping_list_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "shopping.list.generate",
+          intent_source: "fallback",
+          detail: safeDetail
+        });
+
+        return ["No pude generar la lista de insumos en este momento. Intenta de nuevo en unos minutos."];
       }
     }
 

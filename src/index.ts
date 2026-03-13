@@ -17,6 +17,7 @@ import { createRecordPaymentTool } from "./tools/order/recordPayment";
 import { createQuoteOrderTool } from "./tools/order/quoteOrder";
 import { createOrderStatusTool } from "./tools/order/orderStatus";
 import { createReportOrdersTool } from "./tools/order/reportOrders";
+import { createShoppingListGenerateTool } from "./tools/order/shoppingListGenerate";
 import { createUpdateOrderTool } from "./tools/order/updateOrder";
 import { createPublishSiteTool } from "./tools/web/publishSite";
 
@@ -199,6 +200,16 @@ const executeQuoteOrder = createQuoteOrderTool({
   maxRetries: appConfig.orderTool.sheets.maxRetries
 });
 
+const executeShoppingList = createShoppingListGenerateTool({
+  gwsCommand: appConfig.orderTool.sheets.gws.command,
+  gwsCommandArgs: appConfig.orderTool.sheets.gws.commandArgs,
+  gwsSpreadsheetId: appConfig.orderTool.sheets.gws.spreadsheetId,
+  gwsRange: appConfig.orderTool.sheets.gws.range,
+  timeoutMs: appConfig.orderTool.sheets.timeoutMs,
+  maxRetries: appConfig.orderTool.sheets.maxRetries,
+  timezone: appConfig.timezone
+});
+
 const executeOrderUpdate = createUpdateOrderTool({
   dryRunDefault: appConfig.orderTool.sheets.dryRun,
   gwsCommand: appConfig.orderTool.sheets.gws.command,
@@ -253,6 +264,7 @@ const tracedProcessor = createConversationProcessor({
   executeOrderReportFn: executeOrderReport,
   executeOrderLookupFn: executeOrderLookup,
   executeOrderStatusFn: executeOrderStatus,
+  executeShoppingListFn: executeShoppingList,
   executeQuoteOrderFn: executeQuoteOrder,
   executeOrderUpdateFn: executeOrderUpdate,
   executeOrderCancelFn: executeOrderCancel,

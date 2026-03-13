@@ -1,7 +1,7 @@
 # DDD Roadmap Coverage Matrix
 
 Status: In Progress
-Last Updated: 2026-03-12
+Last Updated: 2026-03-13
 
 ## Purpose
 Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
@@ -50,7 +50,7 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 | 3 | `order.lookup` | `.../Tools/Specs/lookup-order.spec.md` | `src/tools/order/lookupOrder.test.ts` + `src/runtime/conversationProcessor.test.ts` | Lectura read-only de `Pedidos` via `gws` + lookup por folio/nombre/producto | Done | Extender a estado enriquecido de pedido si se prioriza |
 | 3 | `payment.record` | `.../Tools/Specs/record-payment.spec.md` | `src/tools/order/recordPayment.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/payment-smoke.ts` | Mutacion de pago por `folio|operation_id_ref` via `gws` con confirm flow, actualizacion `estado_pago`, evento `[PAGO]` en `notas`, rechazo para pedidos cancelados e idempotencia por `operation_id` | Done | Monitorear pagos parciales y estandarizar conciliacion de montos |
 | 3 | `quote.order` | `.../Tools/Specs/quote-order.spec.md` + `.../ConversationRuntime/Specs/conversation-processor.spec.md` | `src/tools/order/quoteOrder.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/quote-smoke.ts` | Cotizacion read-only via `gws` + puente conversacional `quote -> pedido` con confirmacion explicita, preguntas faltantes y reuso de flujo `order.create` | Done | Monitorear conversion real de cotizacion a pedido y afinar prompts de captura de faltantes |
-| 3 | `shopping.list.generate` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
+| 3 | `shopping.list.generate` | `.../Tools/Specs/shopping-list-generate.spec.md` + `.../ConversationRuntime/Specs/conversation-processor.spec.md` | `src/tools/order/shoppingListGenerate.test.ts` + `src/runtime/conversationProcessor.test.ts` | Lista de insumos sugerida read-only sobre `Pedidos` via `gws` por scope (`day|week|order_ref|lookup`) sin confirm flow ni mutaciones | Done | Afinar perfiles de receta con datos reales de operación y monitorear supuestos |
 | 3 | `inventory.consume` | Roadmap only | No | No | Planned | Crear spec nueva + casos de prueba |
 | 3 | `schedule.day_view` / `schedule.week_view` | Roadmap only | No | No | Planned | Crear specs de reporting/scheduling |
 | 3/5 | `report.orders` | `.../Tools/Specs/report-orders.spec.md` | `src/tools/order/reportOrders.test.ts` + `src/runtime/conversationProcessor.test.ts` | Lectura real de `Pedidos` via `gws` + filtros dia/semana/mes/año (incluye fechas y meses explicitos) + respuesta en runtime | Done | Evaluar `año pasado` / `año siguiente` si se prioriza |
@@ -64,7 +64,7 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 ## Immediate Design Backlog (Spec-First)
 1. Mantener `npm run web:rollback:drill` como control manual bajo demanda y conservar bitacora de tiempos por ejecucion.
 2. Fase 3 funcional:
-   - Definir specs de `shopping.list.generate`, `inventory.consume`, `schedule.*`.
+   - Definir specs de `inventory.consume`, `schedule.*`.
 3. Fases 5 y 6: analytics (`costing/profit/cashflow`) y admin skills.
 
 ## Exit Criteria: "Sistema completamente disenado"

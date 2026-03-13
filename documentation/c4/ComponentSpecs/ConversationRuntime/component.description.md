@@ -1,7 +1,7 @@
 # Component Description - Conversation Runtime (C4 Component Level)
 
 Status: MVP
-Last Updated: 2026-03-09
+Last Updated: 2026-03-13
 
 ## Responsibility
 Coordinate the end-to-end conversation flow and apply security/UX rules:
@@ -13,6 +13,7 @@ Coordinate the end-to-end conversation flow and apply security/UX rules:
 - tool execution (when applicable)
 - report query responses (`pedidos` por dia/semana/mes/año) via read-only adapter
 - order lookup query responses (`pedido por folio/nombre/producto`) via read-only adapter
+- shopping list query responses (`insumos/surtido`) via read-only adapter
 
 ## Internal Components
 - `conversationProcessor`
@@ -29,7 +30,7 @@ Coordinate the end-to-end conversation flow and apply security/UX rules:
 2. It evaluates allowlist, rate limit guard, and conversation state.
 3. It uses `intentRouter` and `parser` to build a draft.
 4. It applies validation/missing-field/confirmation guards.
-5. For report queries, it resolves a read-only adapter path without confirmation flow.
+5. For report/lookup/status/shopping-list read-only queries, it resolves adapter paths without confirmation flow.
 6. It persists state in SQLite when applicable and returns a response to the channel.
 
 ## Key Decisions
