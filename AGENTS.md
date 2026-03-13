@@ -31,6 +31,11 @@ Reglas operativas para colaborar con Codex en este repositorio sin perder contin
 - No iniciar implementacion de cambios (edicion de codigo/archivos del repo) sin aprobacion explicita del usuario en el mensaje, incluyendo la palabra `apruebo` (ej.: `dale, apruebo`, `continua, apruebo`).
 - No crear commits ni ejecutar flujo de commit salvo que el usuario lo indique explicitamente en el mensaje incluyendo la palabra `apruebo` (ej.: `haz commit, apruebo`, `commit apruebo`).
 
+## Continuous Improvement Gate
+- Durante cualquier implementacion/plan/tarea, si se detecta una mejora reusable como `rule`, `skill` o `instruction`, se debe informar explicitamente al usuario.
+- El aviso debe incluir: `que se detecto`, `donde aplicaria` (ruta sugerida) e `impacto esperado`.
+- No implementar automaticamente estas mejoras; solo ejecutarlas cuando el usuario lo apruebe explicitamente en el mensaje incluyendo la palabra `apruebo`.
+
 ## Core Project Map
 - Runtime: `src/runtime/`
 - Guards: `src/guards/`
