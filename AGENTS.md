@@ -26,6 +26,9 @@ Reglas operativas para colaborar con Codex en este repositorio sin perder contin
 - No ejecutar integraciones externas sin flujo de confirmacion de negocio.
 - Preferir cambios pequenos y verificables.
 - Si no puedes validar con tests/lint, declarar explicitamente la limitacion.
+- Para scripts con riesgo de mutacion externa (ej. `scripts/sheets/*`), preferir comandos `:preview` cuando existan.
+- Tratar `*:init`, `*:apply` y comandos equivalentes como potencialmente mutables: ejecutar solo cuando se requiera explicitamente operacion live.
+- Antes de ejecutar scripts sensibles, declarar en la salida el modo efectivo (`preview` o `apply`) y evitar heredar flags live desde `.env` durante validaciones.
 
 ## Approval Gates
 - No iniciar implementacion de cambios (edicion de codigo/archivos del repo) sin aprobacion explicita del usuario en el mensaje, incluyendo la palabra `apruebo` (ej.: `dale, apruebo`, `continua, apruebo`).

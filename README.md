@@ -20,10 +20,10 @@ Bot de operaciones para panaderia con runtime conversacional, integraciones (She
 
 ## Sheets Catalog Bootstrap
 - Pricing catalog (preview/apply):
-  - `npm run sheets:pricing:init`
+  - `npm run sheets:pricing:preview`
   - `PRICING_CATALOG_APPLY=1 npm run sheets:pricing:init`
 - Recipes catalog (preview/apply):
-  - `npm run sheets:recipes:init`
+  - `npm run sheets:recipes:preview`
   - `RECIPES_CATALOG_APPLY=1 npm run sheets:recipes:init`
 
 ## Repo Map

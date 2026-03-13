@@ -155,12 +155,16 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 - Live order `gws` smoke attempt:
   - `ORDER_TRELLO_DRY_RUN=0 ORDER_SHEETS_DRY_RUN=0 ORDER_SHEETS_GWS_SPREADSHEET_ID=<id> ORDER_SHEETS_GWS_RANGE=Pedidos!A1 npm run smoke:order`
 - Pricing catalog tab bootstrap (safe preview):
+  - `npm run sheets:pricing:preview`
+- Pricing catalog tab bootstrap (raw command; honors `.env` apply/overwrite flags):
   - `npm run sheets:pricing:init`
 - Pricing catalog tab bootstrap apply (creates tab + seed rows):
   - `PRICING_CATALOG_APPLY=1 npm run sheets:pricing:init`
 - Pricing catalog overwrite (when tab already has data):
   - `PRICING_CATALOG_APPLY=1 PRICING_CATALOG_OVERWRITE=1 npm run sheets:pricing:init`
 - Recipes catalog tab bootstrap (safe preview):
+  - `npm run sheets:recipes:preview`
+- Recipes catalog tab bootstrap (raw command; honors `.env` apply/overwrite flags):
   - `npm run sheets:recipes:init`
 - Recipes catalog tab bootstrap apply (creates tab + seed rows):
   - `RECIPES_CATALOG_APPLY=1 npm run sheets:recipes:init`
