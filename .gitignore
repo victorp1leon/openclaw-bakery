@@ -9,6 +9,8 @@ dist/
 .env
 .env.*
 !.env.example
+.gws/
+.gcloud/
 
 # Logs
 npm-debug.log*
