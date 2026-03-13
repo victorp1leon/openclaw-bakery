@@ -9,6 +9,8 @@ Last Updated: 2026-03-13
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `runtime/implementation/phase3-sheets-schema-bootstrap-foundation.md` | Refactoring | Complete | 2026-03-13 |
+| `runtime/implementation/phase3-inventory-tabs-bootstrap-automation.md` | Implementation | Complete | 2026-03-13 |
 | `runtime/implementation/phase3-sheets-bootstrap-safe-preview-commands.md` | Implementation | Complete | 2026-03-13 |
 | `runtime/implementation/phase3-sheets-bootstrap-gws-utils-refactor.md` | Refactoring | Complete | 2026-03-13 |
 | `runtime/implementation/phase3-recipes-catalog-bootstrap-automation.md` | Implementation | Complete | 2026-03-13 |

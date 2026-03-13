@@ -1,0 +1,39 @@
+{
+  "name": "pricing-catalog",
+  "tabs": [
+    {
+      "key": "pricing_catalog",
+      "defaultTabName": "CatalogoPrecios",
+      "headers": [
+        "tipo",
+        "clave",
+        "nombre",
+        "monto_mxn",
+        "modo_calculo",
+        "aplica_a",
+        "cantidad_min",
+        "cantidad_max",
+        "horas_max_anticipacion",
+        "zona",
+        "activo",
+        "notas",
+        "actualizado_en"
+      ],
+      "rows": [
+        ["PRODUCTO", "cupcake_pieza", "Cupcake clasico", 45, "fijo", "todo", "", "", "", "", "1", "precio por pieza", "{{NOW_ISO}}"],
+        ["PRODUCTO", "caja_6_cupcakes", "Caja 6 cupcakes", 250, "fijo", "todo", "", "", "", "", "1", "precio por caja", "{{NOW_ISO}}"],
+        ["PRODUCTO", "caja_12_cupcakes", "Caja 12 cupcakes", 480, "fijo", "todo", "", "", "", "", "1", "precio por caja", "{{NOW_ISO}}"],
+        ["PRODUCTO", "pastel_mediano", "Pastel mediano", 650, "fijo", "todo", "", "", "", "", "1", "8-12 porciones base", "{{NOW_ISO}}"],
+        ["EXTRA", "relleno_premium", "Relleno premium", 60, "fijo", "pedido", "", "", "", "", "1", "cargo por relleno premium", "{{NOW_ISO}}"],
+        ["EXTRA", "decoracion_personalizada", "Decoracion personalizada", 120, "fijo", "pedido", "", "", "", "", "1", "cargo por decoracion especial", "{{NOW_ISO}}"],
+        ["EXTRA", "topper_personalizado", "Topper personalizado", 80, "fijo", "pedido", "", "", "", "", "1", "cargo opcional", "{{NOW_ISO}}"],
+        ["ENVIO", "zona_colima_centro", "Envio Colima Centro", 50, "fijo", "envio_domicilio", "", "", "", "Colima Centro", "1", "", "{{NOW_ISO}}"],
+        ["ENVIO", "zona_villa_alvarez", "Envio Villa de Alvarez", 70, "fijo", "envio_domicilio", "", "", "", "Villa de Alvarez", "1", "", "{{NOW_ISO}}"],
+        ["URGENCIA", "urgencia_24h", "Recargo urgencia <24h", 35, "porcentaje", "pedido", "", "", 24, "", "1", "porcentaje", "{{NOW_ISO}}"],
+        ["URGENCIA", "urgencia_48h", "Recargo urgencia <48h", 20, "porcentaje", "pedido", "", "", 48, "", "1", "porcentaje", "{{NOW_ISO}}"],
+        ["POLITICA", "anticipo_default", "Anticipo sugerido", 50, "porcentaje", "pedido", "", "", "", "", "1", "porcentaje de anticipo", "{{NOW_ISO}}"],
+        ["POLITICA", "vigencia_cotizacion_horas", "Vigencia cotizacion", 72, "horas", "cotizacion", "", "", "", "", "1", "horas", "{{NOW_ISO}}"]
+      ]
+    }
+  ]
+}

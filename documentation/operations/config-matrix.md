@@ -67,6 +67,23 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 | `RECIPES_CATALOG_GWS_COMMAND_ARGS` | fallback `ORDER_RECIPES_GWS_COMMAND_ARGS` | No | `scripts/sheets/init-recipes-catalog-tab.ts` | Comma-separated prefix args injected before Sheets subcommands. |
 | `RECIPES_CATALOG_GWS_VALUE_INPUT_OPTION` | `USER_ENTERED` | No | `scripts/sheets/init-recipes-catalog-tab.ts` | `valueInputOption` for `values.update` (`USER_ENTERED` or `RAW`). |
 | `RECIPES_CATALOG_TIMEOUT_MS` | fallback `ORDER_RECIPES_TIMEOUT_MS` | No | `scripts/sheets/init-recipes-catalog-tab.ts` | Timeout per `gws` command invocation for recipes bootstrap. |
+| `INVENTORY_TABS_APPLY` | `0` | No | `scripts/sheets/init-inventory-tabs.ts` | Safety gate: `0` preview only, `1` applies changes in Google Sheets. |
+| `INVENTORY_TABS_OVERWRITE` | `0` | No | `scripts/sheets/init-inventory-tabs.ts` | When tab already has data, allows overwrite of headers (`1`) instead of safe skip. |
+| `INVENTORY_TAB_NAME` | `Inventario` | No | `scripts/sheets/init-inventory-tabs.ts` | Title of inventory snapshot tab to create/update. |
+| `INVENTORY_MOVEMENTS_TAB_NAME` | `MovimientosInventario` | No | `scripts/sheets/init-inventory-tabs.ts` | Title of inventory movements/audit tab to create/update. |
+| `INVENTORY_GWS_SPREADSHEET_ID` | fallback `ORDER_SHEETS_GWS_SPREADSHEET_ID` | Recommended | `scripts/sheets/init-inventory-tabs.ts` | Spreadsheet id for inventory tabs bootstrap. |
+| `INVENTORY_GWS_COMMAND` | fallback `ORDER_SHEETS_GWS_COMMAND` | No | `scripts/sheets/init-inventory-tabs.ts` | Binary used to invoke `googleworkspace/cli` for inventory tabs bootstrap. |
+| `INVENTORY_GWS_COMMAND_ARGS` | fallback `ORDER_SHEETS_GWS_COMMAND_ARGS` | No | `scripts/sheets/init-inventory-tabs.ts` | Comma-separated prefix args injected before Sheets subcommands. |
+| `INVENTORY_GWS_VALUE_INPUT_OPTION` | fallback `ORDER_SHEETS_GWS_VALUE_INPUT_OPTION` | No | `scripts/sheets/init-inventory-tabs.ts` | `valueInputOption` for headers update (`USER_ENTERED` or `RAW`). |
+| `INVENTORY_TIMEOUT_MS` | fallback `ORDER_SHEETS_TIMEOUT_MS` | No | `scripts/sheets/init-inventory-tabs.ts` | Timeout per `gws` command invocation for inventory tabs bootstrap. |
+| `SHEETS_SCHEMA_PATH` | _(unset)_ | Required for generic schema bootstrap | `scripts/sheets/init-sheet-tabs-from-schema.ts` | Path to tabs schema JSON file (`scripts/sheets/schemas/*.tabs.json`). |
+| `SHEETS_SCHEMA_APPLY` | `0` | No | `scripts/sheets/init-sheet-tabs-from-schema.ts` | Generic safety gate: `0` preview only, `1` applies changes in Google Sheets. |
+| `SHEETS_SCHEMA_OVERWRITE` | `0` | No | `scripts/sheets/init-sheet-tabs-from-schema.ts` | Generic overwrite flag for existing tab data. |
+| `SHEETS_SCHEMA_GWS_SPREADSHEET_ID` | fallback `ORDER_SHEETS_GWS_SPREADSHEET_ID` | Recommended | `scripts/sheets/init-sheet-tabs-from-schema.ts` | Spreadsheet id target for generic schema bootstrap. |
+| `SHEETS_SCHEMA_GWS_COMMAND` | fallback `ORDER_SHEETS_GWS_COMMAND` | No | `scripts/sheets/init-sheet-tabs-from-schema.ts` | Binary used to invoke `googleworkspace/cli` in generic schema mode. |
+| `SHEETS_SCHEMA_GWS_COMMAND_ARGS` | fallback `ORDER_SHEETS_GWS_COMMAND_ARGS` | No | `scripts/sheets/init-sheet-tabs-from-schema.ts` | Comma-separated prefix args injected before Sheets subcommands in generic schema mode. |
+| `SHEETS_SCHEMA_GWS_VALUE_INPUT_OPTION` | fallback `ORDER_SHEETS_GWS_VALUE_INPUT_OPTION` | No | `scripts/sheets/init-sheet-tabs-from-schema.ts` | Generic `valueInputOption` for `values.update` (`USER_ENTERED` or `RAW`). |
+| `SHEETS_SCHEMA_TIMEOUT_MS` | fallback `ORDER_SHEETS_TIMEOUT_MS` | No | `scripts/sheets/init-sheet-tabs-from-schema.ts` | Timeout per `gws` command invocation for generic schema bootstrap. |
 | `PRICING_CATALOG_APPLY` | `0` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | Safety gate: `0` preview only, `1` applies changes in Google Sheets. |
 | `PRICING_CATALOG_OVERWRITE` | `0` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | When tab already has data, allows overwrite (`1`) instead of safe skip. |
 | `PRICING_CATALOG_TAB_NAME` | `CatalogoPrecios` | No | `scripts/sheets/init-pricing-catalog-tab.ts` | Title of the pricing catalog tab to create/update. |
@@ -170,6 +187,18 @@ This matrix documents environment variables, defaults, requiredness, and runtime
   - `RECIPES_CATALOG_APPLY=1 npm run sheets:recipes:init`
 - Recipes catalog overwrite (when tab already has data):
   - `RECIPES_CATALOG_APPLY=1 RECIPES_CATALOG_OVERWRITE=1 npm run sheets:recipes:init`
+- Inventory tabs bootstrap (safe preview):
+  - `npm run sheets:inventory:preview`
+- Inventory tabs bootstrap (raw command; honors `.env` apply/overwrite flags):
+  - `npm run sheets:inventory:init`
+- Inventory tabs bootstrap apply (creates missing tabs + writes headers):
+  - `INVENTORY_TABS_APPLY=1 npm run sheets:inventory:init`
+- Inventory tabs overwrite headers (when tabs already have data):
+  - `INVENTORY_TABS_APPLY=1 INVENTORY_TABS_OVERWRITE=1 npm run sheets:inventory:init`
+- Generic schema bootstrap (preview):
+  - `SHEETS_SCHEMA_PATH=scripts/sheets/schemas/inventory-tabs.tabs.json npm run sheets:tabs:init:schema`
+- Generic schema bootstrap apply:
+  - `SHEETS_SCHEMA_APPLY=1 SHEETS_SCHEMA_PATH=scripts/sheets/schemas/inventory-tabs.tabs.json npm run sheets:tabs:init:schema`
 - Pricing catalog tabs validation (headers + duplicate keys):
   - `npm run sheets:pricing:validate`
 - Dry-run web smoke (safe default): `npm run smoke:web`
@@ -223,6 +252,8 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 - Google writes use `gws` only (`googleworkspace/cli` Sheets append/get/update); ensure host auth/session is configured before live mode.
 - Pricing catalog bootstrap uses the same `gws` path and writes to a dedicated tab (default: `CatalogoPrecios`) in the configured spreadsheet.
 - Recipes catalog bootstrap uses the same `gws` path and writes to a dedicated tab (default: `CatalogoRecetas`) in the configured spreadsheet.
+- Inventory tabs bootstrap uses the same `gws` path and creates/updates `Inventario` + `MovimientosInventario` headers in the configured spreadsheet.
+- Generic schema bootstrap (`sheets:tabs:init:schema`) provides a manifest-driven path for future tabs using `scripts/sheets/schemas/*.tabs.json`.
 - `report.orders` reads Google Sheets via `gws` (`values.get`) using `ORDER_SHEETS_GWS_SPREADSHEET_ID` and a read range derived from `ORDER_SHEETS_GWS_RANGE` (`Pedidos!A1` -> `Pedidos!A:U`), preferring `fecha_hora_entrega_iso` for filtering when that column exists.
 - `shopping.list.generate` reads orders from `Pedidos` via `gws` and resolves recipe profiles from `ORDER_RECIPES_SOURCE`:
   - `inline`: built-in defaults for smoke/mock.

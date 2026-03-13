@@ -1,0 +1,36 @@
+{
+  "name": "inventory-tabs",
+  "tabs": [
+    {
+      "key": "inventory_tab",
+      "defaultTabName": "Inventario",
+      "headers": [
+        "insumo_id",
+        "insumo",
+        "unidad_base",
+        "stock_actual",
+        "stock_minimo",
+        "activo",
+        "actualizado_en"
+      ],
+      "rows": []
+    },
+    {
+      "key": "inventory_movements_tab",
+      "defaultTabName": "MovimientosInventario",
+      "headers": [
+        "movimiento_id",
+        "operation_id",
+        "order_ref",
+        "evento",
+        "insumo_id",
+        "delta_cantidad",
+        "stock_antes",
+        "stock_despues",
+        "unidad",
+        "created_at"
+      ],
+      "rows": []
+    }
+  ]
+}
