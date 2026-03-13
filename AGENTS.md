@@ -32,8 +32,16 @@ Reglas operativas para colaborar con Codex en este repositorio sin perder contin
 - No crear commits ni ejecutar flujo de commit salvo que el usuario lo indique explicitamente en el mensaje incluyendo la palabra `apruebo` (ej.: `haz commit, apruebo`, `commit apruebo`).
 
 ## Continuous Improvement Gate
-- Durante cualquier implementacion/plan/tarea, si se detecta una mejora reusable como `rule`, `skill` o `instruction`, se debe informar explicitamente al usuario.
-- El aviso debe incluir: `que se detecto`, `donde aplicaria` (ruta sugerida) e `impacto esperado`.
+- Durante cualquier tarea, si se detecta una mejora reusable aplicable en `2+ modulos` o `2+ sesiones` como `rule`, `skill` o `instruction`, se debe informar al usuario en el siguiente corte natural (fin de un todo, fin de fase o cierre de sesion), no a mitad de ejecucion.
+- Antes de reportar, revisar reglas/skills/instrucciones existentes para evitar duplicados.
+- El aviso debe incluir:
+  - `que se detecto` (patron o mejora reusable)
+  - `tipo` (`rule`, `skill` o `instruction`)
+  - `ruta sugerida`:
+    - `rule`: `.codex/rules/`
+    - `skill`: `.codex/skills/`
+    - `instruction`: `AGENTS.md` o `.codex/*.md`
+  - `impacto esperado` (que mejora y donde aplica)
 - No implementar automaticamente estas mejoras; solo ejecutarlas cuando el usuario lo apruebe explicitamente en el mensaje incluyendo la palabra `apruebo`.
 
 ## Core Project Map
