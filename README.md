@@ -12,6 +12,12 @@ Bot de operaciones para panaderia con runtime conversacional, integraciones (She
    - `npm run security:scan`
    - `npm test`
 
+## Security Scanning
+- Working tree scan:
+  - `npm run security:scan`
+- Full git history scan (requires `gitleaks` installed locally):
+  - `npm run security:scan:history`
+
 ## Repo Map
 - Runtime: `src/runtime/`
 - Guards: `src/guards/`

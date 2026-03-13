@@ -6,6 +6,7 @@
     "test:summary": "npx ts-node --transpile-only scripts/tests/generate-test-summary.ts",
     "test:smoke-integration:summary": "npx ts-node --transpile-only scripts/tests/generate-smoke-integration-summary.ts",
     "security:scan": "node scripts/security/scan-secrets.js",
+    "security:scan:history": "bash scripts/security/scan-history-gitleaks.sh",
     "verify:security": "npm run security:scan && npm test",
     "smoke:expense": "npx ts-node --transpile-only scripts/smoke/expense-smoke.ts",
     "smoke:order": "npx ts-node --transpile-only scripts/smoke/order-smoke.ts",
@@ -36,7 +37,7 @@
   "dependencies": {
     "better-sqlite3": "^12.6.2",
     "dotenv": "^17.3.1",
-    "openclaw": "^2026.2.19-2",
+    "openclaw": "^2026.3.12",
     "pino": "^10.3.1",
     "uuid": "^13.0.0",
     "zod": "^4.3.6"
