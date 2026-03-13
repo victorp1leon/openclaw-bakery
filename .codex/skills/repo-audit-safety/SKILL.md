@@ -27,7 +27,9 @@ description: Run safety-first repository audits for OpenClaw Bakery with evidenc
   - `git status --short`
   - `rg --files src documentation .codex`
 - Find stale paths/placeholders and suspicious references:
-  - `rg -n "YOUR/OPENCLAW/FOLDER/HERE|/workspace|TODO|FIXME" .codex documentation scripts src`
+  - `rg -n "YOUR/OPENCLAW/FOLDER/HERE|/workspace|\\[.*OPENCLAW.*\\]" .codex documentation scripts src`
+- Find pending remediation markers in product code surfaces (avoid scaffold noise):
+  - `rg -n "TODO|FIXME" src/runtime src/guards src/skills src/openclaw src/state src/tools src/channel`
 - Use the checklist at:
   - `references/audit-checklist.md`
 
@@ -65,6 +67,7 @@ description: Run safety-first repository audits for OpenClaw Bakery with evidenc
 
 ## Quick Commands
 - Repo state: `git status --short`
-- Path scan: `rg -n "YOUR/OPENCLAW/FOLDER/HERE|/workspace" .`
+- Path scan: `rg -n "YOUR/OPENCLAW/FOLDER/HERE|/workspace|\\[.*OPENCLAW.*\\]" .`
+- Runtime TODO scan: `rg -n "TODO|FIXME" src/runtime src/guards src/skills src/openclaw src/state src/tools src/channel`
 - Rules catalog: `sed -n '1,220p' .codex/rules/README.md`
 - Plans index: `sed -n '1,220p' documentation/ai_collaboration/plans/_index.md`

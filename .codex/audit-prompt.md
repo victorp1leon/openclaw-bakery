@@ -1,9 +1,9 @@
-Audita y limpia con cuidado el sistema OpenClaw Bakery en `/home/victor/openclaw-bakery`.
+Audita y limpia con cuidado el sistema OpenClaw Bakery en la raiz del repositorio actual (en este entorno: `/home/victor/openclaw-bakery`).
 
 Opera en modo safety-first y evidence-first. Tu meta es mejorar correctitud, claridad y mantenibilidad sin cambiar comportamiento esperado ni romper flujos live.
 
 ## Contexto Canonico (no usar placeholders)
-- Repositorio canonico: `/home/victor/openclaw-bakery`
+- Repositorio canonico: raiz del repositorio actual (en este entorno: `/home/victor/openclaw-bakery`)
 - Artefactos de colaboracion:
   - `documentation/ai_collaboration/plans/_index.md`
   - `documentation/ai_collaboration/system-map.md`

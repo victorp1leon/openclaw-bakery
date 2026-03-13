@@ -17,6 +17,8 @@
   - `git diff --name-only`
 - Check stale/generic paths:
   - `rg -n "YOUR/OPENCLAW/FOLDER/HERE|/workspace|\\[.*OPENCLAW.*\\]" .`
+- Check TODO/FIXME markers only in product code surfaces:
+  - `rg -n "TODO|FIXME" src/runtime src/guards src/skills src/openclaw src/state src/tools src/channel`
 - Check references to missing files:
   - validate key doc paths used by AGENTS/rules/plans.
 
