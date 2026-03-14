@@ -5,6 +5,7 @@ Last Updated: 2026-03-13
 ## Active Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `runtime/implementation/phase3-inventory-consume-spec-first-foundation.md` | Implementation | In Progress | 2026-03-13 |
 
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |

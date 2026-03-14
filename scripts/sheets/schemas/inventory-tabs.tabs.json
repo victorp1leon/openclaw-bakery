@@ -13,7 +13,16 @@
         "activo",
         "actualizado_en"
       ],
-      "rows": []
+      "rows": [
+        ["harina_trigo", "Harina de trigo", "g", 12000, 3000, "1", ""],
+        ["azucar_blanca", "Azucar blanca", "g", 8000, 2000, "1", ""],
+        ["mantequilla", "Mantequilla", "g", 6000, 1500, "1", ""],
+        ["huevo", "Huevo", "pza", 180, 48, "1", ""],
+        ["betun_vainilla", "Betun vainilla", "g", 5000, 1200, "1", ""],
+        ["chocolate_reposteria", "Chocolate reposteria", "g", 3500, 800, "1", ""],
+        ["aceite_vegetal", "Aceite vegetal", "ml", 4000, 1000, "1", ""],
+        ["polvo_hornear", "Polvo para hornear", "g", 1200, 300, "1", ""]
+      ]
     },
     {
       "key": "inventory_movements_tab",

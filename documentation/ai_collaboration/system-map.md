@@ -59,6 +59,7 @@ Last Updated: 2026-03-13
 9. `payment.record`: mutacion de pago por referencia -> confirmacion -> actualizacion de `estado_pago` + evento `[PAGO]` en `notas` via Sheets (`gws`) -> persistencia/idempotencia.
 10. `quote.order`: consulta de cotizacion -> lectura de `CatalogoPrecios` + `CatalogoOpciones` + `CatalogoReferencias` via `gws` -> respuesta resumida (sin confirmacion ni mutacion).
 11. `shopping.list.generate`: consulta de insumos/surtido -> lectura de `Pedidos` via `gws` + agregacion de productos/insumos sugeridos con recetas `inline` (smoke/mock) o `CatalogoRecetas` via `gws` (live) -> respuesta resumida (sin confirmacion ni mutacion).
+12. `inventory.consume` (spec-first): mutacion por referencia de pedido -> confirmacion -> decremento de `Inventario` + append auditable en `MovimientosInventario` via `gws` con idempotencia por `operation_id`.
 
 ## Source Documents
 - `documentation/bot-bakery.overview.md`
