@@ -1,6 +1,6 @@
 # Plans Index (AI Collaboration)
 
-Last Updated: 2026-03-13
+Last Updated: 2026-03-17
 
 ## Active Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
@@ -10,6 +10,7 @@ Last Updated: 2026-03-13
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `platform/implementation/codex-skill-registry-sync-automation.md` | Implementation | Complete | 2026-03-17 |
 | `runtime/implementation/phase3-sheets-schema-validation-hardening.md` | Implementation | Complete | 2026-03-13 |
 | `runtime/implementation/phase3-sheets-schema-bootstrap-foundation.md` | Refactoring | Complete | 2026-03-13 |
 | `runtime/implementation/phase3-inventory-tabs-bootstrap-automation.md` | Implementation | Complete | 2026-03-13 |
