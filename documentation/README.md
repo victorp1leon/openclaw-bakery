@@ -1,7 +1,7 @@
 # Documentation Hub (AI-First, Security-First)
 
 Status: In Progress
-Last Updated: 2026-03-03
+Last Updated: 2026-03-17
 
 Esta carpeta usa un enfoque docs-as-code para un proyecto AI-first con seguridad como prioridad.
 
@@ -32,6 +32,10 @@ Esta carpeta usa un enfoque docs-as-code para un proyecto AI-first con seguridad
 - `api/`: contracts and integration guides.
 - `release/`: release process and evidence.
 - `ai_collaboration/`: planning, session continuity, and reusable framework references.
+
+## Current Maturity
+- Core product docs (`bot-bakery.*`, `c4/`, `adr/`, `operations/`, `ai_collaboration/plans/`): active and used in delivery.
+- Some areas are scaffold-first and intentionally minimal (`api/*`, `ai-system/*`, `release/release-notes/`); treat them as placeholders until content is added.
 
 ## Product Canon vs Reusable Framework
 - Product-canonical docs live in the main domains above.

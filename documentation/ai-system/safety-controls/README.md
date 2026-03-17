@@ -1,6 +1,14 @@
 # AI Safety Controls
 
-Status: Draft
-Last Updated: 2026-03-03
+Status: Scaffold
+Last Updated: 2026-03-17
 
+## Purpose
 Listar controles activos del sistema AI (guards, sanitizacion, rate limit, validaciones, politicas de logging) con referencia a codigo y specs.
+
+## Current State
+- Placeholder intencional: el detalle de controles vive distribuido entre `c4/`, `security/` y codigo.
+
+## Expected Content
+- Inventario unico de controles con owner, evidencia y estado.
+- Enlaces a specs y tests por control.

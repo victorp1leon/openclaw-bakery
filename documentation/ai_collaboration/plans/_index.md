@@ -9,6 +9,7 @@ Last Updated: 2026-03-17
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `platform/implementation/documentation-hub-hygiene-v1.md` | Implementation | Complete | 2026-03-17 |
 | `platform/implementation/intent-skill-coverage-gate-rule-v1.md` | Implementation | Complete | 2026-03-17 |
 | `runtime/implementation/phase3-skill-doc-coverage-parity-v1.md` | Implementation | Complete | 2026-03-17 |
 | `runtime/implementation/phase3-mutation-skills-parser-extraction-v1.md` | Refactoring | Complete | 2026-03-17 |

@@ -1,7 +1,7 @@
 # Architecture
 
-Status: Draft
-Last Updated: 2026-03-03
+Status: In Progress
+Last Updated: 2026-03-17
 
 ## Purpose
 Entry point unificado para arquitectura tecnica y decisiones.
@@ -13,3 +13,7 @@ Entry point unificado para arquitectura tecnica y decisiones.
 
 ## Rule
 Cualquier cambio de comportamiento o contratos debe reflejarse primero en C4/specs y ADR cuando aplique.
+
+## Current Focus
+- Mantener consistencia entre `c4/ComponentSpecs/*`, runtime/tools y roadmap.
+- Usar `documentation/ai_collaboration/system-map.md` como vista transversal para colaboracion diaria.
