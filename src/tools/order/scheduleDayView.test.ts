@@ -43,6 +43,14 @@ function buildRows(): string[][] {
   ];
 }
 
+function buildRecipeRows(): string[][] {
+  return [
+    ["recipe_id", "aliases_csv", "insumo", "unidad", "cantidad_por_unidad", "activo"],
+    ["pastel", "pastel, cake", "harina", "g", "220", "1"],
+    ["pastel", "pastel, cake", "betun", "g", "180", "1"]
+  ];
+}
+
 describe("schedule-day-view tool", () => {
   it("fails when spreadsheet id is missing", async () => {
     const tool = createScheduleDayViewTool({
@@ -70,15 +78,14 @@ describe("schedule-day-view tool", () => {
 
     expect(result.totalOrders).toBe(2);
     expect(result.deliveries.map((item) => item.folio)).toEqual(["op-1", "op-2"]);
-    expect(result.preparation.find((item) => item.product === "cupcakes clasicos")?.quantity).toBe(12);
-    expect(result.preparation.find((item) => item.product === "pastel red velvet")?.quantity).toBe(1);
+    expect(result.inconsistencies).toHaveLength(0);
   });
 
-  it("builds suggested purchases and assumptions", async () => {
+  it("excludes rows without ISO and reports inconsistencies", async () => {
     const rows = [
       ...buildRows().slice(0, 1),
-      ["2026-03-07", "op-cup", "2026-03-07 14:00", "Ana", "", "cupcakes clasicos", "", "12", "", "", "recoger_en_tienda", "", "pagado", "480", "MXN", "", "chat-1", "op-cup", "2026-03-07T14:00:00", "activo"],
-      ["2026-03-07", "op-unk", "2026-03-07 18:00", "Leo", "", "mesa de postres", "", "2", "", "", "recoger_en_tienda", "", "pagado", "1000", "MXN", "", "chat-1", "op-unk", "2026-03-07T18:00:00", "activo"]
+      ["2026-03-07", "op-no-iso", "2026-03-07 10:00", "Ana", "", "pastel", "", "1", "", "", "recoger_en_tienda", "", "pagado", "500", "MXN", "", "chat-1", "op-no-iso", "", "activo"],
+      ["2026-03-07", "op-ok", "2026-03-07 12:00", "Luis", "", "cupcakes", "", "6", "", "", "recoger_en_tienda", "", "pagado", "240", "MXN", "", "chat-1", "op-ok", "2026-03-07T12:00:00", "activo"]
     ];
 
     const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: rows }));
@@ -94,9 +101,67 @@ describe("schedule-day-view tool", () => {
       day: { type: "day", dateKey: "2026-03-07", label: "hoy" }
     });
 
-    expect(result.suggestedPurchases.some((item) => item.item === "harina" && item.amount === 540)).toBe(true);
-    expect(result.suggestedPurchases.some((item) => item.item === "empaque_generico" && item.amount === 2)).toBe(true);
-    expect(result.assumptions.some((item) => item.includes("sin receta mapeada"))).toBe(true);
+    expect(result.totalOrders).toBe(1);
+    expect(result.deliveries[0]?.folio).toBe("op-ok");
+    expect(result.inconsistencies.some((item) => item.reference === "op-no-iso" && item.reason === "delivery_iso_missing_or_invalid")).toBe(true);
+  });
+
+  it("keeps invalid quantity in deliveries but excludes it from preparation and purchases", async () => {
+    const rows = [
+      ...buildRows().slice(0, 1),
+      ["2026-03-07", "op-bad-qty", "2026-03-07 14:00", "Ana", "", "cupcakes", "", "", "", "", "recoger_en_tienda", "", "pagado", "480", "MXN", "", "chat-1", "op-bad-qty", "2026-03-07T14:00:00", "activo"]
+    ];
+
+    const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: rows }));
+    const tool = createScheduleDayViewTool({
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:T",
+      gwsRunner,
+      timezone: "America/Mexico_City"
+    });
+
+    const result = await tool({
+      chat_id: "chat-1",
+      day: { type: "day", dateKey: "2026-03-07", label: "hoy" }
+    });
+
+    expect(result.totalOrders).toBe(1);
+    expect(result.deliveries[0]?.cantidad_invalida).toBe(true);
+    expect(result.preparation).toHaveLength(0);
+    expect(result.suggestedPurchases).toHaveLength(0);
+    expect(result.inconsistencies.some((item) => item.reference === "op-bad-qty" && item.reason === "quantity_invalid")).toBe(true);
+  });
+
+  it("builds suggested purchases with catalog source and inline fallback", async () => {
+    const gwsRunner = vi.fn().mockImplementation(async (args: { commandArgs: string[] }) => {
+      const paramsIndex = args.commandArgs.indexOf("--params");
+      const params = JSON.parse(args.commandArgs[paramsIndex + 1]) as { range: string };
+      if (params.range === "Pedidos!A:T") {
+        return okJson({ values: buildRows() });
+      }
+      if (params.range === "CatalogoRecetas!A:F") {
+        return okJson({ values: buildRecipeRows() });
+      }
+      return okJson({ values: [] });
+    });
+
+    const tool = createScheduleDayViewTool({
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:T",
+      recipeSource: "gws",
+      recipesGwsRange: "CatalogoRecetas!A:F",
+      gwsRunner,
+      timezone: "America/Mexico_City"
+    });
+
+    const result = await tool({
+      chat_id: "chat-1",
+      day: { type: "day", dateKey: "2026-03-07", label: "hoy" }
+    });
+
+    expect(result.suggestedPurchases.some((item) => item.source === "catalog")).toBe(true);
+    expect(result.suggestedPurchases.some((item) => item.source === "inline")).toBe(true);
+    expect(result.assumptions.some((item) => item.includes("fallback inline"))).toBe(true);
   });
 
   it("retries on transient gws timeout and then succeeds", async () => {

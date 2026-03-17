@@ -15,6 +15,7 @@ export type ScheduleDayDeliveryItem = {
   nombre_cliente: string;
   producto: string;
   cantidad: number;
+  cantidad_invalida?: boolean;
   tipo_envio?: string;
   estado_pago?: string;
   total?: number;
@@ -33,18 +34,30 @@ export type ScheduleDayPurchaseItem = {
   unit: string;
   amount: number;
   sourceProducts: string[];
+  source: "catalog" | "inline" | "fallback_generic";
+};
+
+export type ScheduleDayInconsistencyItem = {
+  reference: string;
+  reason: "delivery_iso_missing_or_invalid" | "quantity_invalid";
+  affects: "day_schedule" | "preparation_and_purchases";
+  detail: string;
 };
 
 export type ScheduleDayViewResult = {
   day: ScheduleDayFilter;
   timezone: string;
+  trace_ref: string;
   totalOrders: number;
   deliveries: ScheduleDayDeliveryItem[];
   preparation: ScheduleDayPreparationItem[];
   suggestedPurchases: ScheduleDayPurchaseItem[];
+  inconsistencies: ScheduleDayInconsistencyItem[];
   assumptions: string[];
   detail: string;
 };
+
+export type ScheduleDayRecipeSource = "inline" | "gws";
 
 export type ScheduleDayViewToolConfig = {
   gwsCommand?: string;
@@ -55,30 +68,50 @@ export type ScheduleDayViewToolConfig = {
   maxRetries?: number;
   retryBackoffMs?: number;
   timezone?: string;
+  recipeSource?: ScheduleDayRecipeSource;
+  recipeProfiles?: RecipeProfile[];
+  recipesGwsCommand?: string;
+  recipesGwsCommandArgs?: string[];
+  recipesGwsSpreadsheetId?: string;
+  recipesGwsRange?: string;
+  recipesTimeoutMs?: number;
+  recipesMaxRetries?: number;
+  recipesRetryBackoffMs?: number;
   gwsRunner?: GwsCommandRunner;
 };
 
 type ParsedOrderRow = ScheduleDayDeliveryItem & {
-  _dateKey?: string;
+  _isoDateKey?: string;
   _productKey: string;
   _isCanceled: boolean;
+  _quantityValid: boolean;
+  _reference: string;
 };
 
-type PurchaseRecipeItem = {
+type RecipeItem = {
   item: string;
   unit: string;
   perUnit: number;
 };
 
-type PurchaseRecipeProfile = {
+type RecipeProfile = {
+  id: string;
   aliases: string[];
-  items: PurchaseRecipeItem[];
+  items: RecipeItem[];
+};
+
+type SuggestionBuildResult = {
+  items: ScheduleDayPurchaseItem[];
+  assumptions: string[];
+  catalogMatches: number;
+  inlineMatches: number;
 };
 
 const DATE_KEY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-const DEFAULT_RECIPE_PROFILES: PurchaseRecipeProfile[] = [
+const DEFAULT_RECIPE_PROFILES: RecipeProfile[] = [
   {
+    id: "cupcake",
     aliases: ["cupcake", "cupcakes"],
     items: [
       { item: "harina", unit: "g", perUnit: 45 },
@@ -88,6 +121,7 @@ const DEFAULT_RECIPE_PROFILES: PurchaseRecipeProfile[] = [
     ]
   },
   {
+    id: "pastel",
     aliases: ["pastel", "cake"],
     items: [
       { item: "harina", unit: "g", perUnit: 220 },
@@ -98,6 +132,7 @@ const DEFAULT_RECIPE_PROFILES: PurchaseRecipeProfile[] = [
     ]
   },
   {
+    id: "galleta",
     aliases: ["galleta", "galletas", "cookie", "cookies"],
     items: [
       { item: "harina", unit: "g", perUnit: 30 },
@@ -106,6 +141,7 @@ const DEFAULT_RECIPE_PROFILES: PurchaseRecipeProfile[] = [
     ]
   },
   {
+    id: "brownie",
     aliases: ["brownie", "brownies"],
     items: [
       { item: "harina", unit: "g", perUnit: 32 },
@@ -116,6 +152,7 @@ const DEFAULT_RECIPE_PROFILES: PurchaseRecipeProfile[] = [
     ]
   },
   {
+    id: "dona",
     aliases: ["dona", "donas", "donut", "donuts"],
     items: [
       { item: "harina", unit: "g", perUnit: 38 },
@@ -164,31 +201,13 @@ function dateFromDateKey(dateKey: string): Date | undefined {
   return candidate;
 }
 
-function extractDateKey(raw: string, timezone: string): string | undefined {
-  const value = raw.trim();
-  if (!value) return undefined;
-
-  const ymd = value.match(/\b(\d{4})[/-](\d{1,2})[/-](\d{1,2})\b/);
-  if (ymd) {
-    const [, y, m, d] = ymd;
-    return `${y.padStart(4, "0")}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-  }
-
-  const dmy = value.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b/);
-  if (dmy) {
-    const [, d, m, y] = dmy;
-    return `${y.padStart(4, "0")}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-  }
-
-  const parsed = Date.parse(value);
-  if (!Number.isFinite(parsed)) return undefined;
-
+function toDateKeyFromDate(date: Date, timezone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit"
-  }).formatToParts(new Date(parsed));
+  }).formatToParts(date);
 
   const year = parts.find((part) => part.type === "year")?.value ?? "0000";
   const month = parts.find((part) => part.type === "month")?.value ?? "01";
@@ -196,9 +215,99 @@ function extractDateKey(raw: string, timezone: string): string | undefined {
   return `${year}-${month}-${day}`;
 }
 
+function extractDateKeyFromIso(value: string | undefined, timezone: string): string | undefined {
+  const raw = value?.trim() ?? "";
+  if (!raw) return undefined;
+  const parsed = Date.parse(raw);
+  if (!Number.isFinite(parsed)) return undefined;
+  return toDateKeyFromDate(new Date(parsed), timezone);
+}
+
 function isHeaderRow(row: string[]): boolean {
   const normalized = row.map((cell) => normalizeForMatch(cell));
   return normalized.includes("fecha_hora_entrega") && normalized.includes("nombre_cliente");
+}
+
+function isRecipeHeaderRow(row: string[]): boolean {
+  const normalized = row.map((cell) => normalizeForMatch(cell));
+  return normalized.includes("recipe_id") && normalized.includes("insumo");
+}
+
+function parseRecipeActive(value: string | undefined): boolean {
+  const normalized = normalizeForMatch(value ?? "");
+  if (!normalized) return true;
+  if (["0", "false", "no", "inactivo", "off"].includes(normalized)) return false;
+  return true;
+}
+
+function parseRecipeAliases(recipeId: string, aliasesCsv: string): string[] {
+  const items = [recipeId, ...aliasesCsv.split(/[;,]/g)]
+    .map((value) => normalizePhrase(value))
+    .filter((value) => value.length > 0);
+  return [...new Set(items)];
+}
+
+function parseRecipeProfiles(rows: string[][]): { profiles: RecipeProfile[]; assumptions: string[] } {
+  const assumptions: string[] = [];
+  const dataRows = rows.length > 0 && isRecipeHeaderRow(rows[0]) ? rows.slice(1) : rows;
+  const byRecipe = new Map<string, { id: string; aliases: Set<string>; items: Map<string, RecipeItem> }>();
+
+  for (let i = 0; i < dataRows.length; i += 1) {
+    const row = dataRows[i];
+    const rowNo = i + 1;
+    const rawRecipeId = row[0]?.trim() ?? "";
+    const rawAliases = row[1]?.trim() ?? "";
+    const rawItem = row[2]?.trim() ?? "";
+    const rawUnit = normalizeForMatch(row[3] ?? "").replace(/\s+/g, "");
+    const rawPerUnit = toNumberMaybe(row[4]);
+    const active = parseRecipeActive(row[5]);
+
+    if (!active) continue;
+    if (!rawItem || !rawUnit || rawPerUnit == null || rawPerUnit <= 0) {
+      assumptions.push(`fila receta ${rowNo} ignorada por campos invalidos`);
+      continue;
+    }
+
+    const aliases = parseRecipeAliases(rawRecipeId, rawAliases);
+    if (aliases.length === 0) {
+      assumptions.push(`fila receta ${rowNo} ignorada por aliases vacios`);
+      continue;
+    }
+
+    const recipeId = normalizePhrase(rawRecipeId || aliases[0]).replace(/\s+/g, "_");
+    if (!recipeId) {
+      assumptions.push(`fila receta ${rowNo} ignorada por recipe_id invalido`);
+      continue;
+    }
+
+    if (!byRecipe.has(recipeId)) {
+      byRecipe.set(recipeId, {
+        id: recipeId,
+        aliases: new Set<string>(),
+        items: new Map<string, RecipeItem>()
+      });
+    }
+
+    const recipe = byRecipe.get(recipeId)!;
+    aliases.forEach((alias) => recipe.aliases.add(alias));
+
+    const itemKey = `${normalizePhrase(rawItem)}|${rawUnit}`;
+    if (!recipe.items.has(itemKey)) {
+      recipe.items.set(itemKey, { item: rawItem, unit: rawUnit, perUnit: 0 });
+    }
+    const item = recipe.items.get(itemKey)!;
+    item.perUnit += rawPerUnit;
+  }
+
+  const profiles = [...byRecipe.values()]
+    .map((recipe) => ({
+      id: recipe.id,
+      aliases: [...recipe.aliases],
+      items: [...recipe.items.values()]
+    }))
+    .filter((recipe) => recipe.aliases.length > 0 && recipe.items.length > 0);
+
+  return { profiles, assumptions };
 }
 
 function isCanceledOrder(estadoPedido: string | undefined, notas: string | undefined): boolean {
@@ -210,14 +319,13 @@ function isCanceledOrder(estadoPedido: string | undefined, notas: string | undef
   return /\bcancelado\b/.test(notes);
 }
 
-function mapRows(rows: string[][], timezone: string, assumptions: string[]): ParsedOrderRow[] {
+function mapRows(rows: string[][], timezone: string): { rows: ParsedOrderRow[]; totalRows: number } {
   const dataRows = rows.length > 0 && isHeaderRow(rows[0]) ? rows.slice(1) : rows;
 
-  return dataRows
+  const parsed = dataRows
     .map((row) => {
       const fecha_hora_entrega = row[2] ?? "";
       const fecha_hora_entrega_iso = row[18] || undefined;
-      const dateSource = fecha_hora_entrega_iso || fecha_hora_entrega;
       const folio = row[1] ?? "";
       const operation_id = row[17] || undefined;
       const nombre_cliente = row[3] ?? "";
@@ -229,11 +337,9 @@ function mapRows(rows: string[][], timezone: string, assumptions: string[]): Par
       const estado_pedido = row[19] || undefined;
       const notas = row[15] || undefined;
       const rawCantidad = toNumberMaybe(row[7]);
-      const cantidad = rawCantidad != null && rawCantidad > 0 ? Math.trunc(rawCantidad) : 1;
-
-      if (rawCantidad == null || rawCantidad <= 0) {
-        assumptions.push(`pedido ${folio || operation_id || producto || "sin_referencia"} sin cantidad valida; se asumio 1`);
-      }
+      const quantityValid = rawCantidad != null && rawCantidad > 0;
+      const cantidad = quantityValid ? Math.trunc(rawCantidad!) : 0;
+      const reference = folio || operation_id || `row-${normalizePhrase(nombre_cliente || producto || "sin_ref") || "unknown"}`;
 
       return {
         folio,
@@ -243,24 +349,32 @@ function mapRows(rows: string[][], timezone: string, assumptions: string[]): Par
         nombre_cliente,
         producto,
         cantidad,
+        cantidad_invalida: !quantityValid ? true : undefined,
         tipo_envio,
         estado_pago,
         total,
         moneda,
         estado_pedido,
-        _dateKey: extractDateKey(dateSource, timezone),
+        _isoDateKey: extractDateKeyFromIso(fecha_hora_entrega_iso, timezone),
         _productKey: normalizePhrase(producto),
-        _isCanceled: isCanceledOrder(estado_pedido, notas)
+        _isCanceled: isCanceledOrder(estado_pedido, notas),
+        _quantityValid: quantityValid,
+        _reference: reference
       };
     })
     .filter((row) => row.fecha_hora_entrega && row.producto);
+
+  return {
+    rows: parsed,
+    totalRows: dataRows.length
+  };
 }
 
 function sortRows(a: ParsedOrderRow, b: ParsedOrderRow): number {
-  const keyA = a._dateKey ?? "9999-12-31";
-  const keyB = b._dateKey ?? "9999-12-31";
+  const keyA = a._isoDateKey ?? "9999-12-31";
+  const keyB = b._isoDateKey ?? "9999-12-31";
   if (keyA !== keyB) return keyA.localeCompare(keyB);
-  const dateCmp = a.fecha_hora_entrega.localeCompare(b.fecha_hora_entrega);
+  const dateCmp = (a.fecha_hora_entrega_iso ?? a.fecha_hora_entrega).localeCompare(b.fecha_hora_entrega_iso ?? b.fecha_hora_entrega);
   if (dateCmp !== 0) return dateCmp;
   return a.folio.localeCompare(b.folio);
 }
@@ -290,64 +404,128 @@ function aggregatePreparation(rows: ParsedOrderRow[]): ScheduleDayPreparationIte
   });
 }
 
-function findRecipeProfile(productKey: string): PurchaseRecipeProfile | undefined {
-  return DEFAULT_RECIPE_PROFILES.find((profile) =>
-    profile.aliases.some((alias) => productKey.includes(normalizePhrase(alias)))
-  );
+function tokenize(value: string): string[] {
+  return normalizePhrase(value)
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
 }
 
-function aggregateSuggestedPurchases(args: {
-  rows: ParsedOrderRow[];
-  assumptions: string[];
-}): ScheduleDayPurchaseItem[] {
-  const byItem = new Map<string, { item: string; unit: string; amount: number; sourceProducts: Set<string> }>();
+function findRecipeProfile(productName: string, recipeProfiles: RecipeProfile[]): RecipeProfile | undefined {
+  const normalized = normalizePhrase(productName);
+  if (!normalized) return undefined;
+  const productTokens = new Set(tokenize(normalized));
 
-  for (const row of args.rows) {
-    const productKey = row._productKey || normalizePhrase(row.producto);
-    const profile = findRecipeProfile(productKey);
+  let best: { profile: RecipeProfile; score: number } | undefined;
 
-    if (!profile) {
-      const fallbackKey = "empaque_generico|pza";
-      const fallback = byItem.get(fallbackKey) ?? {
-        item: "empaque_generico",
-        unit: "pza",
-        amount: 0,
-        sourceProducts: new Set<string>()
-      };
-      fallback.amount += row.cantidad;
-      fallback.sourceProducts.add(row.producto);
-      byItem.set(fallbackKey, fallback);
+  for (const profile of recipeProfiles) {
+    const score = profile.aliases.reduce((acc, alias) => {
+      const aliasPhrase = normalizePhrase(alias);
+      if (!aliasPhrase) return acc;
+      if (aliasPhrase === normalized) return acc + 6;
 
-      args.assumptions.push(`producto \"${row.producto}\" sin receta mapeada; se sugiere empaque_generico`);
-      continue;
-    }
+      const aliasTokens = tokenize(aliasPhrase).filter((token) => token.length >= 3);
+      if (aliasTokens.length === 0) return acc;
 
-    for (const recipeItem of profile.items) {
-      const key = `${recipeItem.item}|${recipeItem.unit}`;
-      const current = byItem.get(key) ?? {
-        item: recipeItem.item,
-        unit: recipeItem.unit,
-        amount: 0,
-        sourceProducts: new Set<string>()
-      };
+      if (aliasTokens.every((token) => productTokens.has(token))) {
+        return acc + 4;
+      }
 
-      current.amount += recipeItem.perUnit * row.cantidad;
-      current.sourceProducts.add(row.producto);
-      byItem.set(key, current);
+      const matched = aliasTokens.filter((token) => productTokens.has(token)).length;
+      return acc + matched;
+    }, 0);
+
+    if (score <= 0) continue;
+    if (!best || score > best.score) {
+      best = { profile, score };
     }
   }
 
-  return [...byItem.values()]
+  return best?.profile;
+}
+
+function roundAmount(amount: number, unit: string): number {
+  if (unit === "pza") return Math.ceil(amount * 100) / 100;
+  if (unit === "g" || unit === "ml") return Math.round(amount);
+  return Math.round(amount * 100) / 100;
+}
+
+function buildSuggestedPurchases(args: {
+  preparationRows: ParsedOrderRow[];
+  catalogProfiles: RecipeProfile[];
+  inlineProfiles: RecipeProfile[];
+}): SuggestionBuildResult {
+  const assumptions: string[] = [];
+  const suppliesMap = new Map<string, { item: string; unit: string; amount: number; sourceProducts: Set<string>; source: "catalog" | "inline" | "fallback_generic" }>();
+
+  let catalogMatches = 0;
+  let inlineMatches = 0;
+
+  for (const row of args.preparationRows) {
+    const catalogRecipe = findRecipeProfile(row.producto, args.catalogProfiles);
+    const inlineRecipe = findRecipeProfile(row.producto, args.inlineProfiles);
+
+    const recipe = catalogRecipe ?? inlineRecipe;
+    const source: "catalog" | "inline" | "fallback_generic" = catalogRecipe ? "catalog" : inlineRecipe ? "inline" : "fallback_generic";
+
+    if (!recipe) {
+      assumptions.push(`producto \"${row.producto}\" sin receta mapeada; se sugiere empaque_generico`);
+      const fallbackKey = "empaque_generico|pza";
+      if (!suppliesMap.has(fallbackKey)) {
+        suppliesMap.set(fallbackKey, {
+          item: "empaque_generico",
+          unit: "pza",
+          amount: 0,
+          sourceProducts: new Set<string>(),
+          source: "fallback_generic"
+        });
+      }
+      const supply = suppliesMap.get(fallbackKey)!;
+      supply.amount += row.cantidad;
+      supply.sourceProducts.add(row.producto);
+      continue;
+    }
+
+    if (source === "catalog") {
+      catalogMatches += 1;
+    } else {
+      inlineMatches += 1;
+      assumptions.push(`producto \"${row.producto}\" sin receta en catalogo; se aplico fallback inline`);
+    }
+
+    for (const item of recipe.items) {
+      const key = `${normalizePhrase(item.item)}|${item.unit}|${source}`;
+      if (!suppliesMap.has(key)) {
+        suppliesMap.set(key, {
+          item: item.item,
+          unit: item.unit,
+          amount: 0,
+          sourceProducts: new Set<string>(),
+          source
+        });
+      }
+      const supply = suppliesMap.get(key)!;
+      supply.amount += item.perUnit * row.cantidad;
+      supply.sourceProducts.add(row.producto);
+    }
+  }
+
+  const items = [...suppliesMap.values()]
     .map((entry) => ({
       item: entry.item,
       unit: entry.unit,
-      amount: Number(entry.amount.toFixed(2)),
-      sourceProducts: [...entry.sourceProducts].sort((a, b) => a.localeCompare(b))
+      amount: roundAmount(entry.amount, entry.unit),
+      sourceProducts: [...entry.sourceProducts].sort((a, b) => a.localeCompare(b)),
+      source: entry.source
     }))
-    .sort((a, b) => {
-      if (a.item !== b.item) return a.item.localeCompare(b.item);
-      return a.unit.localeCompare(b.unit);
-    });
+    .sort((a, b) => a.item.localeCompare(b.item) || a.unit.localeCompare(b.unit));
+
+  return {
+    items,
+    assumptions,
+    catalogMatches,
+    inlineMatches
+  };
 }
 
 function dedupeAssumptions(values: string[]): string[] {
@@ -365,6 +543,24 @@ function dedupeAssumptions(values: string[]): string[] {
   return out;
 }
 
+function dedupeInconsistencies(values: ScheduleDayInconsistencyItem[]): ScheduleDayInconsistencyItem[] {
+  const seen = new Set<string>();
+  const out: ScheduleDayInconsistencyItem[] = [];
+
+  for (const value of values) {
+    const key = `${value.reference}|${value.reason}|${value.affects}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+  }
+
+  return out;
+}
+
+function buildTraceRef(args: { day: ScheduleDayFilter; attempt: number }): string {
+  return `schedule-day-view:${args.day.dateKey}:a${args.attempt}`;
+}
+
 export function createScheduleDayViewTool(config: ScheduleDayViewToolConfig = {}) {
   const gwsCommand = config.gwsCommand?.trim() || "gws";
   const gwsCommandArgs = config.gwsCommandArgs ?? [];
@@ -376,6 +572,21 @@ export function createScheduleDayViewTool(config: ScheduleDayViewToolConfig = {}
     ? Math.trunc(config.retryBackoffMs!)
     : 150;
   const timezone = config.timezone?.trim() || "America/Mexico_City";
+  const recipeSource = config.recipeSource ?? "inline";
+  const inlineRecipeProfiles = config.recipeProfiles ?? DEFAULT_RECIPE_PROFILES;
+  const recipesGwsCommand = config.recipesGwsCommand?.trim() || gwsCommand;
+  const recipesGwsCommandArgs = config.recipesGwsCommandArgs ?? gwsCommandArgs;
+  const recipesGwsSpreadsheetId = config.recipesGwsSpreadsheetId?.trim() || gwsSpreadsheetId;
+  const recipesNormalizedRange = normalizeGwsReadRange(config.recipesGwsRange, "A:F") ?? "CatalogoRecetas!A:F";
+  const recipesTimeoutMs = Number.isFinite(config.recipesTimeoutMs) && (config.recipesTimeoutMs ?? 0) > 0
+    ? Math.trunc(config.recipesTimeoutMs!)
+    : timeoutMs;
+  const recipesMaxRetries = Number.isFinite(config.recipesMaxRetries) && (config.recipesMaxRetries ?? -1) >= 0
+    ? Math.trunc(config.recipesMaxRetries!)
+    : maxRetries;
+  const recipesRetryBackoffMs = Number.isFinite(config.recipesRetryBackoffMs) && (config.recipesRetryBackoffMs ?? -1) >= 0
+    ? Math.trunc(config.recipesRetryBackoffMs!)
+    : retryBackoffMs;
   const gwsRunner = config.gwsRunner ?? runGwsCommand;
 
   return async function scheduleDayView(args: { chat_id: string; day: ScheduleDayFilter }): Promise<ScheduleDayViewResult> {
@@ -405,29 +616,96 @@ export function createScheduleDayViewTool(config: ScheduleDayViewToolConfig = {}
       failedError: "schedule_day_view_gws_failed"
     });
 
+    let catalogProfiles: RecipeProfile[] = [];
     const assumptions: string[] = [];
-    const parsedRows = mapRows(readResult.rows, timezone, assumptions);
-    const filtered = parsedRows
-      .filter((row) => row._dateKey === args.day.dateKey)
-      .filter((row) => !row._isCanceled)
+
+    if (recipeSource === "gws") {
+      if (!recipesGwsSpreadsheetId) {
+        throw new Error("schedule_day_view_recipes_gws_spreadsheet_id_missing");
+      }
+      if (!recipesNormalizedRange) {
+        throw new Error("schedule_day_view_recipes_gws_range_missing");
+      }
+
+      const recipesReadResult = await readGwsValuesWithRetries({
+        command: recipesGwsCommand,
+        commandArgs: recipesGwsCommandArgs,
+        spreadsheetId: recipesGwsSpreadsheetId,
+        range: recipesNormalizedRange,
+        timeoutMs: recipesTimeoutMs,
+        maxRetries: recipesMaxRetries,
+        retryBackoffMs: recipesRetryBackoffMs,
+        runner: gwsRunner,
+        errorPrefix: "schedule_day_view_recipes_gws",
+        invalidPayloadError: "schedule_day_view_recipes_gws_invalid_payload",
+        commandUnavailableError: "schedule_day_view_recipes_gws_command_unavailable",
+        failedError: "schedule_day_view_recipes_gws_failed"
+      });
+
+      const parsedRecipes = parseRecipeProfiles(recipesReadResult.rows);
+      assumptions.push(...parsedRecipes.assumptions);
+      if (parsedRecipes.profiles.length === 0) {
+        throw new Error("schedule_day_view_recipes_catalog_empty");
+      }
+      catalogProfiles = parsedRecipes.profiles;
+    }
+
+    const mapped = mapRows(readResult.rows, timezone);
+    const activeRows = mapped.rows.filter((row) => !row._isCanceled);
+
+    const inconsistencies: ScheduleDayInconsistencyItem[] = [];
+
+    for (const row of activeRows) {
+      if (!row._isoDateKey) {
+        inconsistencies.push({
+          reference: row._reference,
+          reason: "delivery_iso_missing_or_invalid",
+          affects: "day_schedule",
+          detail: "pedido activo excluido por fecha_hora_entrega_iso faltante o invalida"
+        });
+        continue;
+      }
+
+      if (row._isoDateKey === args.day.dateKey && !row._quantityValid) {
+        inconsistencies.push({
+          reference: row._reference,
+          reason: "quantity_invalid",
+          affects: "preparation_and_purchases",
+          detail: "pedido incluido en entregas pero excluido de preparacion/compras por cantidad invalida"
+        });
+      }
+    }
+
+    const dayRows = activeRows
+      .filter((row) => row._isoDateKey === args.day.dateKey)
       .sort(sortRows);
 
-    const deliveries = filtered.map(({ _dateKey: _ignoredDate, _productKey: _ignoredProduct, _isCanceled: _ignoredCanceled, ...row }) => row);
-    const preparation = aggregatePreparation(filtered);
-    const suggestedPurchases = aggregateSuggestedPurchases({
-      rows: filtered,
-      assumptions
+    const deliveries = dayRows.map(({ _isoDateKey: _ignoredDate, _productKey: _ignoredProduct, _isCanceled: _ignoredCanceled, _quantityValid: _ignoredQuantity, _reference: _ignoredReference, ...row }) => row);
+
+    const preparationRows = dayRows.filter((row) => row._quantityValid);
+    const preparation = aggregatePreparation(preparationRows);
+
+    const suggestions = buildSuggestedPurchases({
+      preparationRows,
+      catalogProfiles,
+      inlineProfiles: inlineRecipeProfiles
     });
+
+    const traceRef = buildTraceRef({ day: args.day, attempt: readResult.attempt });
+    const allAssumptions = dedupeAssumptions([...assumptions, ...suggestions.assumptions]);
+    const allInconsistencies = dedupeInconsistencies(inconsistencies);
 
     return {
       day: args.day,
       timezone,
+      trace_ref: traceRef,
       totalOrders: deliveries.length,
       deliveries,
       preparation,
-      suggestedPurchases,
-      assumptions: dedupeAssumptions(assumptions),
-      detail: `schedule-day-view executed (provider=gws, attempt=${readResult.attempt}, day=${args.day.dateKey})`
+      suggestedPurchases: suggestions.items,
+      inconsistencies: allInconsistencies,
+      assumptions: allAssumptions,
+      detail: `schedule-day-view executed (provider=gws, attempt=${readResult.attempt}, day=${args.day.dateKey}, total_rows=${mapped.totalRows}, invalid_rows=${allInconsistencies.length}, recipe_source=${recipeSource}, catalog_matches=${suggestions.catalogMatches}, fallback_matches=${suggestions.inlineMatches})`
     };
   };
 }

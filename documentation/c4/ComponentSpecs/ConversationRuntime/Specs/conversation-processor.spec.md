@@ -44,6 +44,7 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - For order status queries (e.g. `estado del pedido op-123`), route deterministically to `order-status` without entering confirm flow.
 - For shopping list queries (e.g. `lista de insumos para hoy`, `insumos del pedido op-123`), route deterministically to `shopping-list-generate` without entering confirm flow.
 - For day schedule queries (e.g. `agenda de hoy`, `agenda del 2026-03-20`), route deterministically to `schedule-day-view` without entering confirm flow.
+- When `schedule.day_view` excludes rows due to critical data quality issues (e.g. missing ISO datetime), runtime must still return a partial agenda plus visible `inconsistencias`.
 - For `quote.order`, after returning the quote, require an explicit user decision (`confirmar/cancelar`) to convert quote into `pedido` draft.
 - If quote is accepted for conversion, runtime must continue with regular `pedido` flow (ask missing fields, show summary, require final confirmation before executing `order.create` connectors).
 - For `order.update`, detect update intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; apply Trello+Sheets with rollback on partial failure.
@@ -87,6 +88,7 @@ It must coordinate flow/persistence and must not trust raw model output without 
     - `inventory.consume`: `Consumo ya aplicado para <folio>. operation_id: <operation_id>`
     - other confirmable intents: deterministic duplicate reference (`operation_id`/status)
   - execution failure: controlled failure message with traceable operation reference
+  - `schedule.day_view` failure: controlled message with `trace_ref` for support lookup
 - Keep response language consistent with conversation language (Spanish in current runtime).
 - Internal diagnostic detail belongs in traces/logs with redaction, not in chat responses.
 

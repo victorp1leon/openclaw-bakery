@@ -1048,14 +1048,25 @@ function formatShoppingListReply(result: ShoppingListResult): string {
 
 function formatScheduleDayViewReply(result: ScheduleDayViewResult): string {
   const label = result.day.label;
+  const maxInconsistencies = 8;
+  const inconsistencies = result.inconsistencies.slice(0, maxInconsistencies).map((item, idx) =>
+    `${idx + 1}. ${item.reference}: ${item.reason} (${item.affects})`
+  );
+  const inconsistenciesExtra = result.inconsistencies.length > inconsistencies.length
+    ? `\n... y ${result.inconsistencies.length - inconsistencies.length} inconsistencias más`
+    : "";
+  const inconsistenciesBlock = result.inconsistencies.length > 0
+    ? `\nInconsistencias (${result.inconsistencies.length}):\n${inconsistencies.join("\n")}${inconsistenciesExtra}`
+    : "";
+
   if (result.totalOrders === 0) {
-    return `No encontré pedidos para armar la agenda de ${label}.`;
+    return `No encontré pedidos para armar la agenda de ${label}.${inconsistenciesBlock}\nRef: ${result.trace_ref}`;
   }
 
   const deliveries = result.deliveries
     .slice(0, 20)
     .map((order, idx) => {
-      const qty = order.cantidad > 0 ? `x${order.cantidad}` : "x?";
+      const qty = order.cantidad_invalida ? "x? (cantidad inválida)" : order.cantidad > 0 ? `x${order.cantidad}` : "x?";
       const shipping = order.tipo_envio ?? "-";
       return `${idx + 1}. ${order.fecha_hora_entrega} | ${order.nombre_cliente || "-"} | ${order.producto} ${qty} | ${shipping}`;
     });
@@ -1086,7 +1097,8 @@ function formatScheduleDayViewReply(result: ScheduleDayViewResult): string {
     `Agenda del día para ${label} (${result.totalOrders} pedidos):`,
     `Entregas:\n${deliveries.join("\n")}${deliveriesExtra}`,
     `Preparación:\n${preparation.join("\n")}${preparationExtra}`,
-    `Compras sugeridas:\n${purchases.join("\n")}${purchasesExtra}${assumptions}`
+    `Compras sugeridas:\n${purchases.join("\n")}${purchasesExtra}${assumptions}${inconsistenciesBlock}`,
+    `Ref: ${result.trace_ref}`
   ].join("\n");
 }
 
@@ -2349,13 +2361,14 @@ export function createConversationProcessor(deps: ProcessorDeps) {
               strict_mode,
               intent: "schedule.day_view",
               intent_source: "fallback",
-              detail: `day=${dayView.day.dateKey}:${dayView.day.label};orders=${dayView.totalOrders}`
+              detail: `${dayView.detail};trace_ref=${dayView.trace_ref};inconsistencies=${dayView.inconsistencies.length}`
             });
 
             clearPending(msg.chat_id);
             return [formatScheduleDayViewReply(dayView)];
           } catch (err) {
             const safeDetail = err instanceof Error ? err.message : String(err);
+            const traceRef = `schedule-day-view:${newOperationId()}`;
 
             deps.onTrace?.({
               event: "schedule_day_view_failed",
@@ -2363,11 +2376,11 @@ export function createConversationProcessor(deps: ProcessorDeps) {
               strict_mode,
               intent: "schedule.day_view",
               intent_source: "fallback",
-              detail: safeDetail
+              detail: `${safeDetail};ref=${traceRef}`
             });
 
             clearPending(msg.chat_id);
-            return ["No pude generar la agenda del día en este momento. Intenta de nuevo en unos minutos."];
+            return [`No pude generar la agenda del día en este momento. Ref: ${traceRef}`];
           }
         }
 
@@ -2974,12 +2987,13 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           strict_mode,
           intent: "schedule.day_view",
           intent_source: "fallback",
-          detail: `day=${dayView.day.dateKey}:${dayView.day.label};orders=${dayView.totalOrders}`
+          detail: `${dayView.detail};trace_ref=${dayView.trace_ref};inconsistencies=${dayView.inconsistencies.length}`
         });
 
         return [formatScheduleDayViewReply(dayView)];
       } catch (err) {
         const safeDetail = err instanceof Error ? err.message : String(err);
+        const traceRef = `schedule-day-view:${newOperationId()}`;
 
         deps.onTrace?.({
           event: "schedule_day_view_failed",
@@ -2987,10 +3001,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           strict_mode,
           intent: "schedule.day_view",
           intent_source: "fallback",
-          detail: safeDetail
+          detail: `${safeDetail};ref=${traceRef}`
         });
 
-        return ["No pude generar la agenda del día en este momento. Intenta de nuevo en unos minutos."];
+        return [`No pude generar la agenda del día en este momento. Ref: ${traceRef}`];
       }
     }
 

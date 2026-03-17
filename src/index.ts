@@ -254,6 +254,13 @@ const executeScheduleDayView = createScheduleDayViewTool({
   gwsRange: appConfig.orderTool.sheets.gws.range,
   timeoutMs: appConfig.orderTool.sheets.timeoutMs,
   maxRetries: appConfig.orderTool.sheets.maxRetries,
+  recipeSource: appConfig.orderTool.recipes.source,
+  recipesGwsCommand: appConfig.orderTool.recipes.gws.command,
+  recipesGwsCommandArgs: appConfig.orderTool.recipes.gws.commandArgs,
+  recipesGwsSpreadsheetId: appConfig.orderTool.recipes.gws.spreadsheetId,
+  recipesGwsRange: appConfig.orderTool.recipes.gws.range,
+  recipesTimeoutMs: appConfig.orderTool.recipes.timeoutMs,
+  recipesMaxRetries: appConfig.orderTool.recipes.maxRetries,
   timezone: appConfig.timezone
 });
 

@@ -14,6 +14,10 @@ description: Deliver read-only intents end-to-end with consistent patterns for d
 1. Define intent contract and scope.
 - Confirm read-only behavior and explicit out-of-scope mutations.
 - Define required output blocks and deterministic error tokens.
+- Define operational traceability contract:
+  - Success payload includes `trace_ref`.
+  - Partial-data conditions are surfaced in `inconsistencies[]` (never silently dropped).
+  - Failure replies include user-visible `Ref: <trace_ref>` without raw internals.
 
 2. Apply spec-first updates.
 - Update/add tool spec in `documentation/c4/ComponentSpecs/Tools/Specs/*.spec.md`.
@@ -34,11 +38,15 @@ description: Deliver read-only intents end-to-end with consistent patterns for d
 - Add/adjust prompt copy in `src/runtime/persona.ts` when missing-field prompts change.
 - Add readable formatter for intent response blocks.
 - Emit `*_succeeded` / `*_failed` traces with minimal safe detail.
+- Ensure runtime replies include `trace_ref` in both success and controlled-failure paths.
 
 6. Add/adjust tests.
 - Tool tests in `src/tools/**.test.ts`.
 - Runtime tests in `src/runtime/conversationProcessor.test.ts`.
 - Include cases for: happy path, missing scope/query, deterministic failures, and no-confirm routing.
+- Include read-only hardening cases:
+  - partial data represented via `inconsistencies[]`,
+  - deterministic `trace_ref` presence in success and failure replies.
 
 7. Add smoke coverage.
 - Create `scripts/smoke/<intent>-smoke.ts`.
@@ -56,6 +64,7 @@ description: Deliver read-only intents end-to-end with consistent patterns for d
 - Tool + runtime behavior match specs.
 - No confirmation flow is required for intent execution.
 - No external mutation happens during execution.
+- `trace_ref` and `inconsistencies[]` contract is implemented, documented, and tested.
 - Tests and smoke pass and are registered in summary.
 - Docs and collaboration artifacts are synchronized.
 
@@ -63,4 +72,5 @@ description: Deliver read-only intents end-to-end with consistent patterns for d
 - Do not add mutation side effects to read-only intents.
 - Do not bypass deterministic missing-field handling.
 - Do not expose credentials, raw stderr, or provider internals in replies.
+- Do not return opaque read-only failures without `Ref: <trace_ref>`.
 - Do not mark complete while validation gates are pending.

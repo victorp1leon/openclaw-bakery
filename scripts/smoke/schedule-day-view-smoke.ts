@@ -32,6 +32,7 @@ const executeScheduleDayView = liveMode
     return {
       day: args.day,
       timezone: config.timezone,
+      trace_ref: `schedule-day-view:${args.day.dateKey}:a1`,
       totalOrders: hasOrders ? 1 : 0,
       deliveries: hasOrders
         ? [
@@ -57,10 +58,12 @@ const executeScheduleDayView = liveMode
             item: "harina",
             unit: "g",
             amount: 540,
-            sourceProducts: ["cupcakes"]
+            sourceProducts: ["cupcakes"],
+            source: "catalog" as const
           }
         ]
         : [],
+      inconsistencies: [],
       assumptions: [],
       detail: "schedule-day-view mock execution"
     };

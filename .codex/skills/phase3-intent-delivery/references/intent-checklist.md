@@ -3,6 +3,7 @@
 ## 1) Scope + Contract
 - [ ] Intent type defined: `read-only` or `mutation`
 - [ ] Inputs/outputs and deterministic errors listed
+- [ ] If `read-only`: contract includes `trace_ref` + visible `inconsistencies[]` policy
 - [ ] Acceptance criteria and rollback strategy documented
 
 ## 2) Spec-First Docs
@@ -23,6 +24,7 @@
 - [ ] Tool tests in `src/tools/**.test.ts`
 - [ ] Runtime tests in `src/runtime/conversationProcessor.test.ts`
 - [ ] Mutation-specific tests (confirm/cancel/idempotency)
+- [ ] If `read-only`: tests assert `trace_ref` presence and partial-data handling via `inconsistencies[]`
 
 ## 5) Smoke Coverage (Mandatory for New Intents)
 - [ ] Smoke script created in `scripts/smoke/`

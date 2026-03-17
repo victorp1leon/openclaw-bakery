@@ -226,6 +226,7 @@ let createConversationProcessor: (args: {
   }) => Promise<{
     day: { type: "day"; dateKey: string; label: string };
     timezone: string;
+    trace_ref: string;
     totalOrders: number;
     deliveries: Array<{
       folio: string;
@@ -235,6 +236,7 @@ let createConversationProcessor: (args: {
       nombre_cliente: string;
       producto: string;
       cantidad: number;
+      cantidad_invalida?: boolean;
       tipo_envio?: string;
       estado_pago?: string;
       total?: number;
@@ -251,6 +253,13 @@ let createConversationProcessor: (args: {
       unit: string;
       amount: number;
       sourceProducts: string[];
+      source: "catalog" | "inline" | "fallback_generic";
+    }>;
+    inconsistencies: Array<{
+      reference: string;
+      reason: "delivery_iso_missing_or_invalid" | "quantity_invalid";
+      affects: "day_schedule" | "preparation_and_purchases";
+      detail: string;
     }>;
     assumptions: string[];
     detail: string;
@@ -679,6 +688,7 @@ describe("conversation processor security flow", () => {
     const executeScheduleDayViewFn = vi.fn(async () => ({
       day: { type: "day", dateKey: "2026-03-07", label: "hoy" } as const,
       timezone: "America/Mexico_City",
+      trace_ref: "schedule-day-view:2026-03-07:a1",
       totalOrders: 1,
       deliveries: [
         {
@@ -707,9 +717,11 @@ describe("conversation processor security flow", () => {
           item: "harina",
           unit: "g",
           amount: 540,
-          sourceProducts: ["cupcakes"]
+          sourceProducts: ["cupcakes"],
+          source: "catalog" as const
         }
       ],
+      inconsistencies: [],
       assumptions: [],
       detail: "schedule-day-view executed (provider=gws, attempt=1)"
     }));
@@ -740,10 +752,12 @@ describe("conversation processor security flow", () => {
     const executeScheduleDayViewFn = vi.fn(async ({ day }) => ({
       day,
       timezone: "America/Mexico_City",
+      trace_ref: "schedule-day-view:2026-03-08:a1",
       totalOrders: 0,
       deliveries: [],
       preparation: [],
       suggestedPurchases: [],
+      inconsistencies: [],
       assumptions: [],
       detail: "schedule-day-view executed (provider=gws, attempt=1)"
     }));
@@ -771,6 +785,74 @@ describe("conversation processor security flow", () => {
       chat_id: "chat-schedule-missing",
       day: { type: "day", dateKey: "2026-03-08", label: "mañana" }
     });
+  });
+
+  it("muestra inconsistencias visibles en agenda diaria", async () => {
+    const executeScheduleDayViewFn = vi.fn(async () => ({
+      day: { type: "day", dateKey: "2026-03-07", label: "hoy" } as const,
+      timezone: "America/Mexico_City",
+      trace_ref: "schedule-day-view:2026-03-07:a1",
+      totalOrders: 1,
+      deliveries: [
+        {
+          folio: "op-schedule-2",
+          fecha_hora_entrega: "2026-03-07 16:00",
+          nombre_cliente: "Leo",
+          producto: "pastel",
+          cantidad: 0,
+          cantidad_invalida: true
+        }
+      ],
+      preparation: [],
+      suggestedPurchases: [],
+      inconsistencies: [
+        {
+          reference: "op-schedule-2",
+          reason: "quantity_invalid" as const,
+          affects: "preparation_and_purchases" as const,
+          detail: "pedido incluido en entregas pero excluido de preparacion/compras por cantidad invalida"
+        }
+      ],
+      assumptions: [],
+      detail: "schedule-day-view executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-schedule-inconsistency"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn: async () => "pedido",
+      executeScheduleDayViewFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-schedule-inconsistency",
+      text: "dame la agenda de hoy"
+    });
+
+    expect(replies[0]).toContain("Inconsistencias (1)");
+    expect(replies[0]).toContain("cantidad inválida");
+    expect(replies[0]).toContain("Ref: schedule-day-view:2026-03-07:a1");
+  });
+
+  it("incluye trace ref cuando falla schedule.day_view", async () => {
+    const executeScheduleDayViewFn = vi.fn(async () => {
+      throw new Error("schedule_day_view_gws_failed");
+    });
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-schedule-fail"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn: async () => "pedido",
+      newOperationId: () => "op-schedule-fail-1",
+      executeScheduleDayViewFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-schedule-fail",
+      text: "dame la agenda de hoy"
+    });
+
+    expect(replies[0]).toContain("Ref: schedule-day-view:op-schedule-fail-1");
   });
 
   it("resuelve lista de insumos sin pasar por intent router", async () => {

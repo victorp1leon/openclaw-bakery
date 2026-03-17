@@ -27,4 +27,4 @@ Execute external integrations based on actions that were already confirmed by th
 - Tool responses must be structured for logging and user-facing messages.
 - Sheets adapters use `gws` as the only Google integration path.
 - `shopping-list-generate` reads orders from `Pedidos` and can resolve recipe profiles from `CatalogoRecetas` (`gws`) in live mode, keeping `inline` recipes as safe fallback mode for smoke/mock.
-- `schedule-day-view` reads orders from `Pedidos` and returns operational blocks (deliveries, preparation, suggested purchases) for one day in `America/Mexico_City` by default.
+- `schedule-day-view` reads orders from `Pedidos` and returns operational blocks (deliveries, preparation, suggested purchases) plus visible `inconsistencies`; delivery date source is `fecha_hora_entrega_iso` (mandatory), with recipe suggestions from `CatalogoRecetas` (`gws`) and inline fallback for unmapped products.
