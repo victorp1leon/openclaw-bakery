@@ -536,6 +536,13 @@ function main(): void {
       env: smokeLive ? undefined : { SMOKE_PAYMENT_LIVE: "0", SMOKE_PAYMENT_DRY_RUN: "1" }
     },
     {
+      scenario: "smoke:inventory",
+      npmScript: "smoke:inventory",
+      env: smokeLive
+        ? { INVENTORY_CONSUME_ENABLE: "1" }
+        : { SMOKE_INVENTORY_LIVE: "0", SMOKE_INVENTORY_DRY_RUN: "1", INVENTORY_CONSUME_ENABLE: "1" }
+    },
+    {
       scenario: "smoke:lifecycle",
       npmScript: "smoke:lifecycle",
       env: smokeLive

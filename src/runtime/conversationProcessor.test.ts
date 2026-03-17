@@ -337,6 +337,37 @@ let createConversationProcessor: (args: {
     };
     detail: string;
   }>;
+  executeInventoryConsumeFn?: (args: {
+    operation_id: string;
+    chat_id: string;
+    reference: {
+      folio?: string;
+      operation_id_ref?: string;
+    };
+    dryRun?: boolean;
+  }) => Promise<{
+    ok: boolean;
+    dry_run: boolean;
+    operation_id: string;
+    payload: {
+      reference: {
+        folio?: string;
+        operation_id_ref?: string;
+      };
+      order_row_index?: number;
+      consumed: Array<{
+        insumo: string;
+        unidad: string;
+        delta_cantidad: number;
+        stock_antes: number;
+        stock_despues: number;
+      }>;
+      movements_written: number;
+      idempotent_replay: boolean;
+      detail: string;
+    };
+    detail: string;
+  }>;
   orderCardSync?: {
     updateCardForOrder: (args: {
       operation_id: string;
@@ -367,6 +398,7 @@ let createConversationProcessor: (args: {
   };
   botPersona?: "neutral" | "bakery_warm" | "concise";
   webChatEnabled?: boolean;
+  inventoryConsumeEnabled?: boolean;
   onTrace?: (event: {
     event: string;
     chat_id: string;
@@ -1590,6 +1622,131 @@ describe("conversation processor security flow", () => {
     expect(failed[0]).toContain("No se pudo ejecutar el pedido");
     expect(getOperation("op-payment-record-fail")?.status).toBe("failed");
     expect(getState("chat-payment-record-fail").pending?.operation_id).toBe("op-payment-record-fail");
+  });
+
+  it("inicia flujo de inventory.consume con resumen y confirmacion", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+    const executeInventoryConsumeFn = vi.fn(async ({ operation_id, reference }) => ({
+      ok: true,
+      dry_run: false,
+      operation_id,
+      payload: {
+        reference,
+        order_row_index: 10,
+        consumed: [
+          {
+            insumo: "Harina",
+            unidad: "g",
+            delta_cantidad: -250,
+            stock_antes: 1500,
+            stock_despues: 1250
+          }
+        ],
+        movements_written: 1,
+        idempotent_replay: false,
+        detail: "inventory-consume executed"
+      },
+      detail: "inventory-consume executed"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-inventory-consume"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-inventory-consume",
+      routeIntentFn,
+      executeInventoryConsumeFn,
+      inventoryConsumeEnabled: true
+    });
+
+    const summary = await processor.handleMessage({
+      chat_id: "chat-inventory-consume",
+      text: "consume inventario del pedido folio op-xyz-123"
+    });
+    expect(summary[0]).toContain("Resumen");
+    expect(summary[0]).toContain("inventory.consume");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+
+    const done = await processor.handleMessage({ chat_id: "chat-inventory-consume", text: "confirmar" });
+    expect(done[0]).toContain("Ejecutado");
+    expect(executeInventoryConsumeFn).toHaveBeenCalledWith({
+      operation_id: "op-inventory-consume",
+      chat_id: "chat-inventory-consume",
+      reference: { folio: "op-xyz-123", operation_id_ref: undefined }
+    });
+    expect(getOperation("op-inventory-consume")?.status).toBe("executed");
+  });
+
+  it("bloquea inventory.consume cuando feature flag esta deshabilitado", async () => {
+    const executeInventoryConsumeFn = vi.fn();
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-inventory-consume-disabled"]),
+      routeIntentFn: async () => "pedido",
+      executeInventoryConsumeFn,
+      inventoryConsumeEnabled: false
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-inventory-consume-disabled",
+      text: "consume inventario del pedido folio op-xyz-123"
+    });
+
+    expect(replies[0].toLowerCase()).toContain("deshabilitada");
+    expect(executeInventoryConsumeFn).not.toHaveBeenCalled();
+  });
+
+  it("no auto-dispara inventory.consume durante order.create", async () => {
+    const executeInventoryConsumeFn = vi.fn();
+    const executeCreateCardFn = vi.fn(async ({ operation_id }) => ({
+      ok: true,
+      dry_run: true,
+      operation_id,
+      detail: "create-card dry-run",
+      payload: {
+        trello_card_id: "card-order-create",
+        trello_card_created: false
+      }
+    }));
+    const executeAppendOrderFn = vi.fn(async ({ operation_id }) => ({
+      ok: true,
+      dry_run: true,
+      operation_id,
+      detail: "append-order dry-run"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-no-inventory-auto"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-order-no-inventory-auto",
+      routeIntentFn: async () => "pedido",
+      parseOrderFn: async () => ({
+        ok: true,
+        payload: {
+          nombre_cliente: "Victor",
+          producto: "pastel",
+          cantidad: 1,
+          tipo_envio: "recoger_en_tienda",
+          fecha_hora_entrega: "2026-03-12 10:00",
+          moneda: "MXN"
+        }
+      }),
+      executeCreateCardFn,
+      executeAppendOrderFn,
+      executeInventoryConsumeFn,
+      inventoryConsumeEnabled: true
+    });
+
+    await processor.handleMessage({
+      chat_id: "chat-order-no-inventory-auto",
+      text: "pedido para Victor pastel para manana en tienda"
+    });
+    await processor.handleMessage({
+      chat_id: "chat-order-no-inventory-auto",
+      text: "confirmar"
+    });
+
+    expect(executeCreateCardFn).toHaveBeenCalledTimes(1);
+    expect(executeAppendOrderFn).toHaveBeenCalledTimes(1);
+    expect(executeInventoryConsumeFn).not.toHaveBeenCalled();
   });
 
   it("no confunde alta de pedido con consulta de reporte", async () => {

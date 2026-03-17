@@ -12,6 +12,7 @@ import { createAppendOrderTool } from "./tools/order/appendOrder";
 import { createCancelOrderTool } from "./tools/order/cancelOrder";
 import { createCreateCardTool } from "./tools/order/createCard";
 import { createLookupOrderTool } from "./tools/order/lookupOrder";
+import { createInventoryConsumeTool } from "./tools/order/inventoryConsume";
 import { createOrderCardSyncTool } from "./tools/order/orderCardSync";
 import { createRecordPaymentTool } from "./tools/order/recordPayment";
 import { createQuoteOrderTool } from "./tools/order/quoteOrder";
@@ -93,6 +94,23 @@ logger.info(
           spreadsheetIdConfigured: Boolean(appConfig.orderTool.recipes.gws.spreadsheetId),
           rangeConfigured: Boolean(appConfig.orderTool.recipes.gws.range)
         }
+      }
+    },
+    inventory_consume: {
+      enabled: appConfig.inventoryConsume.enabled,
+      allowNegativeStock: appConfig.inventoryConsume.allowNegativeStock,
+      recipeSource: appConfig.inventoryConsume.recipeSource,
+      timeoutMs: appConfig.inventoryConsume.timeoutMs,
+      maxRetries: appConfig.inventoryConsume.maxRetries,
+      gws: {
+        command: appConfig.inventoryConsume.gws.command,
+        commandArgs: appConfig.inventoryConsume.gws.commandArgs,
+        spreadsheetIdConfigured: Boolean(appConfig.inventoryConsume.gws.spreadsheetId),
+        ordersRange: appConfig.inventoryConsume.gws.ordersRange,
+        inventoryRange: appConfig.inventoryConsume.gws.inventoryRange,
+        movementsRange: appConfig.inventoryConsume.gws.movementsRange,
+        recipesRange: appConfig.inventoryConsume.gws.recipesRange,
+        valueInputOption: appConfig.inventoryConsume.gws.valueInputOption
       }
     },
     web_tool: {
@@ -262,6 +280,22 @@ const executePaymentRecord = createRecordPaymentTool({
   maxRetries: appConfig.orderTool.sheets.maxRetries
 });
 
+const executeInventoryConsume = createInventoryConsumeTool({
+  dryRunDefault: appConfig.orderTool.sheets.dryRun,
+  allowNegativeStock: appConfig.inventoryConsume.allowNegativeStock,
+  recipeSource: appConfig.inventoryConsume.recipeSource,
+  gwsCommand: appConfig.inventoryConsume.gws.command,
+  gwsCommandArgs: appConfig.inventoryConsume.gws.commandArgs,
+  gwsSpreadsheetId: appConfig.inventoryConsume.gws.spreadsheetId,
+  ordersGwsRange: appConfig.inventoryConsume.gws.ordersRange,
+  inventoryGwsRange: appConfig.inventoryConsume.gws.inventoryRange,
+  movementsGwsRange: appConfig.inventoryConsume.gws.movementsRange,
+  recipesGwsRange: appConfig.inventoryConsume.gws.recipesRange,
+  gwsValueInputOption: appConfig.inventoryConsume.gws.valueInputOption,
+  timeoutMs: appConfig.inventoryConsume.timeoutMs,
+  maxRetries: appConfig.inventoryConsume.maxRetries
+});
+
 const executeWebPublish = createPublishSiteTool({
   webhookUrl: appConfig.webTool.publish.webhookUrl,
   apiKey: appConfig.webTool.publish.apiKey,
@@ -287,10 +321,12 @@ const tracedProcessor = createConversationProcessor({
   executeOrderUpdateFn: executeOrderUpdate,
   executeOrderCancelFn: executeOrderCancel,
   executePaymentRecordFn: executePaymentRecord,
+  executeInventoryConsumeFn: executeInventoryConsume,
   orderCardSync,
   orderReportTimezone: appConfig.timezone,
   executeWebPublishFn: executeWebPublish,
   webChatEnabled: appConfig.webTool.chatEnabled,
+  inventoryConsumeEnabled: appConfig.inventoryConsume.enabled,
   rateLimiter: createRateLimitGuard({
     enabled: appConfig.rateLimit.enabled,
     windowMs: appConfig.rateLimit.windowMs,

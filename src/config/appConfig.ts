@@ -84,6 +84,23 @@ export type AppConfig = {
       };
     };
   };
+  inventoryConsume: {
+    enabled: boolean;
+    allowNegativeStock: boolean;
+    recipeSource: RecipeSource;
+    timeoutMs: number;
+    maxRetries: number;
+    gws: {
+      command: string;
+      commandArgs: string[];
+      spreadsheetId?: string;
+      ordersRange: string;
+      inventoryRange: string;
+      movementsRange: string;
+      recipesRange: string;
+      valueInputOption: GwsValueInputOption;
+    };
+  };
   webTool: {
     chatEnabled: boolean;
     contentPath: string;
@@ -165,6 +182,25 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const orderRecipesRange = env.ORDER_RECIPES_GWS_RANGE?.trim() || "CatalogoRecetas!A:F";
   const orderRecipesTimeoutMs = toPositiveInt(env.ORDER_RECIPES_TIMEOUT_MS, orderSheetsTimeoutMs);
   const orderRecipesMaxRetries = toNonNegativeInt(env.ORDER_RECIPES_MAX_RETRIES, orderSheetsMaxRetries);
+  const inventoryConsumeRecipeSourceRaw = env.INVENTORY_CONSUME_RECIPE_SOURCE?.trim().toLowerCase();
+  const inventoryConsumeRecipeSource: RecipeSource = inventoryConsumeRecipeSourceRaw === "inline" || inventoryConsumeRecipeSourceRaw === "gws"
+    ? inventoryConsumeRecipeSourceRaw
+    : "gws";
+  const inventoryConsumeGwsCommand = env.INVENTORY_CONSUME_GWS_COMMAND?.trim() || orderSheetsGwsCommand;
+  const inventoryConsumeGwsCommandArgs = env.INVENTORY_CONSUME_GWS_COMMAND_ARGS != null
+    ? parseCsv(env.INVENTORY_CONSUME_GWS_COMMAND_ARGS)
+    : orderSheetsGwsCommandArgs;
+  const inventoryConsumeGwsSpreadsheetId = env.INVENTORY_CONSUME_GWS_SPREADSHEET_ID?.trim() || orderSheetsGwsSpreadsheetId;
+  const inventoryConsumeOrdersRange = env.INVENTORY_CONSUME_ORDERS_RANGE?.trim() || orderSheetsGwsRange || "Pedidos!A:U";
+  const inventoryConsumeInventoryRange = env.INVENTORY_CONSUME_INVENTORY_RANGE?.trim() || "Inventario!A:G";
+  const inventoryConsumeMovementsRange = env.INVENTORY_CONSUME_MOVEMENTS_RANGE?.trim() || "MovimientosInventario!A:J";
+  const inventoryConsumeRecipesRange = env.INVENTORY_CONSUME_RECIPES_RANGE?.trim() || orderRecipesRange;
+  const inventoryConsumeTimeoutMs = toPositiveInt(env.INVENTORY_CONSUME_TIMEOUT_MS, orderSheetsTimeoutMs);
+  const inventoryConsumeMaxRetries = toNonNegativeInt(env.INVENTORY_CONSUME_MAX_RETRIES, orderSheetsMaxRetries);
+  const inventoryConsumeValueInputOption = parseGwsValueInputOption(
+    env.INVENTORY_CONSUME_GWS_VALUE_INPUT_OPTION,
+    parseGwsValueInputOption(env.ORDER_SHEETS_GWS_VALUE_INPUT_OPTION, "USER_ENTERED")
+  );
 
   return {
     botPersona: parseBotPersona(env.BOT_PERSONA),
@@ -243,6 +279,23 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
           spreadsheetId: orderRecipesSpreadsheetId,
           range: orderRecipesRange
         }
+      }
+    },
+    inventoryConsume: {
+      enabled: (env.INVENTORY_CONSUME_ENABLE ?? "0") === "1",
+      allowNegativeStock: (env.INVENTORY_CONSUME_ALLOW_NEGATIVE_STOCK ?? "0") === "1",
+      recipeSource: inventoryConsumeRecipeSource,
+      timeoutMs: inventoryConsumeTimeoutMs,
+      maxRetries: inventoryConsumeMaxRetries,
+      gws: {
+        command: inventoryConsumeGwsCommand,
+        commandArgs: inventoryConsumeGwsCommandArgs,
+        spreadsheetId: inventoryConsumeGwsSpreadsheetId,
+        ordersRange: inventoryConsumeOrdersRange,
+        inventoryRange: inventoryConsumeInventoryRange,
+        movementsRange: inventoryConsumeMovementsRange,
+        recipesRange: inventoryConsumeRecipesRange,
+        valueInputOption: inventoryConsumeValueInputOption
       }
     },
     webTool: {

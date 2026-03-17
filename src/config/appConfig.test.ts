@@ -46,6 +46,19 @@ describe("appConfig", () => {
     expect(config.orderTool.recipes.gws.commandArgs).toEqual([]);
     expect(config.orderTool.recipes.gws.spreadsheetId).toBeUndefined();
     expect(config.orderTool.recipes.gws.range).toBe("CatalogoRecetas!A:F");
+    expect(config.inventoryConsume.enabled).toBe(false);
+    expect(config.inventoryConsume.allowNegativeStock).toBe(false);
+    expect(config.inventoryConsume.recipeSource).toBe("gws");
+    expect(config.inventoryConsume.timeoutMs).toBe(5000);
+    expect(config.inventoryConsume.maxRetries).toBe(2);
+    expect(config.inventoryConsume.gws.command).toBe("gws");
+    expect(config.inventoryConsume.gws.commandArgs).toEqual([]);
+    expect(config.inventoryConsume.gws.spreadsheetId).toBeUndefined();
+    expect(config.inventoryConsume.gws.ordersRange).toBe("Pedidos!A:U");
+    expect(config.inventoryConsume.gws.inventoryRange).toBe("Inventario!A:G");
+    expect(config.inventoryConsume.gws.movementsRange).toBe("MovimientosInventario!A:J");
+    expect(config.inventoryConsume.gws.recipesRange).toBe("CatalogoRecetas!A:F");
+    expect(config.inventoryConsume.gws.valueInputOption).toBe("USER_ENTERED");
     expect(config.webTool.publish.dryRun).toBe(true);
     expect(config.webTool.chatEnabled).toBe(false);
     expect(config.webTool.contentPath).toBe("site/CONTENT.json");
@@ -201,6 +214,38 @@ describe("appConfig", () => {
     expect(config.orderTool.recipes.gws.commandArgs).toEqual(["auth", "print-token"]);
     expect(config.orderTool.recipes.gws.spreadsheetId).toBe("orders-sheet-id");
     expect(config.orderTool.recipes.gws.range).toBe("CatalogoRecetas!A:F");
+  });
+
+  it("parses inventory consume connector settings", () => {
+    const config = loadAppConfig({
+      INVENTORY_CONSUME_ENABLE: "1",
+      INVENTORY_CONSUME_ALLOW_NEGATIVE_STOCK: "1",
+      INVENTORY_CONSUME_RECIPE_SOURCE: "inline",
+      INVENTORY_CONSUME_TIMEOUT_MS: "8800",
+      INVENTORY_CONSUME_MAX_RETRIES: "4",
+      INVENTORY_CONSUME_GWS_COMMAND: " gws-inventory ",
+      INVENTORY_CONSUME_GWS_COMMAND_ARGS: " auth,inventory-token ",
+      INVENTORY_CONSUME_GWS_SPREADSHEET_ID: " inventory-sheet-id ",
+      INVENTORY_CONSUME_ORDERS_RANGE: " Pedidos!A:U ",
+      INVENTORY_CONSUME_INVENTORY_RANGE: " Inventario!A:G ",
+      INVENTORY_CONSUME_MOVEMENTS_RANGE: " MovimientosInventario!A:J ",
+      INVENTORY_CONSUME_RECIPES_RANGE: " CatalogoRecetas!A:F ",
+      INVENTORY_CONSUME_GWS_VALUE_INPUT_OPTION: "RAW"
+    } as NodeJS.ProcessEnv);
+
+    expect(config.inventoryConsume.enabled).toBe(true);
+    expect(config.inventoryConsume.allowNegativeStock).toBe(true);
+    expect(config.inventoryConsume.recipeSource).toBe("inline");
+    expect(config.inventoryConsume.timeoutMs).toBe(8800);
+    expect(config.inventoryConsume.maxRetries).toBe(4);
+    expect(config.inventoryConsume.gws.command).toBe("gws-inventory");
+    expect(config.inventoryConsume.gws.commandArgs).toEqual(["auth", "inventory-token"]);
+    expect(config.inventoryConsume.gws.spreadsheetId).toBe("inventory-sheet-id");
+    expect(config.inventoryConsume.gws.ordersRange).toBe("Pedidos!A:U");
+    expect(config.inventoryConsume.gws.inventoryRange).toBe("Inventario!A:G");
+    expect(config.inventoryConsume.gws.movementsRange).toBe("MovimientosInventario!A:J");
+    expect(config.inventoryConsume.gws.recipesRange).toBe("CatalogoRecetas!A:F");
+    expect(config.inventoryConsume.gws.valueInputOption).toBe("RAW");
   });
 
   it("parses web publish connector settings", () => {

@@ -1,7 +1,7 @@
 # Spec - conversationProcessor
 
 Status: MVP
-Last Updated: 2026-03-13
+Last Updated: 2026-03-17
 
 ## Objective
 Orchestrate the conversation flow for each message and produce a safe, consistent response.
@@ -49,6 +49,8 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - For `order.cancel`, detect cancel intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; apply Trello+Sheets with rollback on partial failure.
 - For `payment.record`, detect payment intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; persist payment movement in Sheets with audit trail in `notas`.
 - For `inventory.consume`, detect inventory consume intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; decrement `Inventario` and append `MovimientosInventario` entries with idempotency guarantees.
+- `inventory.consume` must be feature-gated via `INVENTORY_CONSUME_ENABLE` (default `0`); when disabled, runtime must return a controlled message without executing the tool.
+- In MVP, `inventory.consume` is explicit-command only (no automatic trigger from `order.create` confirmation path).
 - For `web`, execute `publish-site` adapter on confirm path.
 - `web` conversational flow may be feature-gated; when disabled, runtime must return a controlled message and suggest content-driven terminal/CI publish path.
 
@@ -79,7 +81,10 @@ It must coordinate flow/persistence and must not trust raw model output without 
   - authorization: standard deny message
   - parse/understanding: ask for reformulation
   - validation/missing data: ask one specific missing field
-  - duplicate: return deterministic duplicate reference (`operation_id`/status)
+  - duplicate:
+    - `order.create`: `Este pedido ya existe con folio <folio>`
+    - `inventory.consume`: `Consumo ya aplicado para <folio>. operation_id: <operation_id>`
+    - other confirmable intents: deterministic duplicate reference (`operation_id`/status)
   - execution failure: controlled failure message with traceable operation reference
 - Keep response language consistent with conversation language (Spanish in current runtime).
 - Internal diagnostic detail belongs in traces/logs with redaction, not in chat responses.
@@ -99,6 +104,8 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - `supports_order_cancel_summary_and_confirm_flow`
 - `supports_payment_record_summary_and_confirm_flow`
 - `supports_inventory_consume_summary_and_confirm_flow`
+- `blocks_inventory_consume_when_feature_flag_disabled`
+- `does_not_auto_trigger_inventory_consume_from_order_create`
 - `supports_quote_to_order_conversion_flow`
 - `emits_allowlist_reject_trace`
 - `rejects_message_when_rate_limited`

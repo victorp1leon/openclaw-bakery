@@ -20,6 +20,11 @@ import {
 } from "../tools/order/cancelOrder";
 import { createCardTool } from "../tools/order/createCard";
 import { createLookupOrderTool, type OrderLookupResult } from "../tools/order/lookupOrder";
+import {
+  createInventoryConsumeTool,
+  type InventoryConsumeExecutionPayload,
+  type InventoryConsumeReference
+} from "../tools/order/inventoryConsume";
 import { createOrderCardSyncTool, type TrelloCardSnapshot } from "../tools/order/orderCardSync";
 import {
   createQuoteOrderTool,
@@ -157,6 +162,18 @@ type ProcessorDeps = {
     payload: PaymentRecordExecutionPayload;
     detail: string;
   }>;
+  executeInventoryConsumeFn?: (args: {
+    operation_id: string;
+    chat_id: string;
+    reference: InventoryConsumeReference;
+    dryRun?: boolean;
+  }) => Promise<{
+    ok: boolean;
+    dry_run: boolean;
+    operation_id: string;
+    payload: InventoryConsumeExecutionPayload;
+    detail: string;
+  }>;
   orderCardSync?: {
     updateCardForOrder: (args: {
       operation_id: string;
@@ -188,6 +205,7 @@ type ProcessorDeps = {
   orderReportTimezone?: string;
   botPersona?: BotPersona;
   webChatEnabled?: boolean;
+  inventoryConsumeEnabled?: boolean;
   onTrace?: (event: {
     event: string;
     chat_id: string;
@@ -1145,6 +1163,16 @@ function referenceFromFreeText(text: string): { folio?: string; operation_id_ref
   return {};
 }
 
+function inventoryOrderRefLabel(payload: unknown): string {
+  if (!isObjectRecord(payload)) return "pedido";
+  const reference = isObjectRecord(payload.reference) ? payload.reference : payload;
+  const folio = sanitizeOrderReferenceValue(reference.folio);
+  if (folio) return folio;
+  const operationId = sanitizeOrderReferenceValue(reference.operation_id_ref);
+  if (operationId) return operationId;
+  return "pedido";
+}
+
 function parseOrderUpdatePatchFromText(text: string): Record<string, unknown> | undefined {
   const normalized = normalizeForMatch(text);
   const patch: Record<string, unknown> = {};
@@ -1460,6 +1488,59 @@ function parsePaymentRecordRequest(text: string):
   };
 }
 
+function parseInventoryConsumeRequest(text: string):
+  | { matched: false }
+  | { matched: true; result: ParseResult } {
+  const normalized = normalizeForMatch(text);
+  const hasConsumeVerb = /\b(consume|consumir|descuenta|descontar|aplica|aplicar)\b/.test(normalized) || /\binventory\.consume\b/.test(normalized);
+  const hasInventoryHint = /\b(inventario|insumos?)\b/.test(normalized) || /\binventory\.consume\b/.test(normalized);
+  if (!hasConsumeVerb || !hasInventoryHint) {
+    return { matched: false };
+  }
+
+  const inline = parseInlineJsonObject(text.trim());
+  if (inline.ok === false) {
+    return {
+      matched: true,
+      result: { ok: false, source: "fallback", error: "inventory_consume_payload_json_invalid" }
+    };
+  }
+
+  const reference: InventoryConsumeReference = {};
+  if (inline.ok === true) {
+    const payload = inline.value;
+    if (isObjectRecord(payload.reference)) {
+      reference.folio = sanitizeOrderReferenceValue(payload.reference.folio);
+      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.reference.operation_id_ref);
+    } else {
+      reference.folio = sanitizeOrderReferenceValue(payload.folio);
+      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.operation_id_ref);
+    }
+  }
+
+  const fromText = extractOrderReferenceFromText(text);
+  if (!reference.folio) reference.folio = fromText.folio;
+  if (!reference.operation_id_ref) reference.operation_id_ref = fromText.operation_id_ref;
+
+  if (!reference.folio && !reference.operation_id_ref) {
+    return {
+      matched: true,
+      result: { ok: false, source: "fallback", error: "inventory_consume_reference_missing" }
+    };
+  }
+
+  return {
+    matched: true,
+    result: {
+      ok: true,
+      source: "fallback",
+      payload: {
+        reference
+      }
+    }
+  };
+}
+
 async function parseWebRequest(text: string): Promise<ParseResult> {
   const normalized = text.trim();
   const lower = normalized.toLowerCase();
@@ -1585,10 +1666,12 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeOrderUpdateFn = deps.executeOrderUpdateFn ?? createUpdateOrderTool();
   const executeOrderCancelFn = deps.executeOrderCancelFn ?? createCancelOrderTool();
   const executePaymentRecordFn = deps.executePaymentRecordFn ?? createRecordPaymentTool();
+  const executeInventoryConsumeFn = deps.executeInventoryConsumeFn ?? createInventoryConsumeTool();
   const orderCardSync = deps.orderCardSync ?? createOrderCardSyncTool();
   const orderReportTimezone = deps.orderReportTimezone?.trim() || REPORT_DEFAULT_TIMEZONE;
   const copy = createBotCopy(deps.botPersona);
   const webChatEnabled = deps.webChatEnabled ?? true;
+  const inventoryConsumeEnabled = deps.inventoryConsumeEnabled ?? false;
   const rateLimiter = deps.rateLimiter;
 
   function startPendingOrderFlow(args: {
@@ -2332,6 +2415,103 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           }
         }
 
+        if (st.pending.action.intent === "inventory.consume") {
+          const payload = st.pending.action.payload;
+          if (!isObjectRecord(payload) || !isObjectRecord(payload.reference)) {
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "failed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "inventory_consume_execute_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "inventory.consume",
+              detail: "payload_validation_failed"
+            });
+
+            return [
+              copy.orderFailed(st.pending.operation_id)
+            ];
+          }
+
+          if (!inventoryConsumeEnabled) {
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "failed",
+              idempotency_key: idempotencyKey
+            });
+            clearPending(msg.chat_id);
+            return [copy.inventoryConsumeDisabled()];
+          }
+
+          try {
+            const execution = await executeInventoryConsumeFn({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              reference: payload.reference as InventoryConsumeReference
+            });
+            if (!execution.ok) {
+              throw new Error(execution.detail || "inventory_consume_failed");
+            }
+
+            st.pending.action.payload = execution.payload as unknown as Record<string, unknown>;
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "executed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "inventory_consume_execute_succeeded",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "inventory.consume",
+              detail: execution.detail
+            });
+
+            clearPending(msg.chat_id);
+            if (execution.payload.idempotent_replay) {
+              return [execution.detail || copy.inventoryConsumeReplay(inventoryOrderRefLabel(payload), execution.operation_id)];
+            }
+            return [copy.executed(st.pending.operation_id, execution.dry_run)];
+          } catch (err) {
+            const safeDetail = err instanceof Error ? err.message : String(err);
+
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "failed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "inventory_consume_execute_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "inventory.consume",
+              detail: safeDetail
+            });
+
+            return [
+              copy.orderFailed(st.pending.operation_id)
+            ];
+          }
+        }
+
         if (st.pending.action.intent === "web") {
           const vWeb = validateWebPayloadDraft(st.pending.action.payload as Record<string, unknown>);
           if (!vWeb.ok) {
@@ -2616,6 +2796,53 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           return [copy.summary("payment.record", st.pending.action.payload, st.pending.operation_id)];
         }
 
+        if (st.pending.action.intent === "inventory.consume") {
+          if (!inventoryConsumeEnabled) {
+            clearPending(msg.chat_id);
+            return [copy.inventoryConsumeDisabled()];
+          }
+
+          const payload = isObjectRecord(st.pending.action.payload) ? { ...st.pending.action.payload } : {};
+          const reference = isObjectRecord(payload.reference) ? { ...payload.reference } : {};
+          const mergedReference = {
+            ...reference,
+            ...referenceFromFreeText(msg.text)
+          };
+
+          st.pending.action.payload = {
+            ...payload,
+            reference: mergedReference
+          };
+
+          if (!hasOrderReference(mergedReference)) {
+            st.pending.asked = "order_reference";
+            st.pending.missing = ["order_reference"];
+            setState(msg.chat_id, st);
+            return [copy.askFor("order_reference")];
+          }
+
+          st.pending.asked = undefined;
+          st.pending.missing = [];
+          setState(msg.chat_id, st);
+
+          const register = registerPendingOperation({
+            operation_id: st.pending.operation_id,
+            chat_id: msg.chat_id,
+            intent: "inventory.consume",
+            payload: st.pending.action.payload,
+            idempotency_key: st.pending.idempotency_key ?? st.pending.operation_id
+          });
+
+          if (!register.inserted) {
+            clearPending(msg.chat_id);
+            return [
+              copy.inventoryConsumeReplay(inventoryOrderRefLabel(st.pending.action.payload), register.operation.operation_id)
+            ];
+          }
+
+          return [copy.summary("inventory.consume", st.pending.action.payload, st.pending.operation_id)];
+        }
+
         const updatedPayload = mergeField(st.pending.action.payload, st.pending.asked, msg.text);
         st.pending.action.payload = updatedPayload;
 
@@ -2690,6 +2917,85 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       }
 
       return [copy.pendingOperation(st.pending.operation_id)];
+    }
+
+    const inventoryConsumeDraft = parseInventoryConsumeRequest(msg.text);
+    if (inventoryConsumeDraft.matched) {
+      if (!inventoryConsumeEnabled) {
+        return [copy.inventoryConsumeDisabled()];
+      }
+
+      if (!inventoryConsumeDraft.result.ok) {
+        if (inventoryConsumeDraft.result.error === "inventory_consume_reference_missing") {
+          const operation_id = newOperationId();
+          const reference = extractOrderReferenceFromText(msg.text);
+          const pendingPayload: Record<string, unknown> = {
+            reference: {
+              ...(reference.folio ? { folio: reference.folio } : {}),
+              ...(reference.operation_id_ref ? { operation_id_ref: reference.operation_id_ref } : {})
+            }
+          };
+
+          const pending = {
+            operation_id,
+            idempotency_key: operation_id,
+            action: { intent: "inventory.consume" as const, payload: pendingPayload },
+            missing: ["order_reference"],
+            asked: "order_reference"
+          };
+
+          setState(msg.chat_id, { pending });
+          return [copy.askFor("order_reference")];
+        }
+
+        deps.onTrace?.({
+          event: "parse_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "inventory.consume",
+          intent_source: "fallback",
+          parse_source: inventoryConsumeDraft.result.source ?? "fallback",
+          detail: inventoryConsumeDraft.result.error
+        });
+        return [copy.parseError(inventoryConsumeDraft.result.error)];
+      }
+
+      const operation_id = newOperationId();
+      const payload = inventoryConsumeDraft.result.payload as Record<string, unknown>;
+      const pending = {
+        operation_id,
+        idempotency_key: operation_id,
+        action: { intent: "inventory.consume" as const, payload },
+        missing: [],
+        asked: undefined
+      };
+
+      setState(msg.chat_id, { pending });
+      const register = registerPendingOperation({
+        operation_id,
+        chat_id: msg.chat_id,
+        intent: "inventory.consume",
+        payload,
+        idempotency_key: operation_id
+      });
+
+      if (!register.inserted) {
+        clearPending(msg.chat_id);
+        return [
+          copy.inventoryConsumeReplay(inventoryOrderRefLabel(payload), register.operation.operation_id)
+        ];
+      }
+
+      deps.onTrace?.({
+        event: "parse_succeeded",
+        chat_id: msg.chat_id,
+        strict_mode,
+        intent: "inventory.consume",
+        intent_source: "fallback",
+        parse_source: inventoryConsumeDraft.result.source ?? "fallback"
+      });
+
+      return [copy.summary("inventory.consume", payload, operation_id)];
     }
 
     const paymentRecordDraft = parsePaymentRecordRequest(msg.text);

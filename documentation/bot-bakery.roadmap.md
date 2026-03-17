@@ -1,7 +1,7 @@
 # OpenClaw Bakery Bot Roadmap (v1)
 
 Status: MVP
-Last Updated: 2026-03-13
+Last Updated: 2026-03-17
 
 ## 1) Project Goal
 
@@ -239,13 +239,13 @@ Current coverage (status):
 - `order.update` v1: mutation by `folio|operation_id_ref` over Google Sheets (`Pedidos`) via `gws` with confirm flow, patch validation, and audit tag in `notas`.
 - `order.cancel` v1: mutation by `folio|operation_id_ref` over Google Sheets (`Pedidos`) via `gws` with cancel marker `[CANCELADO]` and idempotent no-op when already canceled.
 - `shopping.list.generate` v1: lista de insumos sugerida (read-only) por `day|week|order_ref|lookup` sobre `Pedidos` via `gws`, con recetas `inline` (smoke/mock) o `CatalogoRecetas` via `gws` en live, sin mutaciones ni confirm flow.
-- `inventory.consume` spec-first: contrato de mutacion definido para consumo por pedido con decremento en `Inventario`, traza en `MovimientosInventario`, idempotencia por `operation_id` y confirm flow obligatorio; implementacion y tests pendientes.
+- `inventory.consume` v1: mutacion por referencia de pedido con confirm flow explicito, decremento en `Inventario`, traza en `MovimientosInventario`, idempotencia por `operation_id` y conversion obligatoria `g<->kg`; habilitado solo por comando explicito y detras del flag `INVENTORY_CONSUME_ENABLE`.
 - `expense.add`: end-to-end completed (`gws` live validated) with dry-run safe defaults and smoke validation.
 - `web.publish`: adapter + runtime flow integrated, with chat path behind feature flag and content-driven terminal/CI publish path enabled.
 - Static site scaffold generated from repository content (`site/CONTENT.json` -> `site/dist`) via `npm run web:build`.
 - Branding-ready scaffold (`logo` + `tarjeta`) and Facebook gallery import helper available (`npm run web:import:facebook`).
 - UI smoke coverage for conversion-critical flows available via Playwright-core (`npm run smoke:web:ui`), including desktop/mobile checks and WhatsApp CTA validation.
-- Pending: implementacion de `inventory.consume`, reportes avanzados (reminders), scheduling, customers, and costing/profitability.
+- Pending: reportes avanzados (reminders), scheduling, customers, and costing/profitability.
 
 Execution tracking source of truth:
 - `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md`

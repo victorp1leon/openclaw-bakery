@@ -16,6 +16,8 @@ type MessageBuilder = {
   help: () => string;
   unknown: () => string;
   webDisabled: () => string;
+  inventoryConsumeDisabled: () => string;
+  inventoryConsumeReplay: (orderRef: string, operationId: string) => string;
   parseError: (error: string) => string;
   duplicate: (operationId: string, status: string) => string;
 };
@@ -65,6 +67,7 @@ function neutralMessages(): MessageBuilder {
         "- Actualizar pedido: actualiza pedido folio op-xyz-123, cambia fecha de entrega a 2026-03-12 17:00",
         "- Cancelar pedido: cancela pedido folio op-xyz-123 motivo cliente cancelo",
         "- Registrar pago: registra pago del pedido folio op-xyz-123 en parcial, abono 350 por transferencia, nota anticipo",
+        "- Consumir inventario: consume inventario del pedido folio op-xyz-123",
         "- Reporte diario: que pedidos tengo hoy",
         "- Lista de insumos: dame lista de insumos para hoy",
         "- Gasto: gasto 380 harina y azúcar en Costco",
@@ -76,6 +79,9 @@ function neutralMessages(): MessageBuilder {
     unknown: () => "No entendí. Escribe 'ayuda' para ejemplos.",
     webDisabled: () =>
       "La operación web por chat está deshabilitada. Usa publicación content-driven por terminal/CI (`npm run web:publish`).",
+    inventoryConsumeDisabled: () =>
+      "La operación inventory.consume está deshabilitada. Activa INVENTORY_CONSUME_ENABLE=1 para usarla.",
+    inventoryConsumeReplay: (orderRef, operationId) => `Consumo ya aplicado para ${orderRef}. operation_id: ${operationId}`,
     parseError: (error) => `Error parse: ${error}`,
     duplicate: (operationId, status) => `Operación duplicada detectada. operation_id: ${operationId}, status: ${status}`
   };
@@ -110,6 +116,7 @@ function bakeryWarmMessages(): MessageBuilder {
         "- Actualizar pedido: actualiza pedido folio op-xyz-123, cambia fecha de entrega a 2026-03-12 17:00",
         "- Cancelar pedido: cancela pedido folio op-xyz-123 motivo cliente cancelo",
         "- Registrar pago: registra pago del pedido folio op-xyz-123 en parcial, abono 350 por transferencia, nota anticipo",
+        "- Consumir inventario: consume inventario del pedido folio op-xyz-123",
         "- Reporte diario: que pedidos tengo hoy",
         "- Lista de insumos: dame lista de insumos para hoy",
         "- Gasto: gasto 380 harina y azúcar en Costco",
@@ -121,6 +128,9 @@ function bakeryWarmMessages(): MessageBuilder {
     unknown: () => "No te entendí. Escribe 'ayuda' y te muestro ejemplos.",
     webDisabled: () =>
       "La operación web por chat está deshabilitada. Usa publicación content-driven por terminal/CI (`npm run web:publish`).",
+    inventoryConsumeDisabled: () =>
+      "La operación inventory.consume está deshabilitada. Activa INVENTORY_CONSUME_ENABLE=1 para usarla.",
+    inventoryConsumeReplay: (orderRef, operationId) => `Consumo ya aplicado para ${orderRef}. operation_id: ${operationId}`,
     parseError: (error) => `No pude interpretar el mensaje. Detalle: ${error}`,
     duplicate: (operationId, status) => `Ya existe una operación similar. operation_id: ${operationId}, status: ${status}`
   };
@@ -148,6 +158,7 @@ function conciseMessages(): MessageBuilder {
         "- Cancelar pedido: cancela pedido folio op-xyz-123 motivo cliente cancelo",
         "- Actualizar pedido: actualiza pedido folio op-xyz-123, cambia estado de pago a pagado",
         "- Registrar pago: registra pago del pedido folio op-xyz-123 en pagado",
+        "- Consumir inventario: consume inventario del pedido folio op-xyz-123",
         "- Reporte diario: que pedidos tengo hoy",
         "- Lista de insumos: dame lista de insumos para hoy",
         "- Gasto: gasto 380 harina y azúcar en Costco",
@@ -156,6 +167,8 @@ function conciseMessages(): MessageBuilder {
       ].join("\n"),
     unknown: () => "No entendí. Escribe 'ayuda'.",
     webDisabled: () => "Web por chat deshabilitado. Usa `npm run web:publish`.",
+    inventoryConsumeDisabled: () => "inventory.consume deshabilitado. Activa INVENTORY_CONSUME_ENABLE=1.",
+    inventoryConsumeReplay: (orderRef, operationId) => `Consumo ya aplicado para ${orderRef}. operation_id: ${operationId}`,
     parseError: (error) => `Error parse: ${error}`,
     duplicate: (operationId, status) => `Duplicada. operation_id: ${operationId}, status: ${status}`
   };
