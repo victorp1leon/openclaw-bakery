@@ -233,7 +233,7 @@ Current coverage (status):
 - Conversational base covered: intent detection, parsing, missing-field prompts, confirmation/cancellation.
 - Security baseline covered: allowlist, dedupe/idempotency, per-chat rate limiting with burst block.
 - `order.create`: end-to-end completed (Trello + Sheets) with live smoke validated.
-- `report.orders` v3: queries by dia/semana/mes/año (including explicit date and month references) reading Google Sheets (`Pedidos`) via `gws`.
+- `report.orders` v3: queries por día/semana/mes/año (incluyendo fechas y meses explícitos) sobre Google Sheets (`Pedidos`) vía `gws`, ordenado por recencia, con límite configurable (`ORDER_REPORT_LIMIT`, default 10), `trace_ref` visible y bloque de inconsistencias de fecha.
 - `order.lookup` v1: consulta read-only por `folio|operation_id|nombre|producto` sobre Google Sheets (`Pedidos`) via `gws`, con prioridad por match exacto de id, limite configurable (default 10) y `trace_ref` visible en respuestas.
 - `order.status` v1: read-only query with `estado_pago` and derived `estado_operativo` (`programado|hoy|atrasado|cancelado`) over Google Sheets (`Pedidos`) via `gws`.
 - `order.update` v1: mutation by `folio|operation_id_ref` over Google Sheets (`Pedidos`) via `gws` with confirm flow, patch validation, and audit tag in `notas`.

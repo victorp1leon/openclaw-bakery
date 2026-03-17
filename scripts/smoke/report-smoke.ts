@@ -48,6 +48,8 @@ const executeOrderReport = liveMode
     timezone: config.timezone,
     total: 0,
     orders: [],
+    inconsistencies: [],
+    trace_ref: "report-orders:smoke:a0",
     detail: "report-smoke mock execution"
   });
 

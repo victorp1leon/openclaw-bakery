@@ -137,7 +137,14 @@ let createConversationProcessor: (args: {
       total?: number;
       moneda?: string;
       operation_id?: string;
+      estado_pedido?: string;
     }>;
+    inconsistencies: Array<{
+      reference: string;
+      reason: "delivery_date_missing_or_invalid";
+      detail: string;
+    }>;
+    trace_ref: string;
     detail: string;
   }>;
   executeOrderLookupFn?: (args: {
@@ -534,9 +541,12 @@ describe("conversation processor security flow", () => {
           estado_pago: "pagado",
           total: 480,
           moneda: "MXN",
-          operation_id: "op-report-1"
+          operation_id: "op-report-1",
+          estado_pedido: "activo"
         }
       ],
+      inconsistencies: [],
+      trace_ref: "report-orders:day-2026-03-07:a1",
       detail: "report-orders executed (provider=gws, attempt=1)"
     }));
 
@@ -550,6 +560,9 @@ describe("conversation processor security flow", () => {
     const replies = await processor.handleMessage({ chat_id: "chat-report", text: "que pedidos tengo hoy" });
     expect(replies[0]).toContain("Pedidos para hoy");
     expect(replies[0]).toContain("Ana");
+    expect(replies[0]).toContain("op-report-1");
+    expect(replies[0]).toContain("estado:activo");
+    expect(replies[0]).toContain("Ref: report-orders:day-2026-03-07:a1");
     expect(routeIntentFn).not.toHaveBeenCalled();
     expect(executeOrderReportFn).toHaveBeenCalledWith({
       chat_id: "chat-report",
@@ -563,6 +576,8 @@ describe("conversation processor security flow", () => {
       timezone: "America/Mexico_City",
       total: 0,
       orders: [],
+      inconsistencies: [],
+      trace_ref: "report-orders:day-2026-04-28:a1",
       detail: "report-orders executed (provider=gws, attempt=1)"
     }));
 
@@ -579,6 +594,7 @@ describe("conversation processor security flow", () => {
     });
 
     expect(replies[0]).toContain("No encontré pedidos para el 28 de abril");
+    expect(replies[0]).toContain("Ref: report-orders:day-2026-04-28:a1");
     expect(executeOrderReportFn).toHaveBeenCalledWith({
       chat_id: "chat-report-day",
       period: { type: "day", dateKey: "2026-04-28", label: "el 28 de abril" }
@@ -591,6 +607,8 @@ describe("conversation processor security flow", () => {
       timezone: "America/Mexico_City",
       total: 0,
       orders: [],
+      inconsistencies: [],
+      trace_ref: "report-orders:week-2026-03-14:a1",
       detail: "report-orders executed (provider=gws, attempt=1)"
     }));
 
@@ -620,6 +638,8 @@ describe("conversation processor security flow", () => {
         timezone: "America/Mexico_City",
         total: 0,
         orders: [],
+        inconsistencies: [],
+        trace_ref: "report-orders:month-2026-03:a1",
         detail: "report-orders executed (provider=gws, attempt=1)"
       })
       .mockResolvedValueOnce({
@@ -627,6 +647,8 @@ describe("conversation processor security flow", () => {
         timezone: "America/Mexico_City",
         total: 0,
         orders: [],
+        inconsistencies: [],
+        trace_ref: "report-orders:month-2026-05:a1",
         detail: "report-orders executed (provider=gws, attempt=1)"
       });
 
@@ -662,6 +684,8 @@ describe("conversation processor security flow", () => {
       timezone: "America/Mexico_City",
       total: 0,
       orders: [],
+      inconsistencies: [],
+      trace_ref: "report-orders:year-2026:a1",
       detail: "report-orders executed (provider=gws, attempt=1)"
     }));
 
@@ -678,10 +702,115 @@ describe("conversation processor security flow", () => {
     });
 
     expect(replies[0]).toContain("No encontré pedidos para este año");
+    expect(replies[0]).toContain("Ref: report-orders:year-2026:a1");
     expect(executeOrderReportFn).toHaveBeenCalledWith({
       chat_id: "chat-report-year",
       period: { type: "year", year: 2026, label: "este año" }
     });
+  });
+
+  it("pide aclarar periodo cuando reporte no lo incluye y luego resuelve", async () => {
+    const executeOrderReportFn = vi.fn(async () => ({
+      period: { type: "week", anchorDateKey: "2026-03-07", label: "esta semana" } as const,
+      timezone: "America/Mexico_City",
+      total: 1,
+      orders: [
+        {
+          folio: "op-report-week-1",
+          fecha_hora_entrega: "2026-03-08 10:00",
+          nombre_cliente: "Ana",
+          producto: "pastel",
+          cantidad: 1,
+          estado_pago: "pagado",
+          total: 900,
+          moneda: "MXN",
+          operation_id: "op-report-week-1",
+          estado_pedido: "activo"
+        }
+      ],
+      inconsistencies: [],
+      trace_ref: "report-orders:week-2026-03-07:a1",
+      detail: "report-orders executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-report-clarify"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn: async () => "pedido",
+      executeOrderReportFn
+    });
+
+    const ask = await processor.handleMessage({
+      chat_id: "chat-report-clarify",
+      text: "reporte de pedidos"
+    });
+    expect(ask[0].toLowerCase()).toContain("periodo");
+    expect(executeOrderReportFn).not.toHaveBeenCalled();
+
+    const reply = await processor.handleMessage({
+      chat_id: "chat-report-clarify",
+      text: "esta semana"
+    });
+    expect(reply[0]).toContain("Pedidos para esta semana");
+    expect(reply[0]).toContain("Ref: report-orders:week-2026-03-07:a1");
+    expect(executeOrderReportFn).toHaveBeenCalledWith({
+      chat_id: "chat-report-clarify",
+      period: { type: "week", anchorDateKey: "2026-03-07", label: "esta semana" }
+    });
+  });
+
+  it("incluye inconsistencias visibles en respuesta de report.orders", async () => {
+    const executeOrderReportFn = vi.fn(async () => ({
+      period: { type: "day", dateKey: "2026-03-07", label: "hoy" } as const,
+      timezone: "America/Mexico_City",
+      total: 0,
+      orders: [],
+      inconsistencies: [
+        {
+          reference: "op-bad-1",
+          reason: "delivery_date_missing_or_invalid" as const,
+          detail: "por definir"
+        }
+      ],
+      trace_ref: "report-orders:day-2026-03-07:a1",
+      detail: "report-orders executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-report-incons"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn: async () => "pedido",
+      executeOrderReportFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-report-incons",
+      text: "que pedidos tengo hoy"
+    });
+
+    expect(replies[0]).toContain("Inconsistencias (1)");
+    expect(replies[0]).toContain("op-bad-1");
+    expect(replies[0]).toContain("Ref: report-orders:day-2026-03-07:a1");
+  });
+
+  it("retorna mensaje controlado con Ref cuando falla report.orders", async () => {
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-report-fail"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      newOperationId: () => "op-report-fail-1",
+      routeIntentFn: async () => "pedido",
+      executeOrderReportFn: async () => {
+        throw new Error("order_report_gws_failed");
+      }
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-report-fail",
+      text: "que pedidos tengo hoy"
+    });
+
+    expect(replies[0]).toContain("No pude consultar pedidos en este momento.");
+    expect(replies[0]).toContain("Ref: report-orders:op-report-fail-1");
   });
 
   it("resuelve agenda diaria sin pasar por intent router", async () => {

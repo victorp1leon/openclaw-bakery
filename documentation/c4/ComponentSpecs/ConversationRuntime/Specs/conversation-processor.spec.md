@@ -42,6 +42,8 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - For `pedido`, execute `create-card` + `append-order` on confirm path and rollback Trello card creation if Sheets append fails.
 - For `pedido`, if rollback fails after partial execution, keep user-facing response controlled/generic and log internal failure detail for support.
 - For order reporting queries (e.g. `pedidos hoy`, `pedidos del 28 de abril`, `pedidos esta semana`, `pedidos del mes de mayo`, `pedidos de este año`), route deterministically to `report-orders` without entering confirm flow.
+- If user asks report intent without period (e.g. `reporte de pedidos`), runtime must ask for clarification (`hoy|semana|mes|año`) and continue once resolved.
+- `report.orders` replies must include `Ref` (`trace_ref`) in success/no-match, and controlled failure with `Ref` when provider fails.
 - For order lookup queries (e.g. `consulta pedido de ana`, `buscar pedido op-123`), route deterministically to `lookup-order` without entering confirm flow.
 - `order.lookup` replies must include `Ref` (`trace_ref`) in both success and no-match responses.
 - If `order.lookup` fails at execution time, runtime must return a controlled message with support reference (`Ref: order-lookup:<operation_id>`).

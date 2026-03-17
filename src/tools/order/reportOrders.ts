@@ -38,6 +38,13 @@ export type OrderReportItem = {
   total?: number;
   moneda?: string;
   operation_id?: string;
+  estado_pedido?: string;
+};
+
+export type OrderReportInconsistency = {
+  reference: string;
+  reason: "delivery_date_missing_or_invalid";
+  detail: string;
 };
 
 export type OrderReportResult = {
@@ -45,6 +52,8 @@ export type OrderReportResult = {
   timezone: string;
   total: number;
   orders: OrderReportItem[];
+  inconsistencies: OrderReportInconsistency[];
+  trace_ref: string;
   detail: string;
 };
 
@@ -57,12 +66,64 @@ export type ReportOrdersToolConfig = {
   maxRetries?: number;
   retryBackoffMs?: number;
   timezone?: string;
+  limit?: number;
   now?: () => Date;
   gwsRunner?: GwsCommandRunner;
 };
 
 type ParsedOrderRow = OrderReportItem & {
   _dateKey?: string;
+  _dateInvalid: boolean;
+  _sourceRow: number;
+};
+
+type RowMapResult = {
+  rows: ParsedOrderRow[];
+  inconsistencies: OrderReportInconsistency[];
+};
+
+type ColumnKey =
+  | "folio"
+  | "fecha_hora_entrega"
+  | "fecha_hora_entrega_iso"
+  | "nombre_cliente"
+  | "producto"
+  | "cantidad"
+  | "tipo_envio"
+  | "estado_pago"
+  | "total"
+  | "moneda"
+  | "operation_id"
+  | "estado_pedido";
+
+const DEFAULT_INDEX: Record<ColumnKey, number> = {
+  folio: 1,
+  fecha_hora_entrega: 2,
+  fecha_hora_entrega_iso: 18,
+  nombre_cliente: 3,
+  producto: 5,
+  cantidad: 7,
+  tipo_envio: 10,
+  estado_pago: 12,
+  total: 13,
+  moneda: 14,
+  operation_id: 17,
+  estado_pedido: 19
+};
+
+const HEADER_ALIASES: Record<ColumnKey, string[]> = {
+  folio: ["folio"],
+  fecha_hora_entrega: ["fecha_hora_entrega", "fecha_entrega", "entrega_fecha_hora"],
+  fecha_hora_entrega_iso: ["fecha_hora_entrega_iso", "fecha_entrega_iso"],
+  nombre_cliente: ["nombre_cliente", "cliente", "nombre"],
+  producto: ["producto", "nombre_producto"],
+  cantidad: ["cantidad"],
+  tipo_envio: ["tipo_envio", "envio", "tipo_de_envio"],
+  estado_pago: ["estado_pago", "pago_estado"],
+  total: ["total"],
+  moneda: ["moneda"],
+  operation_id: ["operation_id", "operacion_id", "id_operacion", "id"],
+  estado_pedido: ["estado_pedido", "pedido_estado"]
 };
 
 const DAY_MS = 86_400_000;
@@ -228,33 +289,117 @@ function toNumberMaybe(value: string | undefined): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function normalizeHeaderCell(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 function isHeaderRow(row: string[]): boolean {
-  const normalized = row.map((cell) => cell.trim().toLowerCase());
+  const normalized = row.map((cell) => normalizeHeaderCell(cell));
   return normalized.includes("fecha_hora_entrega") && normalized.includes("nombre_cliente");
 }
 
-function mapRows(rows: string[][], timezone: string): ParsedOrderRow[] {
-  const dataRows = rows.length > 0 && isHeaderRow(rows[0]) ? rows.slice(1) : rows;
+function resolveColumnIndexMap(headerRow: string[]): Record<ColumnKey, number> {
+  const byHeader = new Map<string, number>();
+  headerRow.forEach((cell, idx) => {
+    const key = normalizeHeaderCell(cell);
+    if (key.length > 0 && !byHeader.has(key)) {
+      byHeader.set(key, idx);
+    }
+  });
 
-  return dataRows.map((row) => {
-    const fecha_hora_entrega = row[2] ?? "";
-    const fecha_hora_entrega_iso = row[18] || undefined;
+  const out: Record<ColumnKey, number> = { ...DEFAULT_INDEX };
+  for (const key of Object.keys(DEFAULT_INDEX) as ColumnKey[]) {
+    const aliases = HEADER_ALIASES[key];
+    const found = aliases.find((alias) => byHeader.has(alias));
+    if (found) {
+      out[key] = byHeader.get(found)!;
+    }
+  }
+  return out;
+}
+
+function buildTraceRef(period: OrderReportPeriodFilter, attempt: number): string {
+  const token = period.type === "day"
+    ? `day-${period.dateKey}`
+    : period.type === "week"
+      ? `week-${period.anchorDateKey}`
+      : period.type === "month"
+        ? `month-${period.year}-${String(period.month).padStart(2, "0")}`
+        : `year-${period.year}`;
+
+  return `report-orders:${token}:a${attempt}`;
+}
+
+function mapRows(rows: string[][], timezone: string): RowMapResult {
+  const hasHeader = rows.length > 0 && isHeaderRow(rows[0]);
+  const columnMap = hasHeader ? resolveColumnIndexMap(rows[0]) : DEFAULT_INDEX;
+  const dataRows = hasHeader ? rows.slice(1) : rows;
+  const firstDataRowNumber = hasHeader ? 2 : 1;
+
+  const mappedRows: ParsedOrderRow[] = [];
+  const inconsistencies: OrderReportInconsistency[] = [];
+
+  for (let idx = 0; idx < dataRows.length; idx += 1) {
+    const row = dataRows[idx];
+    const sourceRow = firstDataRowNumber + idx;
+    const joined = row.join("").trim();
+    if (!joined) continue;
+
+    const folio = row[columnMap.folio] ?? "";
+    const operation_id = row[columnMap.operation_id] || undefined;
+    const fecha_hora_entrega = row[columnMap.fecha_hora_entrega] ?? "";
+    const fecha_hora_entrega_iso = row[columnMap.fecha_hora_entrega_iso] || undefined;
+    const nombre_cliente = row[columnMap.nombre_cliente] ?? "";
+    const producto = row[columnMap.producto] ?? "";
+
+    if (!fecha_hora_entrega || !nombre_cliente || !producto) {
+      continue;
+    }
+
     const dateSource = fecha_hora_entrega_iso || fecha_hora_entrega;
-    return {
-      folio: row[1] ?? "",
+    const dateKey = extractDateKey(dateSource, timezone);
+    const dateInvalid = !dateKey;
+
+    const parsed: ParsedOrderRow = {
+      folio,
       fecha_hora_entrega,
       fecha_hora_entrega_iso,
-      nombre_cliente: row[3] ?? "",
-      producto: row[5] ?? "",
-      cantidad: toNumberMaybe(row[7]),
-      tipo_envio: row[10] || undefined,
-      estado_pago: row[12] || undefined,
-      total: toNumberMaybe(row[13]),
-      moneda: row[14] || undefined,
-      operation_id: row[17] || undefined,
-      _dateKey: extractDateKey(dateSource, timezone)
+      nombre_cliente,
+      producto,
+      cantidad: toNumberMaybe(row[columnMap.cantidad]),
+      tipo_envio: row[columnMap.tipo_envio] || undefined,
+      estado_pago: row[columnMap.estado_pago] || undefined,
+      total: toNumberMaybe(row[columnMap.total]),
+      moneda: row[columnMap.moneda] || undefined,
+      operation_id,
+      estado_pedido: row[columnMap.estado_pedido] || undefined,
+      _dateKey: dateKey,
+      _dateInvalid: dateInvalid,
+      _sourceRow: sourceRow
     };
-  }).filter((row) => row.fecha_hora_entrega && row.nombre_cliente && row.producto);
+
+    if (dateInvalid) {
+      const reference = folio.trim() || operation_id?.trim() || `fila_${sourceRow}`;
+      inconsistencies.push({
+        reference,
+        reason: "delivery_date_missing_or_invalid",
+        detail: fecha_hora_entrega_iso?.trim() || fecha_hora_entrega.trim() || "sin fecha"
+      });
+    }
+
+    mappedRows.push(parsed);
+  }
+
+  return {
+    rows: mappedRows,
+    inconsistencies
+  };
 }
 
 function matchesPeriod(args: {
@@ -284,10 +429,11 @@ function matchesPeriod(args: {
 }
 
 function sortRows(a: ParsedOrderRow, b: ParsedOrderRow): number {
-  const keyA = a._dateKey ?? "9999-12-31";
-  const keyB = b._dateKey ?? "9999-12-31";
-  if (keyA !== keyB) return keyA.localeCompare(keyB);
-  const dateCmp = a.fecha_hora_entrega.localeCompare(b.fecha_hora_entrega);
+  const keyA = a._dateKey ?? "0000-01-01";
+  const keyB = b._dateKey ?? "0000-01-01";
+  if (keyA !== keyB) return keyB.localeCompare(keyA);
+
+  const dateCmp = b.fecha_hora_entrega.localeCompare(a.fecha_hora_entrega);
   if (dateCmp !== 0) return dateCmp;
   return a.folio.localeCompare(b.folio);
 }
@@ -296,17 +442,18 @@ export function createReportOrdersTool(config: ReportOrdersToolConfig = {}) {
   const gwsCommand = config.gwsCommand?.trim() || "gws";
   const gwsCommandArgs = config.gwsCommandArgs ?? [];
   const gwsSpreadsheetId = config.gwsSpreadsheetId?.trim() || undefined;
-  const normalizedRange = normalizeGwsReadRange(config.gwsRange, "A:R") ?? "Pedidos!A:R";
+  const normalizedRange = normalizeGwsReadRange(config.gwsRange, "A:U") ?? "Pedidos!A:U";
   const timeoutMs = Number.isFinite(config.timeoutMs) && (config.timeoutMs ?? 0) > 0 ? Math.trunc(config.timeoutMs!) : 5000;
   const maxRetries = Number.isFinite(config.maxRetries) && (config.maxRetries ?? -1) >= 0 ? Math.trunc(config.maxRetries!) : 2;
   const retryBackoffMs = Number.isFinite(config.retryBackoffMs) && (config.retryBackoffMs ?? -1) >= 0
     ? Math.trunc(config.retryBackoffMs!)
     : 150;
   const timezone = config.timezone?.trim() || "America/Mexico_City";
+  const limit = Number.isFinite(config.limit) && (config.limit ?? -1) > 0 ? Math.trunc(config.limit!) : 10;
   const now = config.now ?? (() => new Date());
   const gwsRunner = config.gwsRunner ?? runGwsCommand;
 
-  return async function reportOrders(args: { chat_id: string; period: OrderReportPeriod }): Promise<OrderReportResult> {
+  return async function reportOrders(args: { chat_id: string; period: OrderReportPeriod; limit?: number }): Promise<OrderReportResult> {
     if (!gwsSpreadsheetId) {
       throw new Error("order_report_gws_spreadsheet_id_missing");
     }
@@ -329,23 +476,30 @@ export function createReportOrdersTool(config: ReportOrdersToolConfig = {}) {
       failedError: "order_report_gws_failed"
     });
 
-    const parsedRows = mapRows(readResult.rows, timezone);
+    const mapped = mapRows(readResult.rows, timezone);
     const normalizedPeriod = normalizePeriod({
       period: args.period,
       timezone,
       now: now()
     });
-    const filtered = parsedRows
+
+    const maxRows = Number.isFinite(args.limit) && (args.limit ?? 0) > 0 ? Math.trunc(args.limit!) : limit;
+    const filteredRows = mapped.rows
       .filter((row) => matchesPeriod({ row, period: normalizedPeriod, timezone }))
-      .sort(sortRows)
-      .map(({ _dateKey: _ignored, ...row }) => row);
+      .sort(sortRows);
+
+    const orders = filteredRows
+      .slice(0, maxRows)
+      .map(({ _dateKey: _ignoredDateKey, _dateInvalid: _ignoredDateInvalid, _sourceRow: _ignoredSourceRow, ...row }) => row);
 
     return {
       period: normalizedPeriod,
       timezone,
-      total: filtered.length,
-      orders: filtered,
-      detail: `report-orders executed (provider=gws, attempt=${readResult.attempt}, period=${normalizedPeriod.type})`
+      total: filteredRows.length,
+      orders,
+      inconsistencies: mapped.inconsistencies,
+      trace_ref: buildTraceRef(normalizedPeriod, readResult.attempt),
+      detail: `report-orders executed (provider=gws, attempt=${readResult.attempt}, period=${normalizedPeriod.type}, inconsistencies=${mapped.inconsistencies.length})`
     };
   };
 }

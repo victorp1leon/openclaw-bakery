@@ -457,7 +457,7 @@ function parseOrderReportMonthPeriod(args: {
     };
   }
 
-  if (/\beste\s+mes\b/.test(args.normalized)) {
+  if (/\beste\s+mes\b|\bmes\b/.test(args.normalized)) {
     return {
       type: "month",
       year: current.year,
@@ -476,13 +476,37 @@ function parseOrderReportYearPeriod(args: {
 }): OrderReportPeriod | undefined {
   const current = currentDatePartsInTimezone(args.now, args.timezone);
 
-  if (/\beste\s+ano\b/.test(args.normalized)) {
+  if (/\beste\s+ano\b|\bano\b/.test(args.normalized)) {
     return {
       type: "year",
       year: current.year,
       label: "este año"
     };
   }
+
+  return undefined;
+}
+
+function hasOrderReportPeriodHint(normalized: string): boolean {
+  return /\b(hoy|manana|semana|mes|ano)\b/.test(normalized) || /\b\d{1,2}\s+de\s+[a-z]+\b/.test(normalized);
+}
+
+function parseOrderReportPeriodCore(args: {
+  normalized: string;
+  now: Date;
+  timezone: string;
+}): OrderReportPeriod | undefined {
+  const dayPeriod = parseOrderReportDayPeriod(args);
+  if (dayPeriod) return dayPeriod;
+
+  const weekPeriod = parseOrderReportWeekPeriod(args);
+  if (weekPeriod) return weekPeriod;
+
+  const monthPeriod = parseOrderReportMonthPeriod(args);
+  if (monthPeriod) return monthPeriod;
+
+  const yearPeriod = parseOrderReportYearPeriod(args);
+  if (yearPeriod) return yearPeriod;
 
   return undefined;
 }
@@ -496,7 +520,7 @@ function detectOrderReportPeriod(args: {
   const hasOrderWord = /\bpedidos?\b/.test(normalized);
   if (!hasOrderWord) return undefined;
 
-  const hasPeriodHint = /\b(hoy|manana|semana|mes|ano)\b/.test(normalized) || /\b\d{1,2}\s+de\s+[a-z]+\b/.test(normalized);
+  const hasPeriodHint = hasOrderReportPeriodHint(normalized);
   if (!hasPeriodHint) return undefined;
 
   const hasQueryVerb = /\b(que|cuales|dame|mostrar|muestrame|ver|lista|listar|tengo|recuerdame|consulta|consultar)\b/.test(
@@ -508,35 +532,46 @@ function detectOrderReportPeriod(args: {
   if (startsAsCreateOrder && !hasQueryVerb && !hasPlural) return undefined;
   if (!hasQueryVerb && !hasPlural) return undefined;
 
-  const dayPeriod = parseOrderReportDayPeriod({
+  return parseOrderReportPeriodCore({
     normalized,
     now: args.now,
     timezone: args.timezone
   });
-  if (dayPeriod) return dayPeriod;
+}
 
-  const weekPeriod = parseOrderReportWeekPeriod({
+function detectOrderReportRequestWithoutPeriod(args: {
+  text: string;
+  now: Date;
+  timezone: string;
+}): boolean {
+  const normalized = normalizeForMatch(args.text);
+  const hasPluralOrders = /\bpedidos\b/.test(normalized);
+  if (!hasPluralOrders) return false;
+
+  if (hasOrderReportPeriodHint(normalized)) return false;
+
+  const hasReportHint = /\b(reporte|reporta|resumen|consulta|consultar|dame|mostrar|muestrame|ver|lista|listar)\b/.test(
+    normalized
+  );
+  if (!hasReportHint) return false;
+
+  const startsAsCreateOrder = /^\s*pedido\b/.test(normalized);
+  if (startsAsCreateOrder) return false;
+
+  return detectOrderReportPeriod(args) == null;
+}
+
+function detectOrderReportPeriodFromClarification(args: {
+  text: string;
+  now: Date;
+  timezone: string;
+}): OrderReportPeriod | undefined {
+  const normalized = normalizeForMatch(args.text);
+  return parseOrderReportPeriodCore({
     normalized,
     now: args.now,
     timezone: args.timezone
   });
-  if (weekPeriod) return weekPeriod;
-
-  const monthPeriod = parseOrderReportMonthPeriod({
-    normalized,
-    now: args.now,
-    timezone: args.timezone
-  });
-  if (monthPeriod) return monthPeriod;
-
-  const yearPeriod = parseOrderReportYearPeriod({
-    normalized,
-    now: args.now,
-    timezone: args.timezone
-  });
-  if (yearPeriod) return yearPeriod;
-
-  return undefined;
 }
 
 function detectOrderLookupQuery(text: string): string | undefined {
@@ -1012,22 +1047,33 @@ function parseQuoteOptionSuggestions(value: unknown): QuoteOptionSuggestions | u
 
 function formatOrderReportReply(report: OrderReportResult): string {
   const label = report.period.label;
+  const maxInconsistencies = 5;
+  const inconsistencies = report.inconsistencies
+    .slice(0, maxInconsistencies)
+    .map((item, idx) => `${idx + 1}. ${item.reference}: fecha de entrega faltante o inválida (${item.detail})`);
+  const inconsistenciesExtra = report.inconsistencies.length > inconsistencies.length
+    ? `\n... y ${report.inconsistencies.length - inconsistencies.length} inconsistencias más`
+    : "";
+  const inconsistenciesBlock = report.inconsistencies.length > 0
+    ? `\nInconsistencias (${report.inconsistencies.length}):\n${inconsistencies.join("\n")}${inconsistenciesExtra}`
+    : "";
+
   if (report.total === 0) {
-    return `No encontré pedidos para ${label}.`;
+    return `No encontré pedidos para ${label}.${inconsistenciesBlock}\nRef: ${report.trace_ref}`;
   }
 
-  const maxRows = 20;
-  const shown = report.orders.slice(0, maxRows);
+  const shown = report.orders;
   const lines = shown.map((order, idx) => {
     const qty = order.cantidad != null ? `x${order.cantidad}` : "x?";
     const total = order.total != null ? `${order.total}${order.moneda ? ` ${order.moneda}` : ""}` : "-";
-    const shipping = order.tipo_envio ?? "-";
     const payment = order.estado_pago ?? "-";
-    return `${idx + 1}. ${order.fecha_hora_entrega} | ${order.nombre_cliente} | ${order.producto} ${qty} | ${shipping} | ${payment} | ${total}`;
+    const operationId = order.operation_id ?? "-";
+    const estadoPedido = order.estado_pedido ?? "-";
+    return `${idx + 1}. ${order.fecha_hora_entrega} | ${order.folio || "-"} | ${operationId} | ${order.nombre_cliente} | ${order.producto} ${qty} | pago:${payment} | ${total} | estado:${estadoPedido}`;
   });
 
   const extra = report.total > shown.length ? `\n... y ${report.total - shown.length} más` : "";
-  return `Pedidos para ${label} (${report.total}):\n${lines.join("\n")}${extra}`;
+  return `Pedidos para ${label} (${report.total}):\n${lines.join("\n")}${extra}${inconsistenciesBlock}\nRef: ${report.trace_ref}`;
 }
 
 function formatOrderLookupReply(result: OrderLookupResult): string {
@@ -2406,6 +2452,51 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       }
 
       if (st.pending.asked) {
+        if (st.pending.action.intent === "reporte") {
+          const reportPeriod = detectOrderReportPeriodFromClarification({
+            text: msg.text,
+            now: new Date(nowMs()),
+            timezone: orderReportTimezone
+          });
+          if (!reportPeriod) {
+            return [copy.askFor("order_report_period")];
+          }
+
+          try {
+            const report = await executeOrderReportFn({
+              chat_id: msg.chat_id,
+              period: reportPeriod
+            });
+
+            deps.onTrace?.({
+              event: "order_report_succeeded",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "reporte",
+              intent_source: "fallback",
+              detail: `period=${report.period.type}:${report.period.label};total=${report.total};trace_ref=${report.trace_ref};inconsistencies=${report.inconsistencies.length}`
+            });
+
+            clearPending(msg.chat_id);
+            return [formatOrderReportReply(report)];
+          } catch (err) {
+            const safeDetail = err instanceof Error ? err.message : String(err);
+            const traceRef = `report-orders:${newOperationId()}`;
+
+            deps.onTrace?.({
+              event: "order_report_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "reporte",
+              intent_source: "fallback",
+              detail: `${safeDetail};ref=${traceRef}`
+            });
+
+            clearPending(msg.chat_id);
+            return [`No pude consultar pedidos en este momento. Ref: ${traceRef}`];
+          }
+        }
+
         if (st.pending.action.intent === "shopping.list.generate") {
           const query = msg.text.trim();
           if (query.length < 2) {
@@ -3165,6 +3256,11 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       now: new Date(nowMs()),
       timezone: orderReportTimezone
     });
+    const reportNeedsPeriod = detectOrderReportRequestWithoutPeriod({
+      text: msg.text,
+      now: new Date(nowMs()),
+      timezone: orderReportTimezone
+    });
     const scheduleDayPeriod = detectScheduleDayPeriod({
       text: msg.text,
       now: new Date(nowMs()),
@@ -3190,6 +3286,23 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         }
       });
       return [copy.askFor("schedule_day_query")];
+    }
+
+    if (reportNeedsPeriod) {
+      const operation_id = newOperationId();
+      setState(msg.chat_id, {
+        pending: {
+          operation_id,
+          idempotency_key: operation_id,
+          action: {
+            intent: "reporte",
+            payload: {}
+          },
+          missing: ["order_report_period"],
+          asked: "order_report_period"
+        }
+      });
+      return [copy.askFor("order_report_period")];
     }
 
     if (scheduleDayPeriod) {
@@ -3239,12 +3352,13 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           strict_mode,
           intent: "reporte",
           intent_source: "fallback",
-          detail: `period=${report.period.type}:${report.period.label};total=${report.total}`
+          detail: `period=${report.period.type}:${report.period.label};total=${report.total};trace_ref=${report.trace_ref};inconsistencies=${report.inconsistencies.length}`
         });
 
         return [formatOrderReportReply(report)];
       } catch (err) {
         const safeDetail = err instanceof Error ? err.message : String(err);
+        const traceRef = `report-orders:${newOperationId()}`;
 
         deps.onTrace?.({
           event: "order_report_failed",
@@ -3252,10 +3366,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           strict_mode,
           intent: "reporte",
           intent_source: "fallback",
-          detail: safeDetail
+          detail: `${safeDetail};ref=${traceRef}`
         });
 
-        return ["No pude consultar pedidos en este momento. Intenta de nuevo en unos minutos."];
+        return [`No pude consultar pedidos en este momento. Ref: ${traceRef}`];
       }
     }
 

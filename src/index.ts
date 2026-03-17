@@ -98,6 +98,9 @@ logger.info(
       },
       lookup: {
         limit: appConfig.orderTool.lookup.limit
+      },
+      report: {
+        limit: appConfig.orderTool.report.limit
       }
     },
     inventory_consume: {
@@ -203,7 +206,7 @@ const executeOrderReport = createReportOrdersTool({
   timeoutMs: appConfig.orderTool.sheets.timeoutMs,
   maxRetries: appConfig.orderTool.sheets.maxRetries,
   timezone: appConfig.timezone,
-  limit: appConfig.orderTool.lookup.limit
+  limit: appConfig.orderTool.report.limit
 });
 
 const executeOrderLookup = createLookupOrderTool({

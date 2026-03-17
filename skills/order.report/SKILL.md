@@ -33,16 +33,19 @@ Consulta y resume pedidos por periodo operativo (`day|week|month|year`) en modo 
 - Reporte con:
   - periodo aplicado
   - zona horaria
-  - total de pedidos
-  - lista resumida de pedidos
+  - total de pedidos válidos para el periodo
+  - lista resumida de pedidos (folio, operation_id, fecha, cliente, producto/cantidad, estado_pago, total, estado_pedido)
+  - bloque de `inconsistencies` cuando existan filas con fecha inválida
+  - `Ref: <trace_ref>` visible para soporte
 - Errores deterministas `order_report_*` para payload/config/provider invalidos.
 
 ## Workflow
 1. Detectar consulta de reporte por periodo.
 2. Resolver periodo objetivo (day/week/month/year).
+  - Si falta periodo, pedir aclaración explícita (`hoy`, `semana`, `mes` o `año`).
 3. Consultar `Pedidos` en modo read-only.
 4. Filtrar por fecha de entrega segun timezone configurada.
-5. Responder con resumen y listado ordenado por fecha/hora.
+5. Responder con resumen y listado ordenado por recencia (más reciente primero) con límite configurable.
 
 ## Safety Constraints
 - Nunca ejecutar mutaciones durante reportes.

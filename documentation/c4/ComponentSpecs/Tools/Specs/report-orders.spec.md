@@ -1,7 +1,7 @@
 # Spec - report-orders (Phase 3 reporting v3)
 
 Status: MVP
-Last Updated: 2026-03-09
+Last Updated: 2026-03-17
 
 ## Objective
 Read order rows from Google Sheets and return operational summaries filtered by day/week/month/year periods.
@@ -23,6 +23,7 @@ It must query data only and must not mutate orders or confirmation state.
   - spreadsheet id
   - read range
   - timeout/retries
+- `limit`: max rows in preview list (`ORDER_REPORT_LIMIT`, default `10`).
 
 ## Outputs
 - Structured report:
@@ -30,6 +31,8 @@ It must query data only and must not mutate orders or confirmation state.
   - `timezone`
   - `total`
   - `orders[]` (minimal order preview fields)
+  - `inconsistencies[]`
+  - `trace_ref`
 - Deterministic errors (`order_report_*`) on transport/config failures.
 
 ## Rules
@@ -41,7 +44,12 @@ It must query data only and must not mutate orders or confirmation state.
 - Week filter matches Monday-Sunday window from `anchorDateKey` in configured timezone.
 - Month filter matches exact `year` + `month`.
 - Year filter matches exact `year`.
-- Return rows sorted by delivery date/time (best effort).
+- Return rows sorted by recency (most recent first).
+- Keep `total` as count of valid rows matching the period before preview truncation.
+- Cap `orders[]` preview by `limit` and let runtime render overflow as `... y N más`.
+- Exclude rows with missing/invalid delivery datetime from period math and expose them in `inconsistencies[]` for visibility.
+- Include `estado_pedido` when available (fallback `-` in runtime output).
+- Build deterministic `trace_ref` using period key + attempt (`report-orders:<period-token>:a<attempt>`).
 - Never include secrets/tokens in user-facing errors.
 
 ## Error Handling Classification
@@ -68,5 +76,9 @@ It must query data only and must not mutate orders or confirmation state.
 - `filters_orders_for_week`
 - `filters_orders_for_month`
 - `filters_orders_for_year`
+- `sorts_results_by_recency_desc`
+- `applies_default_preview_limit_and_keeps_total`
+- `reports_inconsistencies_when_delivery_date_missing_or_invalid`
+- `maps_estado_pedido_with_header_or_fallback_index`
 - `retries_on_transient_gws_failure_then_succeeds`
 - `fails_when_gws_command_unavailable`

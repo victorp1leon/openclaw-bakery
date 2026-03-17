@@ -51,7 +51,7 @@ Last Updated: 2026-03-17
 1. `gasto`: mensaje -> parse/validacion -> confirmacion -> `appendExpense` -> persistencia/idempotencia.
 2. `pedido`: mensaje -> parse/validacion -> confirmacion -> Trello + Sheets -> persistencia/idempotencia.
 3. `web`: mensaje -> parse/validacion -> confirmacion -> generacion/publicacion -> registro operativo.
-4. `report.orders`: consulta (`dia/semana/mes/año`, incluyendo fechas/meses explicitos) -> lectura Sheets (`gws`) -> respuesta resumida (sin confirmacion ni mutacion).
+4. `report.orders`: consulta (`dia/semana/mes/año`, incluyendo fechas/meses explicitos) -> lectura Sheets (`gws`) con orden por recencia + limite configurable (`ORDER_REPORT_LIMIT`) -> respuesta read-only con `trace_ref` e `inconsistencias` visibles (sin confirmacion ni mutacion).
 5. `order.lookup`: consulta por `folio|operation_id|nombre|producto` -> lectura Sheets (`gws`) con prioridad exact-id + limite configurable (default 10) -> respuesta resumida read-only con `trace_ref` (sin confirmacion ni mutacion).
 6. `order.status`: consulta de estado operativo/pago -> lectura Sheets (`gws`) -> respuesta resumida (sin confirmacion ni mutacion).
 7. `order.update`: mutacion por referencia -> confirmacion -> sync Trello + Sheets (`gws`) con rollback en fallos parciales -> persistencia/idempotencia.
