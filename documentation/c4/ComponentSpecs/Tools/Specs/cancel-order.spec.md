@@ -1,7 +1,7 @@
 # Spec - cancel-order (Phase 3 lifecycle)
 
 Status: MVP
-Last Updated: 2026-03-11
+Last Updated: 2026-03-17
 
 ## Objective
 Cancel an existing order without deleting history while keeping Trello + Google Sheets consistent.
@@ -44,6 +44,7 @@ Cancellation must be explicit, auditable, idempotent, and rollback-safe.
   - `[CANCELADO] <timestamp> op:<operation_id> chat:<chat_id> motivo:<motivo|n/a>`
 - Set `estado_pedido=cancelado` in Sheets row.
 - If marker already exists, treat as idempotent success (`already_canceled=true`) and avoid duplicate marker insertion.
+- Reject cancellation for terminal statuses (`estado_pedido=entregado|completado`).
 - Keep original `folio` and order payload fields unchanged.
 - Persist update via `gws` on exact target row range (`A:U` for that row).
 - If Sheets write fails after Trello move, rollback Trello card to previous snapshot and fail operation.
@@ -69,6 +70,11 @@ Cancellation must be explicit, auditable, idempotent, and rollback-safe.
 ## Idempotency / Dedupe
 - Use `operation_id` as idempotency key for this mutation.
 - Repeated cancellation attempts over already canceled row must be deterministic no-op success.
+
+## Timeout and Retry Policy
+- Bounded request timeout per call.
+- Bounded retries for transient failures only.
+- Default connector policy: `timeoutMs=30000`, `maxRetries=2` (hasta 3 intentos totales).
 
 ## Test Cases
 - `fails_when_reference_missing`

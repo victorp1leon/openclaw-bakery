@@ -55,7 +55,7 @@ Last Updated: 2026-03-17
 5. `order.lookup`: consulta por folio/nombre/producto -> lectura Sheets (`gws`) -> respuesta resumida (sin confirmacion ni mutacion).
 6. `order.status`: consulta de estado operativo/pago -> lectura Sheets (`gws`) -> respuesta resumida (sin confirmacion ni mutacion).
 7. `order.update`: mutacion por referencia -> confirmacion -> sync Trello + Sheets (`gws`) con rollback en fallos parciales -> persistencia/idempotencia.
-8. `order.cancel`: mutacion de cancelacion (marker `[CANCELADO]` + `estado_pedido=cancelado`) -> confirmacion -> mover tarjeta Trello a cancelados + escritura Sheets (`gws`) con rollback en fallos parciales -> persistencia/idempotencia.
+8. `order.cancel`: mutacion de cancelacion (marker `[CANCELADO]` + `estado_pedido=cancelado`) -> confirmacion -> resolver referencia (`folio|operation_id`, o lookup por cliente con match unico) -> mover tarjeta Trello a cancelados + escritura Sheets (`gws`) con rollback en fallos parciales -> no-op idempotente visible si ya estaba cancelado y `Ref` en fallos -> persistencia/idempotencia.
 9. `payment.record`: mutacion de pago por referencia -> confirmacion -> actualizacion de `estado_pago` + evento `[PAGO]` en `notas` via Sheets (`gws`) -> persistencia/idempotencia.
 10. `quote.order`: consulta de cotizacion -> lectura de `CatalogoPrecios` + `CatalogoOpciones` + `CatalogoReferencias` via `gws` -> respuesta resumida (sin confirmacion ni mutacion).
 11. `shopping.list.generate`: consulta de insumos/surtido -> lectura de `Pedidos` via `gws` + agregacion de productos/insumos sugeridos con recetas `inline` (smoke/mock) o `CatalogoRecetas` via `gws` (live) -> respuesta resumida (sin confirmacion ni mutacion).

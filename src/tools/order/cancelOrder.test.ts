@@ -185,6 +185,27 @@ describe("cancel-order tool", () => {
     expect(gwsRunner).toHaveBeenCalledTimes(1);
   });
 
+  it("fails when order has terminal status entregado/completado", async () => {
+    const row = buildRow({
+      19: "entregado"
+    });
+    const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: [buildHeader(), row] }));
+    const tool = createCancelOrderTool({
+      dryRunDefault: false,
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:R",
+      gwsRunner
+    });
+
+    await expect(
+      tool({
+        operation_id: "op-cancel-terminal",
+        chat_id: "chat-1",
+        reference: { folio: "op-order-1" }
+      })
+    ).rejects.toThrow("order_cancel_status_not_cancellable");
+  });
+
   it("syncs trello_card_id even when order is already canceled", async () => {
     const row = buildRow({
       15: "nota previa | [CANCELADO] 2026-03-10 op:abc chat:chat-1 motivo:n/a",

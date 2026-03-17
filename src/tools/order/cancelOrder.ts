@@ -10,6 +10,7 @@ export type OrderCancelPreview = {
   folio: string;
   operation_id?: string;
   fecha_hora_entrega: string;
+  fecha_hora_entrega_iso?: string;
   nombre_cliente: string;
   producto: string;
   estado_pago?: string;
@@ -290,6 +291,7 @@ function toPreview(row: Array<string | number>): OrderCancelPreview {
     folio: String(row[INDEX.folio] ?? ""),
     operation_id: trimOptional(row[INDEX.operation_id]),
     fecha_hora_entrega: String(row[INDEX.fecha_hora_entrega] ?? ""),
+    fecha_hora_entrega_iso: trimOptional(row[INDEX.fecha_hora_entrega_iso]),
     nombre_cliente: String(row[INDEX.nombre_cliente] ?? ""),
     producto: String(row[INDEX.producto] ?? ""),
     estado_pago: trimOptional(row[INDEX.estado_pago]),
@@ -303,6 +305,12 @@ function normalizeMotivo(raw: string | undefined): string | undefined {
   if (typeof raw !== "string") return undefined;
   const normalized = raw.trim().replace(/\s+/g, " ");
   return normalized.length > 0 ? normalized : undefined;
+}
+
+function isNonCancellableTerminalStatus(value: unknown): boolean {
+  const normalized = normalizeForMatch(typeof value === "string" ? value : "");
+  if (!normalized) return false;
+  return normalized === "entregado" || normalized === "completado";
 }
 
 function applyCancel(args: {
@@ -356,7 +364,7 @@ export function createCancelOrderTool(config: CancelOrderToolConfig = {}) {
   const gwsSpreadsheetId = config.gwsSpreadsheetId?.trim() || undefined;
   const normalizedRange = normalizeReadRange(config.gwsRange) ?? "Pedidos!A:U";
   const gwsValueInputOption = config.gwsValueInputOption ?? "USER_ENTERED";
-  const timeoutMs = Number.isFinite(config.timeoutMs) && (config.timeoutMs ?? 0) > 0 ? Math.trunc(config.timeoutMs!) : 5000;
+  const timeoutMs = Number.isFinite(config.timeoutMs) && (config.timeoutMs ?? 0) > 0 ? Math.trunc(config.timeoutMs!) : 30000;
   const maxRetries = Number.isFinite(config.maxRetries) && (config.maxRetries ?? -1) >= 0 ? Math.trunc(config.maxRetries!) : 2;
   const retryBackoffMs = Number.isFinite(config.retryBackoffMs) && (config.retryBackoffMs ?? -1) >= 0
     ? Math.trunc(config.retryBackoffMs!)
@@ -455,6 +463,9 @@ export function createCancelOrderTool(config: CancelOrderToolConfig = {}) {
         }
 
         const target = matchedRows[0];
+        if (isNonCancellableTerminalStatus(target.row[INDEX.estado_pedido])) {
+          throw new Error("order_cancel_status_not_cancellable");
+        }
         const applied = applyCancel({
           row: target.row,
           operation_id: args.operation_id,

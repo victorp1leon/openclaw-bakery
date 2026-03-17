@@ -1654,6 +1654,81 @@ describe("conversation processor security flow", () => {
     expect(routeIntentFn).not.toHaveBeenCalled();
   });
 
+  it("resuelve order.cancel por cliente cuando hay una sola coincidencia", async () => {
+    const executeOrderLookupFn = vi.fn(async () => ({
+      query: "ana",
+      timezone: "America/Mexico_City",
+      total: 1,
+      orders: [
+        {
+          folio: "op-ana-1",
+          fecha_hora_entrega: "2026-03-12 10:00",
+          nombre_cliente: "Ana",
+          producto: "pastel"
+        }
+      ],
+      detail: "lookup-order executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-cancel-customer"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-order-cancel-customer",
+      routeIntentFn: async () => "pedido",
+      executeOrderLookupFn
+    });
+
+    const summary = await processor.handleMessage({
+      chat_id: "chat-order-cancel-customer",
+      text: "cancela pedido de ana"
+    });
+    expect(summary[0]).toContain("Resumen");
+    expect(summary[0]).toContain("op-ana-1");
+    expect(executeOrderLookupFn).toHaveBeenCalledWith({
+      chat_id: "chat-order-cancel-customer",
+      query: "ana"
+    });
+  });
+
+  it("rechaza por ambiguedad cuando order.cancel por cliente devuelve multiples coincidencias", async () => {
+    const executeOrderLookupFn = vi.fn(async () => ({
+      query: "ana",
+      timezone: "America/Mexico_City",
+      total: 2,
+      orders: [
+        {
+          folio: "op-ana-1",
+          fecha_hora_entrega: "2026-03-12 10:00",
+          nombre_cliente: "Ana",
+          producto: "pastel"
+        },
+        {
+          folio: "op-ana-2",
+          fecha_hora_entrega: "2026-03-12 13:00",
+          nombre_cliente: "Ana",
+          producto: "cupcakes"
+        }
+      ],
+      detail: "lookup-order executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-cancel-ambiguous"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-order-cancel-ambiguous",
+      routeIntentFn: async () => "pedido",
+      executeOrderLookupFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-order-cancel-ambiguous",
+      text: "cancela pedido de ana"
+    });
+    expect(replies[0]).toContain("Encontré 2 pedidos para \"ana\"");
+    expect(replies[0].toLowerCase()).toContain("folio");
+    expect(replies[0].toLowerCase()).toContain("operation_id");
+  });
+
   it("mantiene pendiente y marca failed cuando falla order.cancel", async () => {
     const executeOrderCancelFn = vi.fn(async () => {
       throw new Error("order_cancel_gws_write_rate_limit");
@@ -1674,8 +1749,40 @@ describe("conversation processor security flow", () => {
     const failed = await processor.handleMessage({ chat_id: "chat-order-cancel-fail", text: "confirmar" });
 
     expect(failed[0]).toContain("No se pudo ejecutar el pedido");
+    expect(failed[0]).toContain("Ref: order-cancel:op-order-cancel-fail");
     expect(getOperation("op-order-cancel-fail")?.status).toBe("failed");
     expect(getState("chat-order-cancel-fail").pending?.operation_id).toBe("op-order-cancel-fail");
+  });
+
+  it("responde no-op explicito cuando order.cancel ya estaba cancelado", async () => {
+    const executeOrderCancelFn = vi.fn(async ({ operation_id, reference }) => ({
+      ok: true,
+      dry_run: false,
+      operation_id,
+      payload: {
+        reference,
+        already_canceled: true,
+        after: {
+          folio: reference.folio ?? "op-xyz-123"
+        }
+      },
+      detail: "cancel-order already-canceled (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-cancel-noop"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-order-cancel-noop",
+      routeIntentFn: async () => "pedido",
+      executeOrderCancelFn
+    });
+
+    await processor.handleMessage({
+      chat_id: "chat-order-cancel-noop",
+      text: "cancela pedido folio op-xyz-123"
+    });
+    const done = await processor.handleMessage({ chat_id: "chat-order-cancel-noop", text: "confirmar" });
+    expect(done[0]).toContain("Este pedido ya fue cancelado con folio op-xyz-123");
   });
 
   it("revierte cambio en trello cuando falla sheets en order.cancel", async () => {

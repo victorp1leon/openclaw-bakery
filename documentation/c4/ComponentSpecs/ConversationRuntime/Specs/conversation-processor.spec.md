@@ -51,6 +51,9 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - If quote is accepted for conversion, runtime must continue with regular `pedido` flow (ask missing fields, show summary, require final confirmation before executing `order.create` connectors).
 - For `order.update`, detect update intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; apply Trello+Sheets with rollback on partial failure.
 - For `order.cancel`, detect cancel intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; apply Trello+Sheets with rollback on partial failure.
+- If `order.cancel` request has no explicit reference, runtime should attempt lookup-by-customer query; continue automatically only on unique match, otherwise ask for precise `folio|operation_id`.
+- If `order.cancel` returns `already_canceled=true`, runtime must reply with deterministic no-op message (`Este pedido ya fue cancelado con folio <folio>`).
+- If `order.cancel` fails during execution, runtime must return controlled failure with support reference (`Ref: order-cancel:<operation_id>`), while internal traces keep failure detail.
 - For `payment.record`, detect payment intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; persist payment movement in Sheets with audit trail in `notas`.
 - For `inventory.consume`, detect inventory consume intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; decrement `Inventario` and append `MovimientosInventario` entries with idempotency guarantees.
 - `inventory.consume` must be feature-gated via `INVENTORY_CONSUME_ENABLE` (default `0`); when disabled, runtime must return a controlled message without executing the tool.
@@ -87,6 +90,7 @@ It must coordinate flow/persistence and must not trust raw model output without 
   - validation/missing data: ask one specific missing field
   - duplicate:
     - `order.create`: `Este pedido ya existe con folio <folio>`
+    - `order.cancel` no-op duplicate: `Este pedido ya fue cancelado con folio <folio>`
     - `inventory.consume`: `Consumo ya aplicado para <folio>. operation_id: <operation_id>`
     - other confirmable intents: deterministic duplicate reference (`operation_id`/status)
   - execution failure: controlled failure message with traceable operation reference

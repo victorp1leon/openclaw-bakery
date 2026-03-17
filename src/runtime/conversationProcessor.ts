@@ -619,6 +619,57 @@ function detectOrderStatusQuery(text: string): string | undefined {
   return undefined;
 }
 
+function extractOrderCancelLookupQuery(text: string): string | undefined {
+  const normalized = normalizeForMatch(text);
+  const hasOrderWord = /\bpedidos?\b/.test(normalized);
+  const hasCancelVerb = /\b(cancela|cancelar|cancelame|anula|anular)\b/.test(normalized);
+  if (!hasOrderWord || !hasCancelVerb) return undefined;
+
+  const hasExplicitReference = /\b(?:folio|id|operation_id|operacion)\s*[:=]?\s*[a-z0-9_-]{3,}\b/.test(normalized);
+  if (hasExplicitReference) return undefined;
+
+  const deMatch = normalized.match(/\bpedidos?\s+de\s+(.+?)\s*$/)?.[1]?.trim();
+  if (deMatch && deMatch.length >= 2) return deMatch;
+
+  const paraMatch = normalized.match(/\bpedidos?\s+para\s+(.+?)\s*$/)?.[1]?.trim();
+  if (paraMatch && paraMatch.length >= 2) return paraMatch;
+
+  const fallback = normalized
+    .replace(/\{[\s\S]*\}/g, " ")
+    .replace(/\bmotivo\s*[:=]\s*.+$/g, " ")
+    .replace(/\b(cancela|cancelar|cancelame|anula|anular)\b/g, " ")
+    .replace(/\bpedidos?\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (fallback.length >= 2) return fallback;
+
+  return undefined;
+}
+
+function parseOrderDateMs(value: string | undefined): number | undefined {
+  if (!value || value.trim().length === 0) return undefined;
+  const direct = Date.parse(value);
+  if (Number.isFinite(direct)) return direct;
+
+  const normalized = value.replace(/\s+/, "T");
+  const parsed = Date.parse(normalized);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function buildOrderCancelTimingWarning(args: {
+  fecha_hora_entrega?: string;
+  fecha_hora_entrega_iso?: string;
+  nowMs: number;
+}): string | undefined {
+  const targetMs = parseOrderDateMs(args.fecha_hora_entrega_iso) ?? parseOrderDateMs(args.fecha_hora_entrega);
+  if (targetMs == null) return undefined;
+  const diffMs = targetMs - args.nowMs;
+  if (diffMs >= 0 && diffMs <= 2 * 60 * 60 * 1000) {
+    return "Advertencia: este pedido tiene entrega muy cercana (<= 2 horas).";
+  }
+  return undefined;
+}
+
 function hasShoppingListHint(normalized: string): boolean {
   return (
     /\b(insumos|surtir|surtido|compras|shopping)\b/.test(normalized) ||
@@ -1347,6 +1398,60 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const inventoryConsumeEnabled = deps.inventoryConsumeEnabled ?? false;
   const rateLimiter = deps.rateLimiter;
 
+  async function tryResolveOrderCancelReferenceByLookup(args: {
+    chat_id: string;
+    text: string;
+  }): Promise<
+    | { kind: "resolved"; reference: OrderCancelReference; query: string }
+    | { kind: "ambiguous"; query: string; total: number }
+    | { kind: "not_found"; query: string }
+    | { kind: "skip" | "error" }
+  > {
+    const query = extractOrderCancelLookupQuery(args.text);
+    if (!query || query.length < 2) return { kind: "skip" };
+
+    try {
+      const lookup = await executeOrderLookupFn({
+        chat_id: args.chat_id,
+        query
+      });
+
+      if (lookup.total === 0) {
+        return { kind: "not_found", query };
+      }
+      if (lookup.total > 1) {
+        return { kind: "ambiguous", query, total: lookup.total };
+      }
+
+      const resolved = lookup.orders[0];
+      const folio = trimString(resolved?.folio);
+      const operationId = trimString(resolved?.operation_id);
+      if (!folio && !operationId) {
+        return { kind: "not_found", query };
+      }
+
+      return {
+        kind: "resolved",
+        query,
+        reference: {
+          ...(folio ? { folio } : {}),
+          ...(operationId ? { operation_id_ref: operationId } : {})
+        }
+      };
+    } catch (err) {
+      const safeDetail = err instanceof Error ? err.message : String(err);
+      deps.onTrace?.({
+        event: "order_cancel_lookup_failed",
+        chat_id: args.chat_id,
+        strict_mode,
+        intent: "order.cancel",
+        intent_source: "fallback",
+        detail: safeDetail
+      });
+      return { kind: "error" };
+    }
+  }
+
   function startPendingOrderFlow(args: {
     chat_id: string;
     operation_id: string;
@@ -1979,9 +2084,25 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             });
 
             clearPending(msg.chat_id);
-            return [copy.executed(st.pending.operation_id, execution.dry_run)];
+            const warning = buildOrderCancelTimingWarning({
+              fecha_hora_entrega: execution.payload.after?.fecha_hora_entrega,
+              fecha_hora_entrega_iso: execution.payload.after?.fecha_hora_entrega_iso,
+              nowMs: nowMs()
+            });
+
+            if (execution.payload.already_canceled) {
+              const folio = execution.payload.after?.folio || execution.payload.reference.folio || execution.payload.reference.operation_id_ref;
+              const base = folio
+                ? `Este pedido ya fue cancelado con folio ${folio}`
+                : "Este pedido ya fue cancelado.";
+              return [warning ? `${base}\n${warning}` : base];
+            }
+
+            const success = copy.executed(st.pending.operation_id, execution.dry_run);
+            return [warning ? `${success}\n${warning}` : success];
           } catch (err) {
             const safeDetail = err instanceof Error ? err.message : String(err);
+            const traceRef = `order-cancel:${st.pending.operation_id}`;
 
             upsertOperation({
               operation_id: st.pending.operation_id,
@@ -1997,12 +2118,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
               chat_id: msg.chat_id,
               strict_mode,
               intent: "order.cancel",
-              detail: safeDetail
+              detail: `${safeDetail};ref=${traceRef}`
             });
 
-            return [
-              copy.orderFailed(st.pending.operation_id)
-            ];
+            return [`No se pudo ejecutar el pedido. Ref: ${traceRef}`];
           }
         }
 
@@ -2436,12 +2555,49 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             ...referenceFromFreeTextSkill(msg.text)
           };
 
-          st.pending.action.payload = {
-            ...payload,
-            reference: mergedReference
-          };
-
           if (!hasOrderReferenceSkill(mergedReference)) {
+            const resolved = await tryResolveOrderCancelReferenceByLookup({
+              chat_id: msg.chat_id,
+              text: msg.text
+            });
+            if (resolved.kind === "resolved") {
+              st.pending.action.payload = {
+                ...payload,
+                reference: resolved.reference
+              };
+            } else {
+              st.pending.action.payload = {
+                ...payload,
+                reference: mergedReference
+              };
+            }
+
+            if (resolved.kind === "ambiguous") {
+              setState(msg.chat_id, st);
+              return [
+                `Encontré ${resolved.total} pedidos para "${resolved.query}". Compárteme el folio u operation_id para cancelar el correcto.`
+              ];
+            }
+
+            if (resolved.kind === "not_found") {
+              setState(msg.chat_id, st);
+              return [
+                `No encontré pedidos para "${resolved.query}". Compárteme el folio u operation_id para continuar con la cancelación.`
+              ];
+            }
+
+            if (!hasOrderReferenceSkill((st.pending.action.payload as Record<string, unknown>).reference)) {
+              setState(msg.chat_id, st);
+              return [copy.askFor("order_reference")];
+            }
+          } else {
+            st.pending.action.payload = {
+              ...payload,
+              reference: mergedReference
+            };
+          }
+
+          if (!hasOrderReferenceSkill((st.pending.action.payload as Record<string, unknown>).reference)) {
             setState(msg.chat_id, st);
             return [copy.askFor("order_reference")];
           }
@@ -2460,9 +2616,13 @@ export function createConversationProcessor(deps: ProcessorDeps) {
 
           if (!register.inserted) {
             clearPending(msg.chat_id);
-            return [
-              copy.duplicate(register.operation.operation_id, register.operation.status)
-            ];
+            const pendingReference = isObjectRecord(st.pending.action.payload) && isObjectRecord(st.pending.action.payload.reference)
+              ? st.pending.action.payload.reference
+              : undefined;
+            const folio = pendingReference && typeof pendingReference.folio === "string"
+              ? pendingReference.folio
+              : register.operation.operation_id;
+            return [`Este pedido ya fue cancelado con folio ${folio}`];
           }
 
           return [copy.summary("order.cancel", st.pending.action.payload, st.pending.operation_id)];
@@ -2885,6 +3045,14 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             pendingPayload.motivo = motivo;
           }
 
+          const resolved = await tryResolveOrderCancelReferenceByLookup({
+            chat_id: msg.chat_id,
+            text: msg.text
+          });
+          if (resolved.kind === "resolved") {
+            pendingPayload.reference = resolved.reference as Record<string, unknown>;
+          }
+
           const pending = {
             operation_id,
             idempotency_key: operation_id,
@@ -2894,6 +3062,45 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           };
 
           setState(msg.chat_id, { pending });
+          if (resolved.kind === "ambiguous") {
+            return [
+              `Encontré ${resolved.total} pedidos para "${resolved.query}". Compárteme el folio u operation_id para cancelar el correcto.`
+            ];
+          }
+          if (resolved.kind === "not_found") {
+            return [
+              `No encontré pedidos para "${resolved.query}". Compárteme el folio u operation_id para continuar con la cancelación.`
+            ];
+          }
+          if (resolved.kind === "resolved") {
+            const register = registerPendingOperation({
+              operation_id,
+              chat_id: msg.chat_id,
+              intent: "order.cancel",
+              payload: pendingPayload,
+              idempotency_key: operation_id
+            });
+
+            if (!register.inserted) {
+              clearPending(msg.chat_id);
+              const resolvedFolio =
+                (pendingPayload.reference as Record<string, unknown> | undefined)?.folio ??
+                register.operation.operation_id;
+              return [`Este pedido ya fue cancelado con folio ${String(resolvedFolio)}`];
+            }
+
+            setState(msg.chat_id, {
+              pending: {
+                operation_id,
+                idempotency_key: operation_id,
+                action: { intent: "order.cancel", payload: pendingPayload },
+                missing: [],
+                asked: undefined
+              }
+            });
+
+            return [copy.summary("order.cancel", pendingPayload, operation_id)];
+          }
           return [copy.askFor("order_reference")];
         }
 
@@ -2930,9 +3137,11 @@ export function createConversationProcessor(deps: ProcessorDeps) {
 
       if (!register.inserted) {
         clearPending(msg.chat_id);
-        return [
-          copy.duplicate(register.operation.operation_id, register.operation.status)
-        ];
+        const payloadReference = isObjectRecord(payload.reference) ? payload.reference : undefined;
+        const folio = payloadReference && typeof payloadReference.folio === "string"
+          ? payloadReference.folio
+          : register.operation.operation_id;
+        return [`Este pedido ya fue cancelado con folio ${folio}`];
       }
 
       deps.onTrace?.({
