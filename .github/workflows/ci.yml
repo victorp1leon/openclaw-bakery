@@ -27,5 +27,8 @@ jobs:
       - name: Security scan
         run: npm run security:scan
 
+      - name: Intent-skill coverage gate
+        run: npm run check:intent-skills
+
       - name: Unit tests
         run: npm test

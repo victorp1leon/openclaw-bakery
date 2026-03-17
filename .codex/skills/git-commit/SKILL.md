@@ -13,6 +13,8 @@ description: Prepare and create clean git commits in this repository when the us
 2. Review changes to include.
 - Inspect relevant diffs with `git diff -- <path>`.
 - Exclude generated artifacts unless the user explicitly wants them.
+- If `src/runtime/conversationProcessor.ts` or `src/tools/` changed, run:
+  - `npm run check:intent-skills`
 
 3. Stage intentionally.
 - Stage explicit files (`git add <path...>`), not broad wildcards by default.

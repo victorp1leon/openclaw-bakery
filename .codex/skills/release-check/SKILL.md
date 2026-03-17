@@ -15,6 +15,7 @@ description: Run pre-commit release quality checks and summarize readiness. Use 
 - Docs-only changes:
   - structural check only (`git diff`, file existence).
 - Runtime/tooling code changes (`src/`, `scripts/`):
+  - intent-skill coverage gate: `npm run check:intent-skills`
   - focused unit tests first: `npm test -- <target.test.ts>`
   - broaden if needed: `npm test`
 - Order lifecycle or integration-sensitive changes:
@@ -40,7 +41,7 @@ description: Run pre-commit release quality checks and summarize readiness. Use 
 
 ## Quick Commands
 - Baseline suite:
-  - `npm run security:scan && npm test`
+  - `npm run security:scan && npm run check:intent-skills && npm test`
 - Smoke/integration summary:
   - `npm run test:smoke-integration:summary`
 - Live smoke/integration summary:

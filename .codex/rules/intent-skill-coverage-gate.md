@@ -17,10 +17,11 @@
 - Cambios en specs/roadmap que agregan intents implementables.
 
 ## Mandatory Check
-1. Listar intents detectados en runtime:
+1. Ejecutar verificacion automatica:
+   - `npm run check:intent-skills`
+2. Si el comando falla, revisar intents detectados en runtime:
    - `rg -o 'intent: "[^"]+"' src/runtime/conversationProcessor.ts | sed 's/intent: "//;s/"$//' | sort -u`
-2. Confirmar existencia de skill funcional por intent/mapeo.
-3. Si falta alguna, crear `skills/<intent-or-mapping>/SKILL.md` en el mismo ciclo.
+3. Si falta alguna cobertura, crear `skills/<intent-or-mapping>/SKILL.md` en el mismo ciclo.
 
 ## Reporting
 - En cierre de tarea/commit, declarar:
