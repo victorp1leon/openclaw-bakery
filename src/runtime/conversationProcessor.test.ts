@@ -220,6 +220,41 @@ let createConversationProcessor: (args: {
     assumptions: string[];
     detail: string;
   }>;
+  executeScheduleDayViewFn?: (args: {
+    chat_id: string;
+    day: { type: "day"; dateKey: string; label: string };
+  }) => Promise<{
+    day: { type: "day"; dateKey: string; label: string };
+    timezone: string;
+    totalOrders: number;
+    deliveries: Array<{
+      folio: string;
+      operation_id?: string;
+      fecha_hora_entrega: string;
+      fecha_hora_entrega_iso?: string;
+      nombre_cliente: string;
+      producto: string;
+      cantidad: number;
+      tipo_envio?: string;
+      estado_pago?: string;
+      total?: number;
+      moneda?: string;
+      estado_pedido?: string;
+    }>;
+    preparation: Array<{
+      product: string;
+      quantity: number;
+      orders: number;
+    }>;
+    suggestedPurchases: Array<{
+      item: string;
+      unit: string;
+      amount: number;
+      sourceProducts: string[];
+    }>;
+    assumptions: string[];
+    detail: string;
+  }>;
   executeQuoteOrderFn?: (args: {
     chat_id: string;
     query: string;
@@ -636,6 +671,105 @@ describe("conversation processor security flow", () => {
     expect(executeOrderReportFn).toHaveBeenCalledWith({
       chat_id: "chat-report-year",
       period: { type: "year", year: 2026, label: "este año" }
+    });
+  });
+
+  it("resuelve agenda diaria sin pasar por intent router", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+    const executeScheduleDayViewFn = vi.fn(async () => ({
+      day: { type: "day", dateKey: "2026-03-07", label: "hoy" } as const,
+      timezone: "America/Mexico_City",
+      totalOrders: 1,
+      deliveries: [
+        {
+          folio: "op-schedule-1",
+          operation_id: "op-schedule-1",
+          fecha_hora_entrega: "2026-03-07 14:00",
+          nombre_cliente: "Ana",
+          producto: "cupcakes",
+          cantidad: 12,
+          tipo_envio: "recoger_en_tienda",
+          estado_pago: "pagado",
+          total: 480,
+          moneda: "MXN",
+          estado_pedido: "activo"
+        }
+      ],
+      preparation: [
+        {
+          product: "cupcakes",
+          quantity: 12,
+          orders: 1
+        }
+      ],
+      suggestedPurchases: [
+        {
+          item: "harina",
+          unit: "g",
+          amount: 540,
+          sourceProducts: ["cupcakes"]
+        }
+      ],
+      assumptions: [],
+      detail: "schedule-day-view executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-schedule"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn,
+      executeScheduleDayViewFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-schedule",
+      text: "dame la agenda de hoy"
+    });
+
+    expect(replies[0]).toContain("Agenda del día para hoy");
+    expect(replies[0]).toContain("Entregas");
+    expect(replies[0]).toContain("Compras sugeridas");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+    expect(executeScheduleDayViewFn).toHaveBeenCalledWith({
+      chat_id: "chat-schedule",
+      day: { type: "day", dateKey: "2026-03-07", label: "hoy" }
+    });
+  });
+
+  it("pide dia faltante para agenda y luego responde", async () => {
+    const executeScheduleDayViewFn = vi.fn(async ({ day }) => ({
+      day,
+      timezone: "America/Mexico_City",
+      totalOrders: 0,
+      deliveries: [],
+      preparation: [],
+      suggestedPurchases: [],
+      assumptions: [],
+      detail: "schedule-day-view executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-schedule-missing"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn: async () => "pedido",
+      executeScheduleDayViewFn
+    });
+
+    const ask = await processor.handleMessage({
+      chat_id: "chat-schedule-missing",
+      text: "dame la agenda"
+    });
+    expect(ask[0].toLowerCase()).toContain("para qué día");
+
+    const reply = await processor.handleMessage({
+      chat_id: "chat-schedule-missing",
+      text: "mañana"
+    });
+
+    expect(reply[0]).toContain("No encontré pedidos para armar la agenda de mañana");
+    expect(executeScheduleDayViewFn).toHaveBeenCalledWith({
+      chat_id: "chat-schedule-missing",
+      day: { type: "day", dateKey: "2026-03-08", label: "mañana" }
     });
   });
 

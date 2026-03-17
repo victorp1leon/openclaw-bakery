@@ -56,6 +56,11 @@ import {
   type ShoppingListScope
 } from "../tools/order/shoppingListGenerate";
 import {
+  createScheduleDayViewTool,
+  type ScheduleDayFilter,
+  type ScheduleDayViewResult
+} from "../tools/order/scheduleDayView";
+import {
   createUpdateOrderTool,
   type OrderUpdateExecutionPayload,
   type OrderUpdateReference
@@ -127,6 +132,10 @@ type ProcessorDeps = {
     chat_id: string;
     scope: ShoppingListScope;
   }) => Promise<ShoppingListResult>;
+  executeScheduleDayViewFn?: (args: {
+    chat_id: string;
+    day: ScheduleDayFilter;
+  }) => Promise<ScheduleDayViewResult>;
   executeQuoteOrderFn?: (args: {
     chat_id: string;
     query: string;
@@ -692,6 +701,42 @@ function detectShoppingListRequestWithoutScope(args: {
   return detectShoppingListScope(args) == null;
 }
 
+function hasScheduleDayHint(normalized: string): boolean {
+  return /\b(agenda|horario|cronograma|programacion|plan\s+del\s+dia|dia\s+de\s+trabajo)\b/.test(normalized);
+}
+
+function detectScheduleDayPeriod(args: {
+  text: string;
+  now: Date;
+  timezone: string;
+}): ScheduleDayFilter | undefined {
+  const normalized = normalizeForMatch(args.text);
+  if (!hasScheduleDayHint(normalized)) return undefined;
+
+  const dayPeriod = parseOrderReportDayPeriod({
+    normalized,
+    now: args.now,
+    timezone: args.timezone
+  });
+  if (!dayPeriod || dayPeriod.type !== "day") return undefined;
+
+  return {
+    type: "day",
+    dateKey: dayPeriod.dateKey,
+    label: dayPeriod.label
+  };
+}
+
+function detectScheduleDayRequestWithoutScope(args: {
+  text: string;
+  now: Date;
+  timezone: string;
+}): boolean {
+  const normalized = normalizeForMatch(args.text);
+  if (!hasScheduleDayHint(normalized)) return false;
+  return detectScheduleDayPeriod(args) == null;
+}
+
 function detectQuoteOrderQuery(text: string): string | undefined {
   const normalized = normalizeForMatch(text);
   const hasQuoteVerb = /\b(cotiza|cotizar|cotizacion|cuanto\s+cuesta|cuanto\s+sale|cuanto\s+vale|presupuesto|precio\s+de)\b/.test(
@@ -1001,6 +1046,50 @@ function formatShoppingListReply(result: ShoppingListResult): string {
   ].join("\n");
 }
 
+function formatScheduleDayViewReply(result: ScheduleDayViewResult): string {
+  const label = result.day.label;
+  if (result.totalOrders === 0) {
+    return `No encontré pedidos para armar la agenda de ${label}.`;
+  }
+
+  const deliveries = result.deliveries
+    .slice(0, 20)
+    .map((order, idx) => {
+      const qty = order.cantidad > 0 ? `x${order.cantidad}` : "x?";
+      const shipping = order.tipo_envio ?? "-";
+      return `${idx + 1}. ${order.fecha_hora_entrega} | ${order.nombre_cliente || "-"} | ${order.producto} ${qty} | ${shipping}`;
+    });
+  const deliveriesExtra = result.deliveries.length > deliveries.length
+    ? `\n... y ${result.deliveries.length - deliveries.length} entregas más`
+    : "";
+
+  const preparation = result.preparation
+    .slice(0, 12)
+    .map((item, idx) => `${idx + 1}. ${item.product}: x${item.quantity} (${item.orders} pedido(s))`);
+  const preparationExtra = result.preparation.length > preparation.length
+    ? `\n... y ${result.preparation.length - preparation.length} productos más`
+    : "";
+
+  const purchases = result.suggestedPurchases
+    .slice(0, 12)
+    .map((item, idx) => {
+      const source = item.sourceProducts.length > 0 ? ` [${item.sourceProducts.join(", ")}]` : "";
+      return `${idx + 1}. ${item.item}: ${item.amount} ${item.unit}${source}`;
+    });
+  const purchasesExtra = result.suggestedPurchases.length > purchases.length
+    ? `\n... y ${result.suggestedPurchases.length - purchases.length} compras sugeridas más`
+    : "";
+
+  const assumptions = result.assumptions.length > 0 ? `\nSupuestos: ${result.assumptions.join(" ; ")}` : "";
+
+  return [
+    `Agenda del día para ${label} (${result.totalOrders} pedidos):`,
+    `Entregas:\n${deliveries.join("\n")}${deliveriesExtra}`,
+    `Preparación:\n${preparation.join("\n")}${preparationExtra}`,
+    `Compras sugeridas:\n${purchases.join("\n")}${purchasesExtra}${assumptions}`
+  ].join("\n");
+}
+
 function formatQuoteOrderReply(result: QuoteOrderResult): string {
   const base = result.lines.find((line) => line.kind === "base");
   const nonBase = result.lines.filter((line) => line.kind !== "base");
@@ -1229,6 +1318,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeOrderLookupFn = deps.executeOrderLookupFn ?? createLookupOrderTool();
   const executeOrderStatusFn = deps.executeOrderStatusFn ?? createOrderStatusTool();
   const executeShoppingListFn = deps.executeShoppingListFn ?? createShoppingListGenerateTool();
+  const executeScheduleDayViewFn = deps.executeScheduleDayViewFn ?? createScheduleDayViewTool();
   const executeQuoteOrderFn = deps.executeQuoteOrderFn ?? createQuoteOrderTool();
   const executeOrderUpdateFn = deps.executeOrderUpdateFn ?? createUpdateOrderTool();
   const executeOrderCancelFn = deps.executeOrderCancelFn ?? createCancelOrderTool();
@@ -2225,6 +2315,62 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           }
         }
 
+        if (st.pending.action.intent === "schedule.day_view") {
+          const query = msg.text.trim();
+          if (query.length < 2) {
+            return [copy.askFor("schedule_day_query")];
+          }
+
+          const dayCandidate = parseOrderReportDayPeriod({
+            normalized: normalizeForMatch(query),
+            now: new Date(nowMs()),
+            timezone: orderReportTimezone
+          });
+          const day = dayCandidate && dayCandidate.type === "day"
+            ? {
+              type: "day" as const,
+              dateKey: dayCandidate.dateKey,
+              label: dayCandidate.label
+            }
+            : undefined;
+          if (!day) {
+            return [copy.askFor("schedule_day_query")];
+          }
+
+          try {
+            const dayView = await executeScheduleDayViewFn({
+              chat_id: msg.chat_id,
+              day
+            });
+
+            deps.onTrace?.({
+              event: "schedule_day_view_succeeded",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "schedule.day_view",
+              intent_source: "fallback",
+              detail: `day=${dayView.day.dateKey}:${dayView.day.label};orders=${dayView.totalOrders}`
+            });
+
+            clearPending(msg.chat_id);
+            return [formatScheduleDayViewReply(dayView)];
+          } catch (err) {
+            const safeDetail = err instanceof Error ? err.message : String(err);
+
+            deps.onTrace?.({
+              event: "schedule_day_view_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "schedule.day_view",
+              intent_source: "fallback",
+              detail: safeDetail
+            });
+
+            clearPending(msg.chat_id);
+            return ["No pude generar la agenda del día en este momento. Intenta de nuevo en unos minutos."];
+          }
+        }
+
         if (st.pending.action.intent === "order.lookup") {
           const query = msg.text.trim();
           if (query.length < 2) {
@@ -2788,6 +2934,66 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       now: new Date(nowMs()),
       timezone: orderReportTimezone
     });
+    const scheduleDayPeriod = detectScheduleDayPeriod({
+      text: msg.text,
+      now: new Date(nowMs()),
+      timezone: orderReportTimezone
+    });
+    const scheduleDayNeedsScope = detectScheduleDayRequestWithoutScope({
+      text: msg.text,
+      now: new Date(nowMs()),
+      timezone: orderReportTimezone
+    });
+    if (scheduleDayNeedsScope) {
+      const operation_id = newOperationId();
+      setState(msg.chat_id, {
+        pending: {
+          operation_id,
+          idempotency_key: operation_id,
+          action: {
+            intent: "schedule.day_view",
+            payload: {}
+          },
+          missing: ["schedule_day_query"],
+          asked: "schedule_day_query"
+        }
+      });
+      return [copy.askFor("schedule_day_query")];
+    }
+
+    if (scheduleDayPeriod) {
+      try {
+        const dayView = await executeScheduleDayViewFn({
+          chat_id: msg.chat_id,
+          day: scheduleDayPeriod
+        });
+
+        deps.onTrace?.({
+          event: "schedule_day_view_succeeded",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "schedule.day_view",
+          intent_source: "fallback",
+          detail: `day=${dayView.day.dateKey}:${dayView.day.label};orders=${dayView.totalOrders}`
+        });
+
+        return [formatScheduleDayViewReply(dayView)];
+      } catch (err) {
+        const safeDetail = err instanceof Error ? err.message : String(err);
+
+        deps.onTrace?.({
+          event: "schedule_day_view_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "schedule.day_view",
+          intent_source: "fallback",
+          detail: safeDetail
+        });
+
+        return ["No pude generar la agenda del día en este momento. Intenta de nuevo en unos minutos."];
+      }
+    }
+
     if (reportPeriod) {
       try {
         const report = await executeOrderReportFn({

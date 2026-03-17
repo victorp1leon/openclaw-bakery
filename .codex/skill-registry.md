@@ -1,6 +1,6 @@
 # Skill Registry
 
-Generated At (UTC): 2026-03-17 17:00:22.410 UTC
+Generated At (UTC): 2026-03-17 19:29:21.883 UTC
 
 ## Skills
 
@@ -14,6 +14,7 @@ Generated At (UTC): 2026-03-17 17:00:22.410 UTC
 | order-lifecycle-live-smoke | Run and validate live order lifecycle smoke flows (create, update, cancel) with Trello and Google Sheets consistency checks. | `.codex/skills/order-lifecycle-live-smoke/SKILL.md` |
 | order-sync-diagnose | Diagnose order synchronization failures between Trello and Google Sheets, including pending operations, rollback errors, and missing card linkage. | `.codex/skills/order-sync-diagnose/SKILL.md` |
 | phase3-intent-delivery | Deliver new roadmap intents (phase 3+) with a fixed gate sequence: spec-first docs, runtime/tool wiring, unit tests, smoke script + summary registration, and plan/handoff closure. Use for intents like shopping.list.generate, inventory.consume, schedule.* and similar. | `.codex/skills/phase3-intent-delivery/SKILL.md` |
+| read-only-intent-delivery | Deliver read-only intents end-to-end with consistent patterns for deterministic routing, optional missing-field prompts, tool execution without confirmation flow, reply formatting, tests, smoke registration, and docs/plan closure. Use for intents like schedule.day_view, report.reminders, and similar query/reporting capabilities. | `.codex/skills/read-only-intent-delivery/SKILL.md` |
 | release-check | Run pre-commit release quality checks and summarize readiness. Use when the user asks if current changes are ready to commit, merge, or ship. | `.codex/skills/release-check/SKILL.md` |
 | repo-audit-safety | Run safety-first repository audits for OpenClaw Bakery with evidence-based findings and low-risk remediation. Use when the user asks to audit, clean up, review operational health, or align docs/config/paths without risky architectural rewrites. | `.codex/skills/repo-audit-safety/SKILL.md` |
 | skill-creator | Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Codex's capabilities with specialized knowledge, workflows, or tool integrations. | `.codex/skills/skill-creator/SKILL.md` |
@@ -27,6 +28,7 @@ Generated At (UTC): 2026-03-17 17:00:22.410 UTC
 |---|---|
 | approval-keyword-gate | `.codex/rules/approval-keyword-gate.md` |
 | gws-only | `.codex/rules/gws-only.md` |
+| intent-skill-coverage-gate | `.codex/rules/intent-skill-coverage-gate.md` |
 | live-flags-gate | `.codex/rules/live-flags-gate.md` |
 | mandatory-validation | `.codex/rules/mandatory-validation.md` |
 | order-dual-write-strict | `.codex/rules/order-dual-write-strict.md` |

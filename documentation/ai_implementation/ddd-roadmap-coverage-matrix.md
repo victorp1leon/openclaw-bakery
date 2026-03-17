@@ -1,7 +1,7 @@
 # DDD Roadmap Coverage Matrix
 
 Status: In Progress
-Last Updated: 2026-03-13
+Last Updated: 2026-03-17
 
 ## Purpose
 Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
@@ -52,7 +52,8 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 | 3 | `quote.order` | `.../Tools/Specs/quote-order.spec.md` + `.../ConversationRuntime/Specs/conversation-processor.spec.md` | `src/tools/order/quoteOrder.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/quote-smoke.ts` | Cotizacion read-only via `gws` + puente conversacional `quote -> pedido` con confirmacion explicita, preguntas faltantes y reuso de flujo `order.create` | Done | Monitorear conversion real de cotizacion a pedido y afinar prompts de captura de faltantes |
 | 3 | `shopping.list.generate` | `.../Tools/Specs/shopping-list-generate.spec.md` + `.../ConversationRuntime/Specs/conversation-processor.spec.md` | `src/tools/order/shoppingListGenerate.test.ts` + `src/runtime/conversationProcessor.test.ts` | Lista de insumos sugerida read-only sobre `Pedidos` via `gws` por scope (`day|week|order_ref|lookup`) con recetas `inline` (smoke/mock) o `CatalogoRecetas` via `gws` (`live`) sin confirm flow ni mutaciones | Done | Curar y versionar `CatalogoRecetas` para mejorar cobertura de aliases y unidades |
 | 3 | `inventory.consume` | `.../Tools/Specs/inventory-consume.spec.md` + `.../ConversationRuntime/Specs/conversation-processor.spec.md` | `src/tools/order/inventoryConsume.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/inventory-consume-smoke.ts` | Mutacion controlada por comando explicito con confirm flow, feature flag `INVENTORY_CONSUME_ENABLE`, decremento en `Inventario`, append auditable en `MovimientosInventario`, idempotencia por `operation_id`, conversion `g<->kg` y fallo parcial con reconciliacion manual | Done | Ejecutar validacion live controlada (3 corridas sin reconciliacion) antes de adopcion operativa |
-| 3 | `schedule.day_view` / `schedule.week_view` | Roadmap only | No | No | Planned | Crear specs de reporting/scheduling |
+| 3 | `schedule.day_view` | `.../Tools/Specs/schedule-day-view.spec.md` + `.../ConversationRuntime/Specs/conversation-processor.spec.md` | `src/tools/order/scheduleDayView.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/schedule-day-view-smoke.ts` | Lectura read-only de `Pedidos` via `gws` con agenda diaria en 3 bloques (`deliveries`, `preparation`, `suggestedPurchases`) y soporte de dato faltante en runtime (`schedule_day_query`) | Done | Evaluar opcion live con `CatalogoRecetas` para mejorar precision de compras sugeridas |
+| 3 | `schedule.week_view` | Roadmap only | No | No | Planned | Definir spec de vista semanal y reglas de recordatorio |
 | 3/5 | `report.orders` | `.../Tools/Specs/report-orders.spec.md` | `src/tools/order/reportOrders.test.ts` + `src/runtime/conversationProcessor.test.ts` | Lectura real de `Pedidos` via `gws` + filtros dia/semana/mes/año (incluye fechas y meses explicitos) + respuesta en runtime | Done | Evaluar `año pasado` / `año siguiente` si se prioriza |
 | 3/5 | `report.reminders` | Roadmap only | No | No | Planned | Crear spec + ventana de proximidad y reglas de recordatorio |
 | 5 | `costing.recipe_cost` | Roadmap only | No | No | Planned | Crear spec de catalogo/recetas |
@@ -64,7 +65,7 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 ## Immediate Design Backlog (Spec-First)
 1. Mantener `npm run web:rollback:drill` como control manual bajo demanda y conservar bitacora de tiempos por ejecucion.
 2. Fase 3 funcional:
-   - Definir specs de `schedule.*`.
+   - Definir spec de `schedule.week_view` y `report.reminders`.
 3. Fases 5 y 6: analytics (`costing/profit/cashflow`) y admin skills.
 
 ## Exit Criteria: "Sistema completamente disenado"

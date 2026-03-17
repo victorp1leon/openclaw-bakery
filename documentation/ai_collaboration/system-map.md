@@ -60,6 +60,7 @@ Last Updated: 2026-03-17
 10. `quote.order`: consulta de cotizacion -> lectura de `CatalogoPrecios` + `CatalogoOpciones` + `CatalogoReferencias` via `gws` -> respuesta resumida (sin confirmacion ni mutacion).
 11. `shopping.list.generate`: consulta de insumos/surtido -> lectura de `Pedidos` via `gws` + agregacion de productos/insumos sugeridos con recetas `inline` (smoke/mock) o `CatalogoRecetas` via `gws` (live) -> respuesta resumida (sin confirmacion ni mutacion).
 12. `inventory.consume`: mutacion por referencia de pedido (comando explicito, flag `INVENTORY_CONSUME_ENABLE`) -> confirmacion -> decremento de `Inventario` + append auditable en `MovimientosInventario` via `gws` con idempotencia por `operation_id`.
+13. `schedule.day_view`: consulta de agenda diaria (`agenda de hoy/manana/fecha`) -> lectura de `Pedidos` via `gws` -> respuesta read-only en bloques `deliveries`, `preparation`, `suggestedPurchases` (sin confirmacion ni mutacion).
 
 ## Source Documents
 - `documentation/bot-bakery.overview.md`

@@ -14,6 +14,7 @@
     "smoke:report": "npx ts-node --transpile-only scripts/smoke/report-smoke.ts",
     "smoke:lookup": "npx ts-node --transpile-only scripts/smoke/lookup-smoke.ts",
     "smoke:status": "npx ts-node --transpile-only scripts/smoke/status-smoke.ts",
+    "smoke:schedule": "npx ts-node --transpile-only scripts/smoke/schedule-day-view-smoke.ts",
     "smoke:quote": "npx ts-node --transpile-only scripts/smoke/quote-smoke.ts",
     "smoke:update": "npx ts-node --transpile-only scripts/smoke/update-smoke.ts",
     "smoke:cancel": "npx ts-node --transpile-only scripts/smoke/cancel-smoke.ts",
