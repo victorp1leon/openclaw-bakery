@@ -7,6 +7,7 @@ Estas reglas complementan `AGENTS.md` para acelerar desarrollo y reducir regresi
 - `order-dual-write-strict.md`: consistencia obligatoria Trello + Sheets en mutaciones de pedidos.
 - `live-flags-gate.md`: live tests/operaciones solo con flags explicitos.
 - `mandatory-validation.md`: validacion minima segun el tipo de cambio.
+- `intent-skill-coverage-gate.md`: cobertura obligatoria entre intents activos y skills funcionales en `skills/`.
 - `secrets-never-commit.md`: manejo seguro de secretos y staging.
 - `approval-keyword-gate.md`: implementar o commitear solo con confirmacion explicita que incluya `apruebo`.
 

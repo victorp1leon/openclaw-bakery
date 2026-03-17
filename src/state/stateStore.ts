@@ -5,10 +5,12 @@ export type PendingAction =
   | { intent: "pedido"; payload: any }
   | { intent: "web"; payload: any }
   | { intent: "quote.order"; payload: any }
+  | { intent: "shopping.list.generate"; payload: any }
   | { intent: "order.lookup"; payload: any }
   | { intent: "order.update"; payload: any }
   | { intent: "order.cancel"; payload: any }
-  | { intent: "payment.record"; payload: any };
+  | { intent: "payment.record"; payload: any }
+  | { intent: "inventory.consume"; payload: any };
 
 export type ConvoState = {
   pending?: {

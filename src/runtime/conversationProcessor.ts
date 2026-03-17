@@ -8,6 +8,16 @@ import { validateWith } from "../guards/validationGuard";
 import { type Expense, ExpenseSchema } from "../schemas/expense";
 import { type Order, OrderSchema } from "../schemas/order";
 import { type Intent, routeIntentDetailed, type RoutedIntent } from "../skills/intentRouter";
+import {
+  extractOrderReferenceFromText as extractOrderReferenceFromTextSkill,
+  hasOrderReference as hasOrderReferenceSkill,
+  inventoryOrderRefLabel as inventoryOrderRefLabelSkill,
+  parseInventoryConsumeRequest as parseInventoryConsumeRequestSkill,
+  parseOrderCancelRequest as parseOrderCancelRequestSkill,
+  parseOrderUpdateRequest as parseOrderUpdateRequestSkill,
+  parsePaymentRecordRequest as parsePaymentRecordRequestSkill,
+  referenceFromFreeText as referenceFromFreeTextSkill
+} from "../skills/mutationIntentDrafts";
 import { parseExpense, parseOrder, type ParseSource } from "../skills/parser";
 import { registerPendingOperation, upsertOperation } from "../state/operations";
 import { clearPending, getState, setState } from "../state/stateStore";
@@ -267,35 +277,6 @@ const MONTH_LABELS = [
   "noviembre",
   "diciembre"
 ];
-
-const ORDER_UPDATE_PATCH_FIELDS = new Set([
-  "fecha_hora_entrega",
-  "nombre_cliente",
-  "telefono",
-  "producto",
-  "descripcion_producto",
-  "cantidad",
-  "sabor_pan",
-  "sabor_relleno",
-  "tipo_envio",
-  "direccion",
-  "estado_pago",
-  "total",
-  "moneda",
-  "notas"
-]);
-const ORDER_REFERENCE_TOKEN_PATTERN = /^[a-z0-9][a-z0-9_-]{2,}$/i;
-const ORDER_REFERENCE_RESERVED_VALUES = new Set([
-  "pendiente",
-  "pagado",
-  "parcial",
-  "confirmar",
-  "cancelar",
-  "si",
-  "no",
-  "ok",
-  "listo"
-]);
 
 function toDateKeyFromDate(date: Date, timezone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -1125,420 +1106,6 @@ function trimString(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const out = value.trim();
   return out.length > 0 ? out : undefined;
-}
-
-function sanitizeOrderReferenceValue(value: unknown): string | undefined {
-  const out = trimString(value);
-  if (!out) return undefined;
-  if (!ORDER_REFERENCE_TOKEN_PATTERN.test(out)) return undefined;
-  const normalized = normalizeForMatch(out);
-  if (ORDER_REFERENCE_RESERVED_VALUES.has(normalized)) return undefined;
-  return out;
-}
-
-function extractOrderReferenceFromText(text: string): { folio?: string; operation_id_ref?: string } {
-  const folio = sanitizeOrderReferenceValue(text.match(/\bfolio\s*[:=]?\s*([a-z0-9_-]{3,})\b/i)?.[1]);
-  const operationId = sanitizeOrderReferenceValue(text.match(/\b(?:operation_id|operacion|id)\s*[:=]?\s*([a-z0-9_-]{3,})\b/i)?.[1]);
-  return {
-    folio,
-    operation_id_ref: operationId
-  };
-}
-
-function hasOrderReference(value: unknown): boolean {
-  if (!isObjectRecord(value)) return false;
-  const folio = sanitizeOrderReferenceValue(value.folio);
-  const operationId = sanitizeOrderReferenceValue(value.operation_id_ref);
-  return Boolean(folio || operationId);
-}
-
-function referenceFromFreeText(text: string): { folio?: string; operation_id_ref?: string } {
-  const fromTagged = extractOrderReferenceFromText(text);
-  if (fromTagged.folio || fromTagged.operation_id_ref) return fromTagged;
-
-  const fallback = sanitizeOrderReferenceValue(text);
-  if (fallback) {
-    return { folio: fallback };
-  }
-  return {};
-}
-
-function inventoryOrderRefLabel(payload: unknown): string {
-  if (!isObjectRecord(payload)) return "pedido";
-  const reference = isObjectRecord(payload.reference) ? payload.reference : payload;
-  const folio = sanitizeOrderReferenceValue(reference.folio);
-  if (folio) return folio;
-  const operationId = sanitizeOrderReferenceValue(reference.operation_id_ref);
-  if (operationId) return operationId;
-  return "pedido";
-}
-
-function parseOrderUpdatePatchFromText(text: string): Record<string, unknown> | undefined {
-  const normalized = normalizeForMatch(text);
-  const patch: Record<string, unknown> = {};
-
-  const deliveryMatch = text.match(
-    /\b(?:fecha(?:\s+y)?\s*hora(?:\s+de)?\s*entrega|fecha(?:\s+de)?\s+entrega|entrega)\s*(?:a|para|=|:)?\s*((?:\d{4}[/-]\d{1,2}[/-]\d{1,2})(?:[ t]\d{1,2}:\d{2})?)\b/i
-  )?.[1];
-  if (deliveryMatch) {
-    patch.fecha_hora_entrega = deliveryMatch.replace(/[Tt]/g, " ").replace(/\//g, "-").trim();
-  }
-
-  const paymentMatch =
-    normalized.match(/\bestado\s+de\s+pago\s*(?:a|en|=|:|como)?\s*(pagado|pendiente|parcial)\b/)?.[1] ??
-    (/\b(?:pago|abono)\b/.test(normalized) ? normalized.match(/\b(pagado|pendiente|parcial)\b/)?.[1] : undefined);
-  if (paymentMatch) {
-    patch.estado_pago = paymentMatch;
-  }
-
-  const shippingValue =
-    text.match(
-      /\b(?:tipo\s+de?\s*envio|envio)\s*(?:a|en|=|:|para)?\s*(envio_domicilio|recoger_en_tienda|envio a domicilio|a domicilio|recoger en tienda|retiro en tienda)\b/i
-    )?.[1] ??
-    text.match(/\b(envio a domicilio|a domicilio|recoger en tienda|retiro en tienda)\b/i)?.[1];
-  if (shippingValue) {
-    patch.tipo_envio = normalizeTipoEnvioInput(shippingValue);
-  }
-
-  const quantityMatch = normalized.match(/\b(?:cantidad|piezas?|unidades?)\s*(?:a|=|:)?\s*(\d+)\b/)?.[1];
-  if (quantityMatch) {
-    patch.cantidad = Number(quantityMatch);
-  }
-
-  const totalMatch = normalized.match(/\btotal\s*(?:a|=|:)?\s*(\d+(?:[.,]\d+)?)\b/)?.[1];
-  if (totalMatch) {
-    patch.total = Number(totalMatch.replace(",", "."));
-  }
-
-  const customerMatch = text.match(/\b(?:nombre(?:\s+del)?\s+cliente|cliente)\s*(?:a|=|:)\s*([^,.;\n]+)/i)?.[1]?.trim();
-  if (customerMatch) {
-    patch.nombre_cliente = customerMatch;
-  }
-
-  const productMatch = text.match(/\bproducto\s*(?:a|=|:)\s*([^,.;\n]+)/i)?.[1]?.trim();
-  if (productMatch) {
-    patch.producto = productMatch;
-  }
-
-  const addressMatch = text.match(/\bdireccion\s*(?:a|=|:)\s*([^,;\n]+)/i)?.[1]?.trim();
-  if (addressMatch) {
-    patch.direccion = addressMatch;
-  }
-
-  const notesMatch = text.match(/\b(?:nota|notas)\s*(?:a|=|:)\s*(.+)$/i)?.[1]?.trim();
-  if (notesMatch) {
-    patch.notas = notesMatch;
-  }
-
-  return Object.keys(patch).length > 0 ? patch : undefined;
-}
-
-function parseOrderUpdateRequest(text: string):
-  | { matched: false }
-  | { matched: true; result: ParseResult } {
-  const normalized = normalizeForMatch(text);
-  const hasOrderWord = /\bpedidos?\b/.test(normalized);
-  const hasMutationVerb = /\b(actualiza|actualizar|actualizacion|modifica|modificar|cambia|cambiar)\b/.test(normalized);
-  if (!hasOrderWord || !hasMutationVerb) {
-    return { matched: false };
-  }
-
-  const inline = parseInlineJsonObject(text.trim());
-  if (inline.ok === false) {
-    return {
-      matched: true,
-      result: { ok: false, source: "fallback", error: "order_update_payload_json_invalid" }
-    };
-  }
-
-  const reference: OrderUpdateReference = {};
-  let patch: Record<string, unknown> | undefined;
-
-  if (inline.ok === true) {
-    const payload = inline.value;
-
-    if (isObjectRecord(payload.reference)) {
-      reference.folio = sanitizeOrderReferenceValue(payload.reference.folio);
-      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.reference.operation_id_ref);
-    } else {
-      reference.folio = sanitizeOrderReferenceValue(payload.folio);
-      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.operation_id_ref);
-    }
-
-    if (isObjectRecord(payload.patch)) {
-      patch = { ...payload.patch };
-    } else {
-      const filteredEntries = Object.entries(payload).filter(([key]) => ORDER_UPDATE_PATCH_FIELDS.has(key));
-      if (filteredEntries.length > 0) {
-        patch = Object.fromEntries(filteredEntries);
-      }
-    }
-  }
-
-  if (!patch) {
-    patch = parseOrderUpdatePatchFromText(text);
-  }
-
-  const fromText = extractOrderReferenceFromText(text);
-  if (!reference.folio) reference.folio = fromText.folio;
-  if (!reference.operation_id_ref) reference.operation_id_ref = fromText.operation_id_ref;
-
-  if (!reference.folio && !reference.operation_id_ref) {
-    return {
-      matched: true,
-      result: { ok: false, source: "fallback", error: "order_update_reference_missing" }
-    };
-  }
-
-  if (!patch || Object.keys(patch).length === 0) {
-    return {
-      matched: true,
-      result: { ok: false, source: "fallback", error: "order_update_patch_missing" }
-    };
-  }
-
-  return {
-    matched: true,
-    result: {
-      ok: true,
-      source: "fallback",
-      payload: {
-        reference,
-        patch
-      }
-    }
-  };
-}
-
-function parseOrderCancelRequest(text: string):
-  | { matched: false }
-  | { matched: true; result: ParseResult } {
-  const normalized = normalizeForMatch(text);
-  const hasOrderWord = /\bpedidos?\b/.test(normalized);
-  const hasCancelVerb = /\b(cancela|cancelar|cancelame|anula|anular)\b/.test(normalized);
-  if (!hasOrderWord || !hasCancelVerb) {
-    return { matched: false };
-  }
-
-  const inline = parseInlineJsonObject(text.trim());
-  if (inline.ok === false) {
-    return {
-      matched: true,
-      result: { ok: false, source: "fallback", error: "order_cancel_payload_json_invalid" }
-    };
-  }
-
-  const reference: OrderCancelReference = {};
-  let motivo = text.match(/\bmotivo\s*[:=]\s*(.+)$/i)?.[1]?.trim();
-
-  if (inline.ok === true) {
-    const payload = inline.value;
-
-    if (isObjectRecord(payload.reference)) {
-      reference.folio = sanitizeOrderReferenceValue(payload.reference.folio);
-      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.reference.operation_id_ref);
-    } else {
-      reference.folio = sanitizeOrderReferenceValue(payload.folio);
-      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.operation_id_ref);
-    }
-
-    const motivoInline = trimString(payload.motivo);
-    if (motivoInline) motivo = motivoInline;
-  }
-
-  const fromText = extractOrderReferenceFromText(text);
-  if (!reference.folio) reference.folio = fromText.folio;
-  if (!reference.operation_id_ref) reference.operation_id_ref = fromText.operation_id_ref;
-
-  if (!reference.folio && !reference.operation_id_ref) {
-    return {
-      matched: true,
-      result: { ok: false, source: "fallback", error: "order_cancel_reference_missing" }
-    };
-  }
-
-  return {
-    matched: true,
-    result: {
-      ok: true,
-      source: "fallback",
-      payload: {
-        reference,
-        ...(motivo ? { motivo } : {})
-      }
-    }
-  };
-}
-
-function parsePaymentAmountFromText(text: string): number | undefined {
-  const amountMatch = text.match(/\b(?:monto|abono|pago)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\b/i);
-  if (!amountMatch?.[1]) return undefined;
-  const parsed = Number(amountMatch[1].replace(",", "."));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
-}
-
-function parsePaymentRecordRequest(text: string):
-  | { matched: false }
-  | { matched: true; result: ParseResult } {
-  const normalized = normalizeForMatch(text);
-  const hasOrderWord = /\bpedidos?\b/.test(normalized);
-  const hasMutationVerb = /\b(registra|registrar|marca|marcar|aplica|aplicar|abona|abonar|liquida|liquidar)\b/.test(normalized);
-  const hasPaymentHint = /\b(pago|abono|liquidacion)\b/.test(normalized) || /\bestado\s+de\s+pago\b/.test(normalized);
-  if (!hasOrderWord || !hasMutationVerb || !hasPaymentHint) {
-    return { matched: false };
-  }
-
-  const inline = parseInlineJsonObject(text.trim());
-  if (inline.ok === false) {
-    return {
-      matched: true,
-      result: { ok: false, source: "fallback", error: "payment_record_payload_json_invalid" }
-    };
-  }
-
-  const reference: PaymentRecordReference = {};
-  let payment: Record<string, unknown> | undefined;
-
-  if (inline.ok === true) {
-    const payload = inline.value;
-    if (isObjectRecord(payload.patch)) {
-      return { matched: false };
-    }
-
-    if (isObjectRecord(payload.reference)) {
-      reference.folio = sanitizeOrderReferenceValue(payload.reference.folio);
-      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.reference.operation_id_ref);
-    } else {
-      reference.folio = sanitizeOrderReferenceValue(payload.folio);
-      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.operation_id_ref);
-    }
-
-    if (isObjectRecord(payload.payment)) {
-      payment = { ...payload.payment };
-    } else {
-      const inlinePayment: Record<string, unknown> = {};
-      const inlineEstado = trimString(payload.estado_pago);
-      if (inlineEstado) inlinePayment.estado_pago = inlineEstado;
-
-      const inlineMetodo = trimString(payload.metodo);
-      if (inlineMetodo) inlinePayment.metodo = inlineMetodo;
-
-      if (payload.monto != null && String(payload.monto).trim() !== "") {
-        inlinePayment.monto = payload.monto;
-      }
-
-      const inlineNotas = trimString(payload.notas);
-      if (inlineNotas) inlinePayment.notas = inlineNotas;
-
-      if (Object.keys(inlinePayment).length > 0) payment = inlinePayment;
-    }
-  }
-
-  const fromText = extractOrderReferenceFromText(text);
-  if (!reference.folio) reference.folio = fromText.folio;
-  if (!reference.operation_id_ref) reference.operation_id_ref = fromText.operation_id_ref;
-
-  if (!reference.folio && !reference.operation_id_ref) {
-    return {
-      matched: true,
-      result: { ok: false, source: "fallback", error: "payment_record_reference_missing" }
-    };
-  }
-
-  if (!payment) {
-    payment = {};
-    const estadoPago = normalized.match(/\b(pagado|pendiente|parcial)\b/)?.[1];
-    if (estadoPago) {
-      payment.estado_pago = estadoPago;
-    }
-
-    const monto = parsePaymentAmountFromText(text);
-    if (monto != null) {
-      payment.monto = monto;
-    }
-
-    const metodo = normalized.match(/\b(efectivo|transferencia|tarjeta|otro)\b/)?.[1];
-    if (metodo) {
-      payment.metodo = metodo;
-    }
-
-    const nota = text.match(/\bnota\s*[:=]\s*(.+)$/i)?.[1]?.trim();
-    if (nota) {
-      payment.notas = nota;
-    }
-  }
-
-  if (typeof payment.estado_pago !== "string" || payment.estado_pago.trim().length === 0) {
-    return {
-      matched: true,
-      result: { ok: false, source: "fallback", error: "payment_record_estado_pago_missing" }
-    };
-  }
-
-  return {
-    matched: true,
-    result: {
-      ok: true,
-      source: "fallback",
-      payload: {
-        reference,
-        payment
-      }
-    }
-  };
-}
-
-function parseInventoryConsumeRequest(text: string):
-  | { matched: false }
-  | { matched: true; result: ParseResult } {
-  const normalized = normalizeForMatch(text);
-  const hasConsumeVerb = /\b(consume|consumir|descuenta|descontar|aplica|aplicar)\b/.test(normalized) || /\binventory\.consume\b/.test(normalized);
-  const hasInventoryHint = /\b(inventario|insumos?)\b/.test(normalized) || /\binventory\.consume\b/.test(normalized);
-  if (!hasConsumeVerb || !hasInventoryHint) {
-    return { matched: false };
-  }
-
-  const inline = parseInlineJsonObject(text.trim());
-  if (inline.ok === false) {
-    return {
-      matched: true,
-      result: { ok: false, source: "fallback", error: "inventory_consume_payload_json_invalid" }
-    };
-  }
-
-  const reference: InventoryConsumeReference = {};
-  if (inline.ok === true) {
-    const payload = inline.value;
-    if (isObjectRecord(payload.reference)) {
-      reference.folio = sanitizeOrderReferenceValue(payload.reference.folio);
-      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.reference.operation_id_ref);
-    } else {
-      reference.folio = sanitizeOrderReferenceValue(payload.folio);
-      reference.operation_id_ref = sanitizeOrderReferenceValue(payload.operation_id_ref);
-    }
-  }
-
-  const fromText = extractOrderReferenceFromText(text);
-  if (!reference.folio) reference.folio = fromText.folio;
-  if (!reference.operation_id_ref) reference.operation_id_ref = fromText.operation_id_ref;
-
-  if (!reference.folio && !reference.operation_id_ref) {
-    return {
-      matched: true,
-      result: { ok: false, source: "fallback", error: "inventory_consume_reference_missing" }
-    };
-  }
-
-  return {
-    matched: true,
-    result: {
-      ok: true,
-      source: "fallback",
-      payload: {
-        reference
-      }
-    }
-  };
 }
 
 async function parseWebRequest(text: string): Promise<ParseResult> {
@@ -2483,7 +2050,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
 
             clearPending(msg.chat_id);
             if (execution.payload.idempotent_replay) {
-              return [execution.detail || copy.inventoryConsumeReplay(inventoryOrderRefLabel(payload), execution.operation_id)];
+              return [execution.detail || copy.inventoryConsumeReplay(inventoryOrderRefLabelSkill(payload), execution.operation_id)];
             }
             return [copy.executed(st.pending.operation_id, execution.dry_run)];
           } catch (err) {
@@ -2703,7 +2270,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           const reference = isObjectRecord(payload.reference) ? { ...payload.reference } : {};
           const mergedReference = {
             ...reference,
-            ...referenceFromFreeText(msg.text)
+            ...referenceFromFreeTextSkill(msg.text)
           };
 
           st.pending.action.payload = {
@@ -2711,7 +2278,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             reference: mergedReference
           };
 
-          if (!hasOrderReference(mergedReference)) {
+          if (!hasOrderReferenceSkill(mergedReference)) {
             setState(msg.chat_id, st);
             return [copy.askFor("order_reference")];
           }
@@ -2745,7 +2312,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
 
           const mergedReference = {
             ...reference,
-            ...referenceFromFreeText(msg.text)
+            ...referenceFromFreeTextSkill(msg.text)
           };
 
           const normalizedInput = normalizeForMatch(msg.text);
@@ -2760,7 +2327,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             payment
           };
 
-          if (!hasOrderReference(mergedReference)) {
+          if (!hasOrderReferenceSkill(mergedReference)) {
             st.pending.asked = "order_reference";
             st.pending.missing = ["order_reference"];
             setState(msg.chat_id, st);
@@ -2806,7 +2373,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           const reference = isObjectRecord(payload.reference) ? { ...payload.reference } : {};
           const mergedReference = {
             ...reference,
-            ...referenceFromFreeText(msg.text)
+            ...referenceFromFreeTextSkill(msg.text)
           };
 
           st.pending.action.payload = {
@@ -2814,7 +2381,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             reference: mergedReference
           };
 
-          if (!hasOrderReference(mergedReference)) {
+          if (!hasOrderReferenceSkill(mergedReference)) {
             st.pending.asked = "order_reference";
             st.pending.missing = ["order_reference"];
             setState(msg.chat_id, st);
@@ -2836,7 +2403,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           if (!register.inserted) {
             clearPending(msg.chat_id);
             return [
-              copy.inventoryConsumeReplay(inventoryOrderRefLabel(st.pending.action.payload), register.operation.operation_id)
+              copy.inventoryConsumeReplay(inventoryOrderRefLabelSkill(st.pending.action.payload), register.operation.operation_id)
             ];
           }
 
@@ -2919,7 +2486,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       return [copy.pendingOperation(st.pending.operation_id)];
     }
 
-    const inventoryConsumeDraft = parseInventoryConsumeRequest(msg.text);
+    const inventoryConsumeDraft = parseInventoryConsumeRequestSkill(msg.text);
     if (inventoryConsumeDraft.matched) {
       if (!inventoryConsumeEnabled) {
         return [copy.inventoryConsumeDisabled()];
@@ -2928,7 +2495,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       if (!inventoryConsumeDraft.result.ok) {
         if (inventoryConsumeDraft.result.error === "inventory_consume_reference_missing") {
           const operation_id = newOperationId();
-          const reference = extractOrderReferenceFromText(msg.text);
+          const reference = extractOrderReferenceFromTextSkill(msg.text);
           const pendingPayload: Record<string, unknown> = {
             reference: {
               ...(reference.folio ? { folio: reference.folio } : {}),
@@ -2982,7 +2549,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       if (!register.inserted) {
         clearPending(msg.chat_id);
         return [
-          copy.inventoryConsumeReplay(inventoryOrderRefLabel(payload), register.operation.operation_id)
+          copy.inventoryConsumeReplay(inventoryOrderRefLabelSkill(payload), register.operation.operation_id)
         ];
       }
 
@@ -2998,7 +2565,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       return [copy.summary("inventory.consume", payload, operation_id)];
     }
 
-    const paymentRecordDraft = parsePaymentRecordRequest(msg.text);
+    const paymentRecordDraft = parsePaymentRecordRequestSkill(msg.text);
     if (paymentRecordDraft.matched) {
       if (!paymentRecordDraft.result.ok) {
         if (
@@ -3006,7 +2573,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           paymentRecordDraft.result.error === "payment_record_estado_pago_missing"
         ) {
           const operation_id = newOperationId();
-          const reference = extractOrderReferenceFromText(msg.text);
+          const reference = extractOrderReferenceFromTextSkill(msg.text);
           const normalizedInput = normalizeForMatch(msg.text);
           const estadoPago = normalizedInput.match(/\b(pagado|pendiente|parcial)\b/)?.[1];
 
@@ -3020,7 +2587,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             }
           };
 
-          const askField = hasOrderReference(pendingPayload.reference)
+          const askField = hasOrderReferenceSkill(pendingPayload.reference)
             ? "payment_estado_pago"
             : "order_reference";
           const pending = {
@@ -3085,7 +2652,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       return [copy.summary("payment.record", payload, operation_id)];
     }
 
-    const orderUpdateDraft = parseOrderUpdateRequest(msg.text);
+    const orderUpdateDraft = parseOrderUpdateRequestSkill(msg.text);
     if (orderUpdateDraft.matched) {
       if (!orderUpdateDraft.result.ok) {
         deps.onTrace?.({
@@ -3138,7 +2705,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       return [copy.summary("order.update", payload, operation_id)];
     }
 
-    const orderCancelDraft = parseOrderCancelRequest(msg.text);
+    const orderCancelDraft = parseOrderCancelRequestSkill(msg.text);
     if (orderCancelDraft.matched) {
       if (!orderCancelDraft.result.ok) {
         if (orderCancelDraft.result.error === "order_cancel_reference_missing") {

@@ -5,11 +5,13 @@ Last Updated: 2026-03-17
 ## Active Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
-| _None_ | - | - | - |
 
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `platform/implementation/intent-skill-coverage-gate-rule-v1.md` | Implementation | Complete | 2026-03-17 |
+| `runtime/implementation/phase3-skill-doc-coverage-parity-v1.md` | Implementation | Complete | 2026-03-17 |
+| `runtime/implementation/phase3-mutation-skills-parser-extraction-v1.md` | Refactoring | Complete | 2026-03-17 |
 | `platform/implementation/codex-skill-registry-sync-automation.md` | Implementation | Complete | 2026-03-17 |
 | `runtime/implementation/phase3-inventory-consume-spec-first-foundation.md` | Implementation | Complete | 2026-03-17 |
 | `runtime/implementation/phase3-sheets-schema-validation-hardening.md` | Implementation | Complete | 2026-03-13 |
