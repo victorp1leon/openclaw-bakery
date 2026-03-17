@@ -1,10 +1,14 @@
 # Codex AI Collaboration Playbook (OpenClaw Bakery)
 
 Status: Active
-Last Updated: 2026-02-27
+Last Updated: 2026-03-17
 
 ## Objetivo
 Definir un sistema estable de colaboracion entre desarrollador y Codex para reducir contexto repetido, mantener continuidad entre sesiones y mejorar calidad de implementacion.
+
+## Canonical Flow Reference
+- Flujo canonico propuesto (largo plazo): `documentation/ai_collaboration/spec-driven-flow-v1.md`.
+- Este playbook se mantiene operativo y compatible durante la transicion.
 
 ## Problema que resolvemos
 - Cada sesion de IA arranca sin memoria local del proyecto.
@@ -21,6 +25,7 @@ Definir un sistema estable de colaboracion entre desarrollador y Codex para redu
 | Session handoff | Estado al cierre de sesion | `documentation/ai_collaboration/plans/**/sessions/*` | Muy bajo |
 
 ## Flujo operativo obligatorio
+> Version actual (compatible con flujo canonico v1):
 ### 1. Research
 1. Revisar `documentation/ai_collaboration/plans/_index.md`.
 2. Revisar el ultimo handoff de la tarea (si existe).
@@ -39,6 +44,11 @@ Definir un sistema estable de colaboracion entre desarrollador y Codex para redu
 ### 4. Close
 1. Actualizar estado del plan y `plans/_index.md`.
 2. Escribir handoff corto con estado real y siguientes pasos.
+
+## Evolution Path
+- Corto plazo: mantener este playbook como ruta operativa.
+- Mediano plazo: adoptar `Discover -> Specify -> Clarify -> Plan -> Tasks -> Implement -> Validate -> Close` como default en todas las tareas complejas.
+- Al completar la adopcion, este documento debera alinearse totalmente al flujo v1.
 
 ## Criterio para crear plan
 Crear plan cuando:
