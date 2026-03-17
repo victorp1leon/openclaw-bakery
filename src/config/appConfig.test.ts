@@ -15,7 +15,7 @@ describe("appConfig", () => {
     expect(config.rateLimit.blockDurationMs).toBe(30_000);
     expect(config.expenseTool.dryRun).toBe(true);
     expect(config.expenseTool.sheetsProvider).toBe("gws");
-    expect(config.expenseTool.timeoutMs).toBe(5000);
+    expect(config.expenseTool.timeoutMs).toBe(30000);
     expect(config.expenseTool.maxRetries).toBe(2);
     expect(config.expenseTool.gws.command).toBe("gws");
     expect(config.expenseTool.gws.commandArgs).toEqual([]);
@@ -28,11 +28,11 @@ describe("appConfig", () => {
     expect(config.orderTool.trello.listId).toBeUndefined();
     expect(config.orderTool.trello.cancelListId).toBeUndefined();
     expect(config.orderTool.trello.apiBaseUrl).toBe("https://api.trello.com");
-    expect(config.orderTool.trello.timeoutMs).toBe(5000);
+    expect(config.orderTool.trello.timeoutMs).toBe(30000);
     expect(config.orderTool.trello.maxRetries).toBe(2);
     expect(config.orderTool.sheets.dryRun).toBe(true);
     expect(config.orderTool.sheets.provider).toBe("gws");
-    expect(config.orderTool.sheets.timeoutMs).toBe(5000);
+    expect(config.orderTool.sheets.timeoutMs).toBe(30000);
     expect(config.orderTool.sheets.maxRetries).toBe(2);
     expect(config.orderTool.sheets.gws.command).toBe("gws");
     expect(config.orderTool.sheets.gws.commandArgs).toEqual([]);
@@ -40,7 +40,7 @@ describe("appConfig", () => {
     expect(config.orderTool.sheets.gws.range).toBeUndefined();
     expect(config.orderTool.sheets.gws.valueInputOption).toBe("USER_ENTERED");
     expect(config.orderTool.recipes.source).toBe("inline");
-    expect(config.orderTool.recipes.timeoutMs).toBe(5000);
+    expect(config.orderTool.recipes.timeoutMs).toBe(30000);
     expect(config.orderTool.recipes.maxRetries).toBe(2);
     expect(config.orderTool.recipes.gws.command).toBe("gws");
     expect(config.orderTool.recipes.gws.commandArgs).toEqual([]);
@@ -49,7 +49,7 @@ describe("appConfig", () => {
     expect(config.inventoryConsume.enabled).toBe(false);
     expect(config.inventoryConsume.allowNegativeStock).toBe(false);
     expect(config.inventoryConsume.recipeSource).toBe("gws");
-    expect(config.inventoryConsume.timeoutMs).toBe(5000);
+    expect(config.inventoryConsume.timeoutMs).toBe(30000);
     expect(config.inventoryConsume.maxRetries).toBe(2);
     expect(config.inventoryConsume.gws.command).toBe("gws");
     expect(config.inventoryConsume.gws.commandArgs).toEqual([]);

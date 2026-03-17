@@ -152,7 +152,7 @@ function normalizeGwsRange(value: string | undefined): string | undefined {
 }
 
 export function createAppendOrderTool(config: AppendOrderToolConfig = {}) {
-  const timeoutMs = Number.isFinite(config.timeoutMs) && (config.timeoutMs ?? 0) > 0 ? Math.trunc(config.timeoutMs!) : 5000;
+  const timeoutMs = Number.isFinite(config.timeoutMs) && (config.timeoutMs ?? 0) > 0 ? Math.trunc(config.timeoutMs!) : 30000;
   const maxRetries = Number.isFinite(config.maxRetries) && (config.maxRetries ?? -1) >= 0 ? Math.trunc(config.maxRetries!) : 2;
   const dryRunDefault = config.dryRunDefault ?? true;
   const retryBackoffMs = Number.isFinite(config.retryBackoffMs) && (config.retryBackoffMs ?? -1) >= 0

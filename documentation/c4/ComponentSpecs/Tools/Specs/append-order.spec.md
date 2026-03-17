@@ -1,7 +1,7 @@
 # Spec - append-order (Phase 3 connector-ready + gws-only sheets)
 
 Status: MVP
-Last Updated: 2026-03-07
+Last Updated: 2026-03-17
 
 ## Objective
 Append a confirmed order row to Google Sheets.
@@ -51,6 +51,7 @@ The adapter uses `gws` (`googleworkspace/cli`) as the only Google Sheets integra
 - Bounded request timeout per call.
 - Bounded retries for transient failures only.
 - No infinite retries.
+- Default connector policy: `timeoutMs=30000`, `maxRetries=2` (hasta 3 intentos totales).
 
 ## Idempotency Strategy
 - Use `operation_id` as canonical idempotency key across runtime and downstream append requests.

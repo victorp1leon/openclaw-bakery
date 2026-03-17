@@ -1287,7 +1287,11 @@ function validateWebPayloadDraft(payload: Record<string, unknown>):
 
 function mergeField(payload: Record<string, unknown>, field: string, userText: string): Record<string, unknown> {
   const t = userText.trim();
-  if (field === "monto" || field === "cantidad" || field === "total") return { ...payload, [field]: Number(t) };
+  if (field === "monto" || field === "cantidad" || field === "total") {
+    const match = t.match(/[-+]?\d+(?:[.,]\d+)?/);
+    const parsed = match ? Number(match[0].replace(",", ".")) : Number.NaN;
+    return Number.isFinite(parsed) ? { ...payload, [field]: parsed } : { ...payload, [field]: t };
+  }
   if (field === "tipo_envio") return { ...payload, [field]: normalizeTipoEnvioInput(t) };
   if (field === "content.catalogItemsJson") {
     try {
@@ -1372,7 +1376,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
 
     if (!dedupe.ok) {
       clearPending(args.chat_id);
-      return [copy.duplicate(dedupe.duplicate_of.operation_id, dedupe.duplicate_of.status)];
+      return [`Este pedido ya existe con folio ${dedupe.duplicate_of.operation_id}`];
     }
 
     const full = v.data;
@@ -2620,9 +2624,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
 
           if (!dedupe.ok) {
             clearPending(msg.chat_id);
-            return [
-              copy.duplicate(dedupe.duplicate_of.operation_id, dedupe.duplicate_of.status)
-            ];
+            if (intent === "pedido") {
+              return [`Este pedido ya existe con folio ${dedupe.duplicate_of.operation_id}`];
+            }
+            return [copy.duplicate(dedupe.duplicate_of.operation_id, dedupe.duplicate_of.status)];
           }
 
           st.pending.action.payload = v.data;

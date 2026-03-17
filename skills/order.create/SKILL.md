@@ -63,6 +63,7 @@ Responder solo JSON valido con esta forma:
 3. Validar faltantes:
    - Preguntar exactamente un campo por turno.
    - `direccion` es obligatoria cuando `tipo_envio = envio_domicilio`.
+   - `fecha_hora_entrega` es obligatoria para crear pedido.
 4. Cuando no haya faltantes, presentar resumen y pedir `confirmar` o `cancelar`.
 5. Si el usuario responde:
    - `confirmar` -> mover estado a `executed` solo en runtime local/simulado.
@@ -77,6 +78,7 @@ Responder solo JSON valido con esta forma:
 - Nunca ejecutar acciones externas directamente.
 - Mantener salida estrictamente en JSON valido.
 - No preguntar mas de un faltante por turno.
+- Si se detecta duplicado en alta, responder de forma explicita: `Este pedido ya existe con folio <folio>`.
 
 ## Common Mistakes
 - Devolver texto libre junto con el JSON.

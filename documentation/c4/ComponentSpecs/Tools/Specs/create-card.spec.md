@@ -1,7 +1,7 @@
 # Spec - create-card (Phase 3 connector-ready)
 
 Status: MVP
-Last Updated: 2026-03-04
+Last Updated: 2026-03-17
 
 ## Objective
 Create a Trello card for a confirmed order operation.
@@ -51,6 +51,7 @@ This adapter handles Trello integration only and must not bypass confirmation/au
 - Bounded request timeout per Trello call.
 - Bounded retries for transient failures only.
 - No infinite retries.
+- Default connector policy: `timeoutMs=30000`, `maxRetries=2` (hasta 3 intentos totales).
 
 ## Idempotency Strategy
 - `operation_id` is the canonical idempotency key.

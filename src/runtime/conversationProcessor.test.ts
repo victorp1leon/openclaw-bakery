@@ -2024,6 +2024,23 @@ describe("conversation processor security flow", () => {
     expect(op?.status).toBe("executed");
   });
 
+  it("acepta parseo heuristico al responder faltante numerico de monto", async () => {
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-missing-heuristic"]),
+      nowMs: () => Date.parse("2026-02-19T12:00:00.000Z"),
+      newOperationId: () => "op-missing-heuristic",
+      routeIntentFn: async () => "gasto",
+      parseExpenseFn: async () => ({ ok: true, payload: { concepto: "harina" } })
+    });
+
+    const ask = await processor.handleMessage({ chat_id: "chat-missing-heuristic", text: "gasto harina" });
+    expect(ask[0]).toContain("monto");
+
+    const summary = await processor.handleMessage({ chat_id: "chat-missing-heuristic", text: "son 380 pesos" });
+    expect(summary[0]).toContain("Resumen");
+    expect(summary[0]).toContain("380");
+  });
+
   it("ejecuta expense tool en confirmacion de gasto", async () => {
     const executeExpenseFn = vi.fn(async ({ operation_id }) => ({
       ok: true,
@@ -2332,6 +2349,36 @@ describe("conversation processor security flow", () => {
     const duplicate = await processor.handleMessage({ chat_id: "chat-dup", text: "gasto 380 harina" });
     expect(duplicate[0]).toContain("Operación duplicada");
     expect(duplicate[0]).toContain("op-dup-1");
+  });
+
+  it("muestra mensaje explicito cuando order.create detecta duplicado", async () => {
+    const operationIds = ["op-order-dup-1", "op-order-dup-2"];
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-dup"]),
+      nowMs: () => Date.parse("2026-02-19T12:00:00.000Z"),
+      newOperationId: () => operationIds.shift() ?? "op-order-dup-x",
+      routeIntentFn: async () => "pedido",
+      parseOrderFn: async () => ({
+        ok: true,
+        payload: {
+          nombre_cliente: "Ana",
+          producto: "pastel",
+          cantidad: 1,
+          tipo_envio: "recoger_en_tienda",
+          fecha_hora_entrega: "2026-02-20 14:00",
+          moneda: "MXN"
+        }
+      })
+    });
+
+    const summary = await processor.handleMessage({ chat_id: "chat-order-dup", text: "pedido Ana pastel para manana" });
+    expect(summary[0]).toContain("Resumen");
+    await processor.handleMessage({ chat_id: "chat-order-dup", text: "confirmar" });
+
+    const duplicate = await processor.handleMessage({ chat_id: "chat-order-dup", text: "pedido Ana pastel para manana" });
+    expect(duplicate[0]).toContain("Este pedido ya existe con folio");
+    expect(duplicate[0]).toContain("op-order-dup-1");
   });
 
   it("emite trazas con source de intent y parse", async () => {

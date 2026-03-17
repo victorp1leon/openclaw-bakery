@@ -167,7 +167,7 @@ function parseCsv(raw: string | undefined): string[] {
 
 export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const webAllowedImageDomains = parseCsv(env.WEB_PUBLISH_ALLOWED_IMAGE_DOMAINS).map((domain) => domain.toLowerCase());
-  const orderSheetsTimeoutMs = toPositiveInt(env.ORDER_SHEETS_TIMEOUT_MS, 5000);
+  const orderSheetsTimeoutMs = toPositiveInt(env.ORDER_SHEETS_TIMEOUT_MS, 30000);
   const orderSheetsMaxRetries = toNonNegativeInt(env.ORDER_SHEETS_MAX_RETRIES, 2);
   const orderSheetsGwsCommand = env.ORDER_SHEETS_GWS_COMMAND?.trim() || "gws";
   const orderSheetsGwsCommandArgs = parseCsv(env.ORDER_SHEETS_GWS_COMMAND_ARGS);
@@ -235,7 +235,7 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     expenseTool: {
       dryRun: (env.EXPENSE_TOOL_DRY_RUN ?? "1") === "1",
       sheetsProvider: parseSheetsProvider(env.EXPENSE_SHEETS_PROVIDER, "gws"),
-      timeoutMs: toPositiveInt(env.EXPENSE_TOOL_TIMEOUT_MS, 5000),
+      timeoutMs: toPositiveInt(env.EXPENSE_TOOL_TIMEOUT_MS, 30000),
       maxRetries: toNonNegativeInt(env.EXPENSE_TOOL_MAX_RETRIES, 2),
       gws: {
         command: env.EXPENSE_GWS_COMMAND?.trim() || "gws",
@@ -253,7 +253,7 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
         listId: env.ORDER_TRELLO_LIST_ID?.trim() || undefined,
         cancelListId: env.ORDER_TRELLO_CANCEL_LIST_ID?.trim() || undefined,
         apiBaseUrl: env.ORDER_TRELLO_API_BASE_URL?.trim() || "https://api.trello.com",
-        timeoutMs: toPositiveInt(env.ORDER_TRELLO_TIMEOUT_MS, 5000),
+        timeoutMs: toPositiveInt(env.ORDER_TRELLO_TIMEOUT_MS, 30000),
         maxRetries: toNonNegativeInt(env.ORDER_TRELLO_MAX_RETRIES, 2)
       },
       sheets: {

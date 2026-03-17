@@ -55,6 +55,8 @@ Responder solo JSON valido con esta forma:
 1. Detectar intencion `gasto`.
 2. Extraer y normalizar campos del payload.
 3. Si faltan datos, preguntar exactamente un campo por turno.
+   - Para `monto`, intentar parseo numerico heuristico en respuestas como `son 380 pesos`.
+   - Si no se puede convertir a numero valido, rechazar por ambiguedad y volver a pedir `monto`.
 4. Cuando no haya faltantes, mostrar resumen y pedir `confirmar` o `cancelar`.
 5. Si el usuario responde:
    - `confirmar` -> mover estado a `executed` solo en runtime local/simulado.
@@ -68,6 +70,7 @@ Responder solo JSON valido con esta forma:
 - Nunca ejecutar acciones externas directamente.
 - Mantener salida estrictamente en JSON valido.
 - No preguntar mas de un faltante por turno.
+- Rechazar ambiguedad en campos criticos (no inferir monto sin evidencia numerica).
 
 ## Common Mistakes
 - Devolver mezcla de JSON y texto explicativo.

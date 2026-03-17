@@ -1,7 +1,7 @@
 # Spec - append-expense (Phase 2 connector-ready + gws-only sheets)
 
 Status: MVP
-Last Updated: 2026-03-05
+Last Updated: 2026-03-17
 
 ## Objective
 Add an expense row to Google Sheets after user confirmation.
@@ -50,6 +50,7 @@ The adapter uses `gws` (`googleworkspace/cli`) as the only Google Sheets integra
 - Bounded request timeout per call.
 - Bounded retries for transient failures only.
 - Never use infinite retries.
+- Default connector policy: `timeoutMs=30000`, `maxRetries=2` (hasta 3 intentos totales).
 
 ## Idempotency Strategy
 - Use `operation_id` as primary idempotency key across runtime and downstream append requests.
