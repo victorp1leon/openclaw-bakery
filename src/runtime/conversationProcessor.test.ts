@@ -159,6 +159,7 @@ let createConversationProcessor: (args: {
       moneda?: string;
       operation_id?: string;
     }>;
+    trace_ref: string;
     detail: string;
   }>;
   executeOrderStatusFn?: (args: {
@@ -978,6 +979,7 @@ describe("conversation processor security flow", () => {
       orders: [
         {
           folio: "op-lookup-1",
+          operation_id: "lookup-op-1",
           fecha_hora_entrega: "2026-03-07 14:00",
           nombre_cliente: "Ana",
           producto: "cupcakes",
@@ -987,6 +989,7 @@ describe("conversation processor security flow", () => {
           moneda: "MXN"
         }
       ],
+      trace_ref: "order-lookup:ana:a1",
       detail: "lookup-order executed (provider=gws, attempt=1)"
     }));
 
@@ -1003,6 +1006,8 @@ describe("conversation processor security flow", () => {
 
     expect(replies[0]).toContain('Pedidos encontrados para "ana"');
     expect(replies[0]).toContain("op-lookup-1");
+    expect(replies[0]).toContain("lookup-op-1");
+    expect(replies[0]).toContain("Ref: order-lookup:ana:a1");
     expect(routeIntentFn).not.toHaveBeenCalled();
     expect(executeOrderLookupFn).toHaveBeenCalledWith({
       chat_id: "chat-lookup",
@@ -1016,6 +1021,7 @@ describe("conversation processor security flow", () => {
       timezone: "America/Mexico_City",
       total: 0,
       orders: [],
+      trace_ref: "order-lookup:op-xyz-123:a1",
       detail: "lookup-order executed (provider=gws, attempt=1)"
     }));
 
@@ -1031,6 +1037,8 @@ describe("conversation processor security flow", () => {
     });
 
     expect(replies[0]).toContain('No encontré pedidos para "op-xyz-123"');
+    expect(replies[0]).toContain("Prueba con folio, operation_id o nombre del cliente.");
+    expect(replies[0]).toContain("Ref: order-lookup:op-xyz-123:a1");
     expect(executeOrderLookupFn).toHaveBeenCalledWith({
       chat_id: "chat-lookup-folio",
       query: "op-xyz-123"
@@ -1054,6 +1062,7 @@ describe("conversation processor security flow", () => {
           moneda: "MXN"
         }
       ],
+      trace_ref: "order-lookup:victor:a1",
       detail: "lookup-order executed (provider=gws, attempt=1)"
     }));
 
@@ -1075,10 +1084,30 @@ describe("conversation processor security flow", () => {
     });
 
     expect(reply[0]).toContain('Pedidos encontrados para "victor"');
+    expect(reply[0]).toContain("Ref: order-lookup:victor:a1");
     expect(executeOrderLookupFn).toHaveBeenCalledWith({
       chat_id: "chat-lookup-missing",
       query: "victor"
     });
+  });
+
+  it("retorna mensaje controlado con ref cuando falla order.lookup", async () => {
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-lookup-fail"]),
+      newOperationId: () => "op-order-lookup-fail",
+      routeIntentFn: async () => "pedido",
+      executeOrderLookupFn: async () => {
+        throw new Error("order_lookup_gws_failed");
+      }
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-lookup-fail",
+      text: "consulta pedido de ana"
+    });
+
+    expect(replies[0]).toContain("No pude consultar ese pedido en este momento.");
+    expect(replies[0]).toContain("Ref: order-lookup:op-order-lookup-fail");
   });
 
   it("resuelve consulta de estado de pedido sin pasar por intent router", async () => {
@@ -1667,6 +1696,7 @@ describe("conversation processor security flow", () => {
           producto: "pastel"
         }
       ],
+      trace_ref: "order-lookup:ana:a1",
       detail: "lookup-order executed (provider=gws, attempt=1)"
     }));
 
@@ -1709,6 +1739,7 @@ describe("conversation processor security flow", () => {
           producto: "cupcakes"
         }
       ],
+      trace_ref: "order-lookup:ana:a1",
       detail: "lookup-order executed (provider=gws, attempt=1)"
     }));
 

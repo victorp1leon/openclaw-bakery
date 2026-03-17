@@ -95,6 +95,9 @@ logger.info(
           spreadsheetIdConfigured: Boolean(appConfig.orderTool.recipes.gws.spreadsheetId),
           rangeConfigured: Boolean(appConfig.orderTool.recipes.gws.range)
         }
+      },
+      lookup: {
+        limit: appConfig.orderTool.lookup.limit
       }
     },
     inventory_consume: {
@@ -199,7 +202,8 @@ const executeOrderReport = createReportOrdersTool({
   gwsRange: appConfig.orderTool.sheets.gws.range,
   timeoutMs: appConfig.orderTool.sheets.timeoutMs,
   maxRetries: appConfig.orderTool.sheets.maxRetries,
-  timezone: appConfig.timezone
+  timezone: appConfig.timezone,
+  limit: appConfig.orderTool.lookup.limit
 });
 
 const executeOrderLookup = createLookupOrderTool({

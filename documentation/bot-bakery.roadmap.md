@@ -234,7 +234,7 @@ Current coverage (status):
 - Security baseline covered: allowlist, dedupe/idempotency, per-chat rate limiting with burst block.
 - `order.create`: end-to-end completed (Trello + Sheets) with live smoke validated.
 - `report.orders` v3: queries by dia/semana/mes/año (including explicit date and month references) reading Google Sheets (`Pedidos`) via `gws`.
-- `order.lookup` v1: read-only query by folio/nombre/producto over Google Sheets (`Pedidos`) via `gws`.
+- `order.lookup` v1: consulta read-only por `folio|operation_id|nombre|producto` sobre Google Sheets (`Pedidos`) via `gws`, con prioridad por match exacto de id, limite configurable (default 10) y `trace_ref` visible en respuestas.
 - `order.status` v1: read-only query with `estado_pago` and derived `estado_operativo` (`programado|hoy|atrasado|cancelado`) over Google Sheets (`Pedidos`) via `gws`.
 - `order.update` v1: mutation by `folio|operation_id_ref` over Google Sheets (`Pedidos`) via `gws` with confirm flow, patch validation, and audit tag in `notas`.
 - `order.cancel` v1: mutación por `folio|operation_id_ref` en `Pedidos` via `gws` con marker `[CANCELADO]`, no-op idempotente explícito cuando ya estaba cancelado, soporte de búsqueda por cliente solo con coincidencia única cuando falta referencia, bloqueo para estados terminales (`entregado|completado`) y rollback Trello+Sheets ante fallo parcial.

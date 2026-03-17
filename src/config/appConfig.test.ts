@@ -46,6 +46,7 @@ describe("appConfig", () => {
     expect(config.orderTool.recipes.gws.commandArgs).toEqual([]);
     expect(config.orderTool.recipes.gws.spreadsheetId).toBeUndefined();
     expect(config.orderTool.recipes.gws.range).toBe("CatalogoRecetas!A:F");
+    expect(config.orderTool.lookup.limit).toBe(10);
     expect(config.inventoryConsume.enabled).toBe(false);
     expect(config.inventoryConsume.allowNegativeStock).toBe(false);
     expect(config.inventoryConsume.recipeSource).toBe("gws");
@@ -167,7 +168,8 @@ describe("appConfig", () => {
       ORDER_RECIPES_GWS_SPREADSHEET_ID: " recipes-sheet-id ",
       ORDER_RECIPES_GWS_RANGE: " CatalogoRecetas!A:F ",
       ORDER_RECIPES_TIMEOUT_MS: "9400",
-      ORDER_RECIPES_MAX_RETRIES: "7"
+      ORDER_RECIPES_MAX_RETRIES: "7",
+      ORDER_LOOKUP_LIMIT: "15"
     } as NodeJS.ProcessEnv);
 
     expect(config.orderTool.trello.dryRun).toBe(false);
@@ -196,6 +198,7 @@ describe("appConfig", () => {
     expect(config.orderTool.recipes.gws.commandArgs).toEqual(["auth", "recipes-token"]);
     expect(config.orderTool.recipes.gws.spreadsheetId).toBe("recipes-sheet-id");
     expect(config.orderTool.recipes.gws.range).toBe("CatalogoRecetas!A:F");
+    expect(config.orderTool.lookup.limit).toBe(15);
   });
 
   it("uses order sheets defaults for recipes connector when recipe vars are missing", () => {

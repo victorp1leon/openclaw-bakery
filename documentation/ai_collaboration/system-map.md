@@ -52,7 +52,7 @@ Last Updated: 2026-03-17
 2. `pedido`: mensaje -> parse/validacion -> confirmacion -> Trello + Sheets -> persistencia/idempotencia.
 3. `web`: mensaje -> parse/validacion -> confirmacion -> generacion/publicacion -> registro operativo.
 4. `report.orders`: consulta (`dia/semana/mes/año`, incluyendo fechas/meses explicitos) -> lectura Sheets (`gws`) -> respuesta resumida (sin confirmacion ni mutacion).
-5. `order.lookup`: consulta por folio/nombre/producto -> lectura Sheets (`gws`) -> respuesta resumida (sin confirmacion ni mutacion).
+5. `order.lookup`: consulta por `folio|operation_id|nombre|producto` -> lectura Sheets (`gws`) con prioridad exact-id + limite configurable (default 10) -> respuesta resumida read-only con `trace_ref` (sin confirmacion ni mutacion).
 6. `order.status`: consulta de estado operativo/pago -> lectura Sheets (`gws`) -> respuesta resumida (sin confirmacion ni mutacion).
 7. `order.update`: mutacion por referencia -> confirmacion -> sync Trello + Sheets (`gws`) con rollback en fallos parciales -> persistencia/idempotencia.
 8. `order.cancel`: mutacion de cancelacion (marker `[CANCELADO]` + `estado_pedido=cancelado`) -> confirmacion -> resolver referencia (`folio|operation_id`, o lookup por cliente con match unico) -> mover tarjeta Trello a cancelados + escritura Sheets (`gws`) con rollback en fallos parciales -> no-op idempotente visible si ya estaba cancelado y `Ref` en fallos -> persistencia/idempotencia.

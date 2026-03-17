@@ -10,6 +10,7 @@ Estas reglas complementan `AGENTS.md` para acelerar desarrollo y reducir regresi
 - `intent-skill-coverage-gate.md`: cobertura obligatoria entre intents activos y skills funcionales en `skills/`.
 - `secrets-never-commit.md`: manejo seguro de secretos y staging.
 - `approval-keyword-gate.md`: implementar o commitear solo con confirmacion explicita que incluya `apruebo`.
+- `read-only-trace-ref-standard.md`: estandar obligatorio de `Ref/trace_ref` para intents read-only (exito/no-encontrado/falla controlada).
 
 ## Usage
 1. Aplicar estas reglas por defecto en cambios de bot/runtime.

@@ -20,6 +20,7 @@ export type OrderLookupResult = {
   timezone: string;
   total: number;
   orders: OrderLookupItem[];
+  trace_ref: string;
   detail: string;
 };
 
@@ -41,10 +42,77 @@ type ParsedOrderRow = OrderLookupItem & {
   _matchKey: string;
 };
 
+type LookupQueryContext = {
+  normalized: string;
+  exactId?: string;
+  tokens: string[];
+};
+
 function normalizeForMatch(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
+const LOOKUP_STOPWORDS = new Set([
+  "pedido",
+  "pedidos",
+  "consulta",
+  "consultar",
+  "buscar",
+  "busca",
+  "ver",
+  "folio",
+  "id",
+  "operation_id",
+  "operacion",
+  "estado",
+  "estatus",
+  "status",
+  "de",
+  "del",
+  "para",
+  "por",
+  "el",
+  "la",
+  "los",
+  "las"
+]);
+
+function buildLookupQueryContext(query: string): LookupQueryContext {
+  const normalized = normalizeForMatch(query);
+  if (normalized.length < 2) {
+    throw new Error("order_lookup_query_invalid");
+  }
+
+  const compact = normalized.replace(/\s+/g, " ");
+  const exactId = /^[a-z0-9][a-z0-9_-]{2,}$/.test(compact) ? compact : undefined;
+  const tokens = compact.split(/\s+/).filter((token) => token.length >= 2 && /[a-z0-9]/.test(token));
+  const hasMeaningfulToken = tokens.some((token) => !LOOKUP_STOPWORDS.has(token));
+
+  if (!exactId && !hasMeaningfulToken) {
+    throw new Error("order_lookup_query_invalid");
+  }
+
+  return {
+    normalized: compact,
+    exactId,
+    tokens
+  };
+}
+
+function isExactIdMatch(row: ParsedOrderRow, exactId: string | undefined): boolean {
+  if (!exactId) return false;
+  const folio = normalizeForMatch(row.folio);
+  const operationId = normalizeForMatch(row.operation_id ?? "");
+  return folio === exactId || operationId === exactId;
+}
+
+function buildTraceRef(args: { query: string; attempt: number }): string {
+  const safeQuery = normalizeForMatch(args.query)
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 24) || "query";
+  return `order-lookup:${safeQuery}:a${args.attempt}`;
+}
 
 function toNumberMaybe(value: string | undefined): number | undefined {
   if (!value) return undefined;
@@ -127,21 +195,17 @@ function mapRows(rows: string[][], timezone: string): ParsedOrderRow[] {
   }).filter((row) => row.fecha_hora_entrega && row.nombre_cliente && row.producto);
 }
 
-function matchesQuery(row: ParsedOrderRow, query: string): boolean {
-  const q = normalizeForMatch(query);
-  if (!q || q.length < 2) return false;
-
-  const folio = normalizeForMatch(row.folio);
-  const operationId = normalizeForMatch(row.operation_id ?? "");
-  if (folio === q || operationId === q) return true;
-
-  const tokens = q.split(/\s+/).filter((token) => token.length >= 2);
-  if (tokens.length === 0) return false;
-
-  return tokens.every((token) => row._matchKey.includes(token));
+function matchesQuery(row: ParsedOrderRow, query: LookupQueryContext): boolean {
+  if (isExactIdMatch(row, query.exactId)) return true;
+  if (query.tokens.length === 0) return false;
+  return query.tokens.every((token) => row._matchKey.includes(token));
 }
 
-function sortRows(a: ParsedOrderRow, b: ParsedOrderRow): number {
+function sortRows(a: ParsedOrderRow, b: ParsedOrderRow, query: LookupQueryContext): number {
+  const exactA = isExactIdMatch(a, query.exactId) ? 0 : 1;
+  const exactB = isExactIdMatch(b, query.exactId) ? 0 : 1;
+  if (exactA !== exactB) return exactA - exactB;
+
   const keyA = a._dateKey ?? "0000-01-01";
   const keyB = b._dateKey ?? "0000-01-01";
   if (keyA !== keyB) return keyB.localeCompare(keyA);
@@ -161,7 +225,7 @@ export function createLookupOrderTool(config: LookupOrderToolConfig = {}) {
     ? Math.trunc(config.retryBackoffMs!)
     : 150;
   const timezone = config.timezone?.trim() || "America/Mexico_City";
-  const limit = Number.isFinite(config.limit) && (config.limit ?? -1) > 0 ? Math.trunc(config.limit!) : 20;
+  const limit = Number.isFinite(config.limit) && (config.limit ?? -1) > 0 ? Math.trunc(config.limit!) : 10;
   const gwsRunner = config.gwsRunner ?? runGwsCommand;
 
   return async function lookupOrder(args: {
@@ -170,9 +234,8 @@ export function createLookupOrderTool(config: LookupOrderToolConfig = {}) {
     limit?: number;
   }): Promise<OrderLookupResult> {
     const query = args.query.trim();
-    if (query.length < 2) {
-      throw new Error("order_lookup_query_invalid");
-    }
+    const queryContext = buildLookupQueryContext(query);
+
     if (!gwsSpreadsheetId) {
       throw new Error("order_lookup_gws_spreadsheet_id_missing");
     }
@@ -197,17 +260,20 @@ export function createLookupOrderTool(config: LookupOrderToolConfig = {}) {
 
     const parsedRows = mapRows(readResult.rows, timezone);
     const maxRows = Number.isFinite(args.limit) && (args.limit ?? 0) > 0 ? Math.trunc(args.limit!) : limit;
-    const filtered = parsedRows
-      .filter((row) => matchesQuery(row, query))
-      .sort(sortRows)
+    const matchedRows = parsedRows
+      .filter((row) => matchesQuery(row, queryContext))
+      .sort((a, b) => sortRows(a, b, queryContext));
+
+    const filtered = matchedRows
       .slice(0, maxRows)
       .map(({ _dateKey: _ignoredDateKey, _matchKey: _ignoredMatchKey, ...row }) => row);
 
     return {
       query,
       timezone,
-      total: filtered.length,
+      total: matchedRows.length,
       orders: filtered,
+      trace_ref: buildTraceRef({ query: queryContext.normalized, attempt: readResult.attempt }),
       detail: `lookup-order executed (provider=gws, attempt=${readResult.attempt})`
     };
   };

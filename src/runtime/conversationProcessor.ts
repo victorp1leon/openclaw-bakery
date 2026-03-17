@@ -1032,20 +1032,20 @@ function formatOrderReportReply(report: OrderReportResult): string {
 
 function formatOrderLookupReply(result: OrderLookupResult): string {
   if (result.total === 0) {
-    return `No encontré pedidos para "${result.query}".`;
+    return `No encontré pedidos para "${result.query}". Prueba con folio, operation_id o nombre del cliente.\nRef: ${result.trace_ref}`;
   }
 
-  const maxRows = 10;
-  const shown = result.orders.slice(0, maxRows);
+  const shown = result.orders;
   const lines = shown.map((order, idx) => {
     const qty = order.cantidad != null ? `x${order.cantidad}` : "x?";
     const total = order.total != null ? `${order.total}${order.moneda ? ` ${order.moneda}` : ""}` : "-";
     const payment = order.estado_pago ?? "-";
-    return `${idx + 1}. ${order.folio || "-"} | ${order.fecha_hora_entrega} | ${order.nombre_cliente} | ${order.producto} ${qty} | ${payment} | ${total}`;
+    const operationId = order.operation_id ?? "-";
+    return `${idx + 1}. ${order.folio || "-"} | ${operationId} | ${order.fecha_hora_entrega} | ${order.nombre_cliente} | ${order.producto} ${qty} | ${payment} | ${total}`;
   });
 
   const extra = result.total > shown.length ? `\n... y ${result.total - shown.length} más` : "";
-  return `Pedidos encontrados para "${result.query}" (${result.total}):\n${lines.join("\n")}${extra}`;
+  return `Pedidos encontrados para "${result.query}" (${result.total}):\n${lines.join("\n")}${extra}\nRef: ${result.trace_ref}`;
 }
 
 function formatOrderStatusReply(result: OrderStatusResult): string {
@@ -2525,13 +2525,17 @@ export function createConversationProcessor(deps: ProcessorDeps) {
               strict_mode,
               intent: "order.lookup",
               intent_source: "fallback",
-              detail: `query=${lookup.query};total=${lookup.total}`
+              detail: `query=${lookup.query};total=${lookup.total};trace_ref=${lookup.trace_ref}`
             });
 
             clearPending(msg.chat_id);
             return [formatOrderLookupReply(lookup)];
           } catch (err) {
             const safeDetail = err instanceof Error ? err.message : String(err);
+            if (safeDetail.includes("order_lookup_query_invalid")) {
+              return [copy.askFor("order_lookup_query")];
+            }
+            const traceRef = `order-lookup:${newOperationId()}`;
 
             deps.onTrace?.({
               event: "order_lookup_failed",
@@ -2539,11 +2543,11 @@ export function createConversationProcessor(deps: ProcessorDeps) {
               strict_mode,
               intent: "order.lookup",
               intent_source: "fallback",
-              detail: safeDetail
+              detail: `${safeDetail};ref=${traceRef}`
             });
 
             clearPending(msg.chat_id);
-            return ["No pude consultar ese pedido en este momento. Intenta de nuevo en unos minutos."];
+            return [`No pude consultar ese pedido en este momento. Ref: ${traceRef}`];
           }
         }
 
@@ -3511,12 +3515,16 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           strict_mode,
           intent: "order.lookup",
           intent_source: "fallback",
-          detail: `query=${lookup.query};total=${lookup.total}`
+          detail: `query=${lookup.query};total=${lookup.total};trace_ref=${lookup.trace_ref}`
         });
 
         return [formatOrderLookupReply(lookup)];
       } catch (err) {
         const safeDetail = err instanceof Error ? err.message : String(err);
+        if (safeDetail.includes("order_lookup_query_invalid")) {
+          return [copy.askFor("order_lookup_query")];
+        }
+        const traceRef = `order-lookup:${newOperationId()}`;
 
         deps.onTrace?.({
           event: "order_lookup_failed",
@@ -3524,10 +3532,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           strict_mode,
           intent: "order.lookup",
           intent_source: "fallback",
-          detail: safeDetail
+          detail: `${safeDetail};ref=${traceRef}`
         });
 
-        return ["No pude consultar ese pedido en este momento. Intenta de nuevo en unos minutos."];
+        return [`No pude consultar ese pedido en este momento. Ref: ${traceRef}`];
       }
     }
 

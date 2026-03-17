@@ -1,7 +1,7 @@
 # Bot Bakery Configuration Matrix
 
 Status: MVP
-Last Updated: 2026-03-13
+Last Updated: 2026-03-17
 
 This matrix documents environment variables, defaults, requiredness, and runtime impact.
 
@@ -52,6 +52,7 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 | `ORDER_SHEETS_GWS_VALUE_INPUT_OPTION` | `USER_ENTERED` | No | order Sheets adapter | Sheets `valueInputOption` (`USER_ENTERED` or `RAW`). |
 | `ORDER_SHEETS_TIMEOUT_MS` | `5000` | No | order Sheets adapter | HTTP timeout per order Sheets request attempt. |
 | `ORDER_SHEETS_MAX_RETRIES` | `2` | No | order Sheets adapter | Bounded retry count for transient order Sheets errors. |
+| `ORDER_LOOKUP_LIMIT` | `10` | No | order lookup tool (`order.lookup`) | Max rows returned in `orders[]` preview for lookup replies; `total` still reflects full matches before truncation. |
 | `ORDER_RECIPES_SOURCE` | `inline` | No | shopping list tool | Source for recipe profiles used by `shopping.list.generate`: `inline` or `gws`. |
 | `ORDER_RECIPES_GWS_COMMAND` | fallback `ORDER_SHEETS_GWS_COMMAND` | No | shopping list tool | Binary used for recipe catalog reads when `ORDER_RECIPES_SOURCE=gws`. |
 | `ORDER_RECIPES_GWS_COMMAND_ARGS` | fallback `ORDER_SHEETS_GWS_COMMAND_ARGS` | No | shopping list tool | Comma-separated prefix args injected before Sheets read commands for recipes catalog. |
@@ -258,6 +259,7 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 - Generic schema bootstrap (`sheets:tabs:init:schema`) provides a manifest-driven path for future tabs using `scripts/sheets/schemas/*.tabs.json`.
 - Generic tabs schema validator (`sheets:tabs:validate:schema`) catches malformed manifest files (missing headers/tabs, duplicate keys/names, invalid row shapes/placeholders) before bootstrap.
 - `report.orders` reads Google Sheets via `gws` (`values.get`) using `ORDER_SHEETS_GWS_SPREADSHEET_ID` and a read range derived from `ORDER_SHEETS_GWS_RANGE` (`Pedidos!A1` -> `Pedidos!A:U`), preferring `fecha_hora_entrega_iso` for filtering when that column exists.
+- `order.lookup` reads `Pedidos` via `gws` with the same spreadsheet/range base config and caps preview rows with `ORDER_LOOKUP_LIMIT` (default 10).
 - `shopping.list.generate` reads orders from `Pedidos` via `gws` and resolves recipe profiles from `ORDER_RECIPES_SOURCE`:
   - `inline`: built-in defaults for smoke/mock.
   - `gws`: recipe rows from `CatalogoRecetas` (`ORDER_RECIPES_GWS_RANGE`, default `CatalogoRecetas!A:F`).

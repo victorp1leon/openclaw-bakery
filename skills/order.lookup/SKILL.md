@@ -28,14 +28,16 @@ Consulta pedidos existentes desde lenguaje natural y responde resultados en modo
 ## Output Contract
 - Respuesta textual resumida con:
   - coincidencias encontradas
-  - datos minimos por pedido (folio, fecha, cliente, producto, estado pago, total)
-- Si no hay coincidencias, responder sin error y de forma deterministica.
+  - datos minimos por pedido (`folio`, `operation_id`, fecha, cliente, producto, cantidad, estado pago, total)
+  - `Ref: <trace_ref>` visible para soporte
+- Si no hay coincidencias, responder sin error, con sugerencia de refinamiento (folio/operation_id/nombre) y `Ref`.
 
 ## Workflow
 1. Detectar intencion de consulta de pedido.
 2. Extraer `query` de lookup (folio/id/nombre/producto).
 3. Ejecutar lectura read-only en fuente `Pedidos`.
 4. Formatear respuesta breve y trazable.
+5. Si hay mas coincidencias que el limite configurado, mostrar vista truncada y `... y N más`.
 
 ## Safety Constraints
 - Nunca ejecutar operaciones de escritura.
