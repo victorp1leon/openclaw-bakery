@@ -654,6 +654,20 @@ function detectOrderStatusQuery(text: string): string | undefined {
   return undefined;
 }
 
+function detectOrderStatusRequestWithoutQuery(text: string): boolean {
+  const normalized = normalizeForMatch(text);
+  const hasOrderWord = /\bpedidos?\b/.test(normalized);
+  if (!hasOrderWord) return false;
+
+  const hasStatusHint = /\b(estado|estatus|status)\b/.test(normalized);
+  if (!hasStatusHint) return false;
+
+  const hasPeriodHint = /\b(hoy|manana|semana|mes|ano)\b/.test(normalized) || /\b\d{1,2}\s+de\s+[a-z]+\b/.test(normalized);
+  if (hasPeriodHint) return false;
+
+  return detectOrderStatusQuery(text) == null;
+}
+
 function extractOrderCancelLookupQuery(text: string): string | undefined {
   const normalized = normalizeForMatch(text);
   const hasOrderWord = /\bpedidos?\b/.test(normalized);
@@ -1096,7 +1110,7 @@ function formatOrderLookupReply(result: OrderLookupResult): string {
 
 function formatOrderStatusReply(result: OrderStatusResult): string {
   if (result.total === 0) {
-    return `No encontré el estado para "${result.query}".`;
+    return `No encontré el estado para "${result.query}". Prueba con folio, operation_id o nombre del cliente.\nRef: ${result.trace_ref}`;
   }
 
   const maxRows = 10;
@@ -1104,11 +1118,12 @@ function formatOrderStatusReply(result: OrderStatusResult): string {
   const lines = shown.map((order, idx) => {
     const payment = order.estado_pago ?? "-";
     const total = order.total != null ? `${order.total}${order.moneda ? ` ${order.moneda}` : ""}` : "-";
-    return `${idx + 1}. ${order.folio || "-"} | ${order.fecha_hora_entrega} | ${order.nombre_cliente} | ${order.producto} | pago:${payment} | estado:${order.estado_operativo} | ${total}`;
+    const operationId = order.operation_id ?? "-";
+    return `${idx + 1}. ${order.folio || "-"} | ${operationId} | ${order.fecha_hora_entrega} | ${order.nombre_cliente} | ${order.producto} | pago:${payment} | estado:${order.estado_operativo} | ${total}`;
   });
 
-  const extra = result.total > shown.length ? `\n... y ${result.total - shown.length} más` : "";
-  return `Estado de pedidos para "${result.query}" (${result.total}):\n${lines.join("\n")}${extra}`;
+  const extra = result.total > shown.length ? `\n... y ${result.total - shown.length} más. Puedes refinar con folio u operation_id.` : "";
+  return `Estado de pedidos para "${result.query}" (${result.total}):\n${lines.join("\n")}${extra}\nRef: ${result.trace_ref}`;
 }
 
 function formatShoppingListReply(result: ShoppingListResult): string {
@@ -2642,6 +2657,50 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           }
         }
 
+        if (st.pending.action.intent === "order.status") {
+          const query = msg.text.trim();
+          if (query.length < 2) {
+            return [copy.askFor("order_status_query")];
+          }
+
+          try {
+            const status = await executeOrderStatusFn({
+              chat_id: msg.chat_id,
+              query
+            });
+
+            deps.onTrace?.({
+              event: "order_status_succeeded",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "order.status",
+              intent_source: "fallback",
+              detail: `query=${status.query};total=${status.total};trace_ref=${status.trace_ref}`
+            });
+
+            clearPending(msg.chat_id);
+            return [formatOrderStatusReply(status)];
+          } catch (err) {
+            const safeDetail = err instanceof Error ? err.message : String(err);
+            if (safeDetail.includes("order_status_query_invalid")) {
+              return [copy.askFor("order_status_query")];
+            }
+            const traceRef = `order-status:${newOperationId()}`;
+
+            deps.onTrace?.({
+              event: "order_status_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "order.status",
+              intent_source: "fallback",
+              detail: `${safeDetail};ref=${traceRef}`
+            });
+
+            clearPending(msg.chat_id);
+            return [`No pude consultar el estado de ese pedido en este momento. Ref: ${traceRef}`];
+          }
+        }
+
         if (st.pending.action.intent === "order.cancel") {
           const payload = isObjectRecord(st.pending.action.payload) ? { ...st.pending.action.payload } : {};
           const reference = isObjectRecord(payload.reference) ? { ...payload.reference } : {};
@@ -3436,7 +3495,25 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     const lookupQuery = detectOrderLookupQuery(msg.text);
     const lookupNeedsQuery = detectOrderLookupRequestWithoutQuery(msg.text);
     const statusQuery = detectOrderStatusQuery(msg.text);
+    const statusNeedsQuery = detectOrderStatusRequestWithoutQuery(msg.text);
     const quoteQuery = detectQuoteOrderQuery(msg.text);
+    if (statusNeedsQuery) {
+      const operation_id = newOperationId();
+      setState(msg.chat_id, {
+        pending: {
+          operation_id,
+          idempotency_key: operation_id,
+          action: {
+            intent: "order.status",
+            payload: {}
+          },
+          missing: ["order_status_query"],
+          asked: "order_status_query"
+        }
+      });
+      return [copy.askFor("order_status_query")];
+    }
+
     if (lookupNeedsQuery) {
       const operation_id = newOperationId();
       setState(msg.chat_id, {
@@ -3467,12 +3544,16 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           strict_mode,
           intent: "order.status",
           intent_source: "fallback",
-          detail: `query=${status.query};total=${status.total}`
+          detail: `query=${status.query};total=${status.total};trace_ref=${status.trace_ref}`
         });
 
         return [formatOrderStatusReply(status)];
       } catch (err) {
         const safeDetail = err instanceof Error ? err.message : String(err);
+        if (safeDetail.includes("order_status_query_invalid")) {
+          return [copy.askFor("order_status_query")];
+        }
+        const traceRef = `order-status:${newOperationId()}`;
 
         deps.onTrace?.({
           event: "order_status_failed",
@@ -3480,10 +3561,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           strict_mode,
           intent: "order.status",
           intent_source: "fallback",
-          detail: safeDetail
+          detail: `${safeDetail};ref=${traceRef}`
         });
 
-        return ["No pude consultar el estado de ese pedido en este momento. Intenta de nuevo en unos minutos."];
+        return [`No pude consultar el estado de ese pedido en este momento. Ref: ${traceRef}`];
       }
     }
 

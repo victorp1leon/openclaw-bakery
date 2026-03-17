@@ -53,6 +53,7 @@ const executeOrderStatus = liveMode
             moneda: "MXN"
           }
         ],
+      trace_ref: `order-status:${args.query.replace(/[^a-zA-Z0-9_-]+/g, "-").toLowerCase() || "query"}:a0`,
       detail: "status-smoke mock execution"
     };
   };
@@ -81,7 +82,9 @@ async function main() {
   for (const text of scenarios) {
     const replies = await processor.handleMessage({ chat_id: chatId, text });
     const reply = replies[0] ?? "";
-    const ok = reply.includes("Estado de pedidos para ") || reply.includes("No encontré el estado para ");
+    const ok =
+      (reply.includes("Estado de pedidos para ") || reply.includes("No encontré el estado para ")) &&
+      reply.includes("Ref: ");
 
     console.log(
       JSON.stringify(

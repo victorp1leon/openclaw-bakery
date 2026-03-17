@@ -27,6 +27,7 @@ const FIELD_PROMPTS: Record<string, string> = {
   concepto: "¿Cuál es el concepto? (ej. harina y azúcar)",
   nombre_cliente: "¿Nombre del cliente?",
   order_lookup_query: "¿Me podrías pasar el folio, nombre del cliente o producto para buscar el pedido?",
+  order_status_query: "¿Me compartes folio, operation_id, nombre del cliente o producto para consultar el estado?",
   order_report_period: "¿Qué periodo quieres consultar? Puedes decir: hoy, semana, mes o año.",
   shopping_list_query: "¿Para qué pedido(s) quieres la lista de insumos? Puedes compartir folio, nombre del cliente, producto o periodo.",
   schedule_day_query: "¿Para qué día quieres la agenda? Puedes decir hoy, mañana o una fecha (ej. 2026-03-20).",

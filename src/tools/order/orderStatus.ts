@@ -22,6 +22,7 @@ export type OrderStatusResult = {
   timezone: string;
   total: number;
   orders: OrderStatusItem[];
+  trace_ref: string;
   detail: string;
 };
 
@@ -52,15 +53,81 @@ type ParsedOrderRow = {
   operation_id?: string;
   estado_pedido?: string;
   _dateKey?: string;
+  _deliveryMs?: number;
   _matchKey: string;
 };
 
+type StatusQueryContext = {
+  normalized: string;
+  exactId?: string;
+  tokens: string[];
+};
+
 const DATE_KEY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const STATUS_STOPWORDS = new Set([
+  "pedido",
+  "pedidos",
+  "estado",
+  "estatus",
+  "status",
+  "consulta",
+  "consultar",
+  "buscar",
+  "busca",
+  "de",
+  "del",
+  "para",
+  "por",
+  "folio",
+  "id",
+  "operation_id",
+  "operacion",
+  "el",
+  "la",
+  "los",
+  "las"
+]);
 
 function normalizeForMatch(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
+function buildStatusQueryContext(query: string): StatusQueryContext {
+  const normalized = normalizeForMatch(query);
+  if (normalized.length < 2) {
+    throw new Error("order_status_query_invalid");
+  }
+
+  const compact = normalized.replace(/\s+/g, " ");
+  const exactId = /^[a-z0-9][a-z0-9_-]{2,}$/.test(compact) ? compact : undefined;
+  const tokens = compact.split(/\s+/).filter((token) => token.length >= 2 && /[a-z0-9]/.test(token));
+  const hasMeaningfulToken = tokens.some((token) => !STATUS_STOPWORDS.has(token));
+
+  if (!exactId && !hasMeaningfulToken) {
+    throw new Error("order_status_query_invalid");
+  }
+
+  return {
+    normalized: compact,
+    exactId,
+    tokens
+  };
+}
+
+function isExactIdMatch(row: ParsedOrderRow, exactId: string | undefined): boolean {
+  if (!exactId) return false;
+  const folio = normalizeForMatch(row.folio);
+  const operationId = normalizeForMatch(row.operation_id ?? "");
+  return folio === exactId || operationId === exactId;
+}
+
+function buildTraceRef(args: { query: string; attempt: number }): string {
+  const safeQuery = normalizeForMatch(args.query)
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 24) || "query";
+  return `order-status:${safeQuery}:a${args.attempt}`;
+}
 
 function toNumberMaybe(value: string | undefined): number | undefined {
   if (!value) return undefined;
@@ -148,6 +215,12 @@ function mapRows(rows: string[][], timezone: string): ParsedOrderRow[] {
     const producto = row[5] ?? "";
     const notas = row[15] || undefined;
     const searchKey = normalizeForMatch(`${folio} ${operation_id ?? ""} ${nombre_cliente} ${producto}`);
+    const deliveryMsRaw = Date.parse(dateSource);
+    const fallbackDate = extractDateKey(dateSource, timezone);
+    const fallbackDateObj = fallbackDate ? dateFromDateKey(fallbackDate) : undefined;
+    const deliveryMs = Number.isFinite(deliveryMsRaw)
+      ? deliveryMsRaw
+      : (fallbackDateObj ? fallbackDateObj.getTime() : undefined);
     return {
       folio,
       fecha_hora_entrega,
@@ -160,24 +233,17 @@ function mapRows(rows: string[][], timezone: string): ParsedOrderRow[] {
       notas,
       operation_id,
       estado_pedido: row[19] || undefined,
-      _dateKey: extractDateKey(dateSource, timezone),
+      _dateKey: fallbackDate,
+      _deliveryMs: deliveryMs,
       _matchKey: searchKey
     };
   }).filter((row) => row.fecha_hora_entrega && row.nombre_cliente && row.producto);
 }
 
-function matchesQuery(row: ParsedOrderRow, query: string): boolean {
-  const q = normalizeForMatch(query);
-  if (!q || q.length < 2) return false;
-
-  const folio = normalizeForMatch(row.folio);
-  const operationId = normalizeForMatch(row.operation_id ?? "");
-  if (folio === q || operationId === q) return true;
-
-  const tokens = q.split(/\s+/).filter((token) => token.length >= 2);
-  if (tokens.length === 0) return false;
-
-  return tokens.every((token) => row._matchKey.includes(token));
+function matchesQuery(row: ParsedOrderRow, query: StatusQueryContext): boolean {
+  if (isExactIdMatch(row, query.exactId)) return true;
+  if (query.tokens.length === 0) return false;
+  return query.tokens.every((token) => row._matchKey.includes(token));
 }
 
 function deriveOperationalStatus(row: ParsedOrderRow, todayDateKey: string): OrderOperationalStatus {
@@ -213,17 +279,25 @@ function distanceToToday(dateKey: string | undefined, todayDateKey: string): num
   return Math.abs(Math.trunc(delta / 86_400_000));
 }
 
-function sortRows(todayDateKey: string) {
+function sortRows(todayDateKey: string, query: StatusQueryContext) {
   return (a: ParsedOrderRow, b: ParsedOrderRow): number => {
+    const exactA = isExactIdMatch(a, query.exactId) ? 0 : 1;
+    const exactB = isExactIdMatch(b, query.exactId) ? 0 : 1;
+    if (exactA !== exactB) return exactA - exactB;
+
+    const msA = a._deliveryMs ?? Number.NEGATIVE_INFINITY;
+    const msB = b._deliveryMs ?? Number.NEGATIVE_INFINITY;
+    if (msA !== msB) return msB - msA;
+
+    const keyA = a._dateKey ?? "0000-01-01";
+    const keyB = b._dateKey ?? "0000-01-01";
+    if (keyA !== keyB) return keyB.localeCompare(keyA);
+
     const distA = distanceToToday(a._dateKey, todayDateKey);
     const distB = distanceToToday(b._dateKey, todayDateKey);
     if (distA !== distB) return distA - distB;
 
-    const keyA = a._dateKey ?? "9999-12-31";
-    const keyB = b._dateKey ?? "9999-12-31";
-    if (keyA !== keyB) return keyA.localeCompare(keyB);
-
-    const dateCmp = a.fecha_hora_entrega.localeCompare(b.fecha_hora_entrega);
+    const dateCmp = b.fecha_hora_entrega.localeCompare(a.fecha_hora_entrega);
     if (dateCmp !== 0) return dateCmp;
     return a.folio.localeCompare(b.folio);
   };
@@ -240,7 +314,7 @@ export function createOrderStatusTool(config: OrderStatusToolConfig = {}) {
     ? Math.trunc(config.retryBackoffMs!)
     : 150;
   const timezone = config.timezone?.trim() || "America/Mexico_City";
-  const limit = Number.isFinite(config.limit) && (config.limit ?? -1) > 0 ? Math.trunc(config.limit!) : 20;
+  const limit = Number.isFinite(config.limit) && (config.limit ?? -1) > 0 ? Math.trunc(config.limit!) : 10;
   const now = config.now ?? (() => new Date());
   const gwsRunner = config.gwsRunner ?? runGwsCommand;
 
@@ -250,9 +324,7 @@ export function createOrderStatusTool(config: OrderStatusToolConfig = {}) {
     limit?: number;
   }): Promise<OrderStatusResult> {
     const query = args.query.trim();
-    if (query.length < 2) {
-      throw new Error("order_status_query_invalid");
-    }
+    const queryContext = buildStatusQueryContext(query);
     if (!gwsSpreadsheetId) {
       throw new Error("order_status_gws_spreadsheet_id_missing");
     }
@@ -279,9 +351,10 @@ export function createOrderStatusTool(config: OrderStatusToolConfig = {}) {
     const parsedRows = mapRows(readResult.rows, timezone);
     const todayDateKey = toDateKeyFromDate(now(), timezone);
     const maxRows = Number.isFinite(args.limit) && (args.limit ?? 0) > 0 ? Math.trunc(args.limit!) : limit;
-    const filtered = parsedRows
-      .filter((row) => matchesQuery(row, query))
-      .sort(sortRows(todayDateKey))
+    const matchedRows = parsedRows
+      .filter((row) => matchesQuery(row, queryContext))
+      .sort(sortRows(todayDateKey, queryContext));
+    const filtered = matchedRows
       .slice(0, maxRows)
       .map((row) => ({
         folio: row.folio,
@@ -300,8 +373,9 @@ export function createOrderStatusTool(config: OrderStatusToolConfig = {}) {
     return {
       query,
       timezone,
-      total: filtered.length,
+      total: matchedRows.length,
       orders: filtered,
+      trace_ref: buildTraceRef({ query: queryContext.normalized, attempt: readResult.attempt }),
       detail: `order-status executed (provider=gws, attempt=${readResult.attempt})`
     };
   };

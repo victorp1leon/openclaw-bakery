@@ -29,14 +29,16 @@ Consulta el estado de pedidos existentes desde lenguaje natural y responde en mo
 - Respuesta textual resumida con:
   - coincidencias encontradas
   - estado de pago y estado operativo (`programado|hoy|atrasado|cancelado`)
-  - datos minimos por pedido (folio, fecha, cliente, producto, total)
+  - datos minimos por pedido (folio, operation_id, fecha, cliente, producto, total)
+  - `Ref` visible para soporte en exito/no-encontrado/falla.
+- Si hay muchas coincidencias, mostrar maximo 10 y sugerir refinar por `folio|operation_id`.
 - Si no hay coincidencias, responder sin error y de forma deterministica.
 
 ## Workflow
 1. Detectar intencion de estado de pedido.
-2. Extraer `query` (folio/id/nombre/producto).
+2. Extraer `query` (folio/id/nombre/producto); si falta, pedir aclaracion explicita.
 3. Ejecutar lectura read-only en fuente `Pedidos`.
-4. Derivar estado operativo y formatear respuesta breve y trazable.
+4. Derivar estado operativo y formatear respuesta breve, trazable y con `Ref`.
 
 ## Safety Constraints
 - Nunca ejecutar operaciones de escritura.

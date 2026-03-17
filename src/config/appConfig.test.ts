@@ -47,6 +47,7 @@ describe("appConfig", () => {
     expect(config.orderTool.recipes.gws.spreadsheetId).toBeUndefined();
     expect(config.orderTool.recipes.gws.range).toBe("CatalogoRecetas!A:F");
     expect(config.orderTool.lookup.limit).toBe(10);
+    expect(config.orderTool.status.limit).toBe(10);
     expect(config.orderTool.report.limit).toBe(10);
     expect(config.inventoryConsume.enabled).toBe(false);
     expect(config.inventoryConsume.allowNegativeStock).toBe(false);
@@ -171,6 +172,7 @@ describe("appConfig", () => {
       ORDER_RECIPES_TIMEOUT_MS: "9400",
       ORDER_RECIPES_MAX_RETRIES: "7",
       ORDER_LOOKUP_LIMIT: "15",
+      ORDER_STATUS_LIMIT: "11",
       ORDER_REPORT_LIMIT: "12"
     } as NodeJS.ProcessEnv);
 
@@ -201,6 +203,7 @@ describe("appConfig", () => {
     expect(config.orderTool.recipes.gws.spreadsheetId).toBe("recipes-sheet-id");
     expect(config.orderTool.recipes.gws.range).toBe("CatalogoRecetas!A:F");
     expect(config.orderTool.lookup.limit).toBe(15);
+    expect(config.orderTool.status.limit).toBe(11);
     expect(config.orderTool.report.limit).toBe(12);
   });
 

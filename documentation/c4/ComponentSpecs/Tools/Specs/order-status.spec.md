@@ -1,7 +1,7 @@
 # Spec - order-status (Phase 3 lifecycle query)
 
 Status: MVP
-Last Updated: 2026-03-09
+Last Updated: 2026-03-17
 
 ## Objective
 Return read-only status for an order using Sheets `Pedidos` data.
@@ -14,8 +14,9 @@ This adapter must not mutate orders and must not require confirmation flow.
 - Google Workspace CLI config:
   - command + args
   - spreadsheet id
-  - read range (`Pedidos!A:R`)
+  - read range (`Pedidos!A:U`)
   - timeout/retries
+  - `limit` configurable via runtime (`ORDER_STATUS_LIMIT`, default 10)
 
 ## Outputs
 - Structured status result:
@@ -30,6 +31,7 @@ This adapter must not mutate orders and must not require confirmation flow.
     - `estado_pago`
     - `estado_operativo` (`programado|hoy|atrasado|cancelado`)
     - `notas`
+  - `trace_ref` (visible support reference)
   - `detail`
 - Deterministic errors (`order_status_*`) on validation/config/provider failures.
 
@@ -39,11 +41,15 @@ This adapter must not mutate orders and must not require confirmation flow.
 - Support header row in first line and ignore it in mapping.
 - Matching must be accent-insensitive and case-insensitive.
 - Derive `estado_operativo`:
+  - `cancelado` if `estado_pedido=cancelado` (highest priority)
   - `cancelado` if `notas` contains marker `[CANCELADO]`
   - `hoy` if delivery date equals current local date
   - `atrasado` if delivery date is before current local date
   - `programado` otherwise
-- Return rows sorted by delivery datetime (nearest first).
+- Ranking:
+  - exact `folio|operation_id` matches first
+  - then recency (most recent delivery first)
+- `total` must represent full matches before truncation and `orders[]` must respect configured limit.
 - Never include secrets/tokens in user-facing errors.
 
 ## Error Handling Classification

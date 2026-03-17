@@ -53,6 +53,7 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 | `ORDER_SHEETS_TIMEOUT_MS` | `5000` | No | order Sheets adapter | HTTP timeout per order Sheets request attempt. |
 | `ORDER_SHEETS_MAX_RETRIES` | `2` | No | order Sheets adapter | Bounded retry count for transient order Sheets errors. |
 | `ORDER_LOOKUP_LIMIT` | `10` | No | order lookup tool (`order.lookup`) | Max rows returned in `orders[]` preview for lookup replies; `total` still reflects full matches before truncation. |
+| `ORDER_STATUS_LIMIT` | `10` | No | order status tool (`order.status`) | Max rows returned in `orders[]` preview for status replies; `total` still reflects full matches before truncation. |
 | `ORDER_REPORT_LIMIT` | `10` | No | order report tool (`report.orders`) | Max rows returned in `orders[]` preview for report replies; `total` remains full count of valid rows for the selected period. |
 | `ORDER_RECIPES_SOURCE` | `inline` | No | shopping list tool | Source for recipe profiles used by `shopping.list.generate`: `inline` or `gws`. |
 | `ORDER_RECIPES_GWS_COMMAND` | fallback `ORDER_SHEETS_GWS_COMMAND` | No | shopping list tool | Binary used for recipe catalog reads when `ORDER_RECIPES_SOURCE=gws`. |

@@ -86,6 +86,9 @@ export type AppConfig = {
     lookup: {
       limit: number;
     };
+    status: {
+      limit: number;
+    };
     report: {
       limit: number;
     };
@@ -189,6 +192,7 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const orderRecipesTimeoutMs = toPositiveInt(env.ORDER_RECIPES_TIMEOUT_MS, orderSheetsTimeoutMs);
   const orderRecipesMaxRetries = toNonNegativeInt(env.ORDER_RECIPES_MAX_RETRIES, orderSheetsMaxRetries);
   const orderLookupLimit = toPositiveInt(env.ORDER_LOOKUP_LIMIT, 10);
+  const orderStatusLimit = toPositiveInt(env.ORDER_STATUS_LIMIT, 10);
   const orderReportLimit = toPositiveInt(env.ORDER_REPORT_LIMIT, 10);
   const inventoryConsumeRecipeSourceRaw = env.INVENTORY_CONSUME_RECIPE_SOURCE?.trim().toLowerCase();
   const inventoryConsumeRecipeSource: RecipeSource = inventoryConsumeRecipeSourceRaw === "inline" || inventoryConsumeRecipeSourceRaw === "gws"
@@ -290,6 +294,9 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       },
       lookup: {
         limit: orderLookupLimit
+      },
+      status: {
+        limit: orderStatusLimit
       },
       report: {
         limit: orderReportLimit

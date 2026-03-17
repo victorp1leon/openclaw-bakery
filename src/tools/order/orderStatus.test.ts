@@ -15,7 +15,7 @@ function okJson(result: unknown) {
 describe("order-status tool", () => {
   it("fails when spreadsheet id is missing", async () => {
     const tool = createOrderStatusTool({
-      gwsRange: "Pedidos!A:R"
+      gwsRange: "Pedidos!A:U"
     });
 
     await expect(
@@ -32,7 +32,7 @@ describe("order-status tool", () => {
     const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: rows }));
     const tool = createOrderStatusTool({
       gwsSpreadsheetId: "sheet-1",
-      gwsRange: "Pedidos!A:R",
+      gwsRange: "Pedidos!A:U",
       timezone: "America/Mexico_City",
       now: () => new Date("2026-03-07T12:00:00.000Z"),
       gwsRunner
@@ -42,6 +42,7 @@ describe("order-status tool", () => {
     expect(result.total).toBe(1);
     expect(result.orders[0]?.folio).toBe("op-abc-1");
     expect(result.orders[0]?.estado_operativo).toBe("hoy");
+    expect(result.trace_ref).toBe("order-status:op-abc-1:a1");
   });
 
   it("returns status for customer query", async () => {
@@ -53,7 +54,7 @@ describe("order-status tool", () => {
     const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: rows }));
     const tool = createOrderStatusTool({
       gwsSpreadsheetId: "sheet-1",
-      gwsRange: "Pedidos!A:R",
+      gwsRange: "Pedidos!A:U",
       timezone: "America/Mexico_City",
       now: () => new Date("2026-03-09T12:00:00.000Z"),
       gwsRunner
@@ -72,7 +73,7 @@ describe("order-status tool", () => {
     const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: rows }));
     const tool = createOrderStatusTool({
       gwsSpreadsheetId: "sheet-1",
-      gwsRange: "Pedidos!A:R",
+      gwsRange: "Pedidos!A:U",
       now: () => new Date("2026-03-09T12:00:00.000Z"),
       gwsRunner
     });
@@ -89,7 +90,7 @@ describe("order-status tool", () => {
     const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: rows }));
     const tool = createOrderStatusTool({
       gwsSpreadsheetId: "sheet-1",
-      gwsRange: "Pedidos!A:R",
+      gwsRange: "Pedidos!A:U",
       now: () => new Date("2026-03-09T12:00:00.000Z"),
       gwsRunner
     });
@@ -102,7 +103,7 @@ describe("order-status tool", () => {
     const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: [] }));
     const tool = createOrderStatusTool({
       gwsSpreadsheetId: "sheet-1",
-      gwsRange: "Pedidos!A:R",
+      gwsRange: "Pedidos!A:U",
       gwsRunner
     });
 
@@ -125,7 +126,7 @@ describe("order-status tool", () => {
 
     const tool = createOrderStatusTool({
       gwsSpreadsheetId: "sheet-1",
-      gwsRange: "Pedidos!A:R",
+      gwsRange: "Pedidos!A:U",
       gwsRunner
     });
 
@@ -141,12 +142,83 @@ describe("order-status tool", () => {
 
     const tool = createOrderStatusTool({
       gwsSpreadsheetId: "sheet-1",
-      gwsRange: "Pedidos!A:R",
+      gwsRange: "Pedidos!A:U",
       gwsRunner
     });
 
     await expect(
       tool({ chat_id: "chat-1", query: "ana" })
     ).rejects.toThrow("order_status_gws_command_unavailable");
+  });
+
+  it("prioritizes exact id matches before recency", async () => {
+    const rows = [
+      ["2026-03-12", "op-new", "2026-03-12 10:00", "Ana", "", "cupcakes", "", "12", "", "", "recoger_en_tienda", "", "pagado", "480", "MXN", "", "chat-1", "operation-1", "2026-03-12T10:00:00"],
+      ["2026-03-01", "op-target", "2026-03-01 10:00", "Ana", "", "pastel", "", "1", "", "", "envio_domicilio", "", "pendiente", "900", "MXN", "", "chat-1", "operation-2", "2026-03-01T10:00:00"]
+    ];
+
+    const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: rows }));
+    const tool = createOrderStatusTool({
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:U",
+      gwsRunner
+    });
+
+    const result = await tool({ chat_id: "chat-1", query: "op-target" });
+    expect(result.total).toBe(1);
+    expect(result.orders[0]?.folio).toBe("op-target");
+  });
+
+  it("keeps full total before truncating by default limit", async () => {
+    const rows: string[][] = [];
+    for (let i = 0; i < 12; i += 1) {
+      const day = String(i + 1).padStart(2, "0");
+      rows.push([
+        `2026-03-${day}`,
+        `op-ana-${i}`,
+        `2026-03-${day} 10:00`,
+        "Ana",
+        "",
+        "cupcakes",
+        "",
+        "12",
+        "",
+        "",
+        "recoger_en_tienda",
+        "",
+        "pagado",
+        "480",
+        "MXN",
+        "",
+        "chat-1",
+        `operation-${i}`,
+        `2026-03-${day}T10:00:00`
+      ]);
+    }
+
+    const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: rows }));
+    const tool = createOrderStatusTool({
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:U",
+      gwsRunner
+    });
+
+    const result = await tool({ chat_id: "chat-1", query: "ana" });
+    expect(result.total).toBe(12);
+    expect(result.orders).toHaveLength(10);
+    expect(result.orders[0]?.folio).toBe("op-ana-11");
+  });
+
+  it("fails for ambiguous stopword-only query", async () => {
+    const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: [] }));
+    const tool = createOrderStatusTool({
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:U",
+      gwsRunner
+    });
+
+    await expect(
+      tool({ chat_id: "chat-1", query: "estado del pedido" })
+    ).rejects.toThrow("order_status_query_invalid");
   });
 });

@@ -188,6 +188,7 @@ let createConversationProcessor: (args: {
       notas?: string;
       operation_id?: string;
     }>;
+    trace_ref: string;
     detail: string;
   }>;
   executeShoppingListFn?: (args: {
@@ -1248,6 +1249,7 @@ describe("conversation processor security flow", () => {
       orders: [
         {
           folio: "op-xyz-123",
+          operation_id: "status-op-1",
           fecha_hora_entrega: "2026-03-08 10:00",
           nombre_cliente: "Ana",
           producto: "pastel",
@@ -1257,6 +1259,7 @@ describe("conversation processor security flow", () => {
           moneda: "MXN"
         }
       ],
+      trace_ref: "order-status:op-xyz-123:a1",
       detail: "order-status executed (provider=gws, attempt=1)"
     }));
 
@@ -1272,7 +1275,9 @@ describe("conversation processor security flow", () => {
     });
 
     expect(replies[0]).toContain('Estado de pedidos para "op-xyz-123"');
+    expect(replies[0]).toContain("status-op-1");
     expect(replies[0]).toContain("estado:programado");
+    expect(replies[0]).toContain("Ref: order-status:op-xyz-123:a1");
     expect(routeIntentFn).not.toHaveBeenCalled();
     expect(executeOrderStatusFn).toHaveBeenCalledWith({
       chat_id: "chat-status",
@@ -1286,6 +1291,7 @@ describe("conversation processor security flow", () => {
       timezone: "America/Mexico_City",
       total: 0,
       orders: [],
+      trace_ref: "order-status:inexistente:a1",
       detail: "order-status executed (provider=gws, attempt=1)"
     }));
 
@@ -1301,10 +1307,77 @@ describe("conversation processor security flow", () => {
     });
 
     expect(replies[0]).toContain('No encontré el estado para "inexistente"');
+    expect(replies[0]).toContain("Ref: order-status:inexistente:a1");
     expect(executeOrderStatusFn).toHaveBeenCalledWith({
       chat_id: "chat-status-empty",
       query: "inexistente"
     });
+  });
+
+  it("pide dato faltante para consulta de estado y luego responde", async () => {
+    const executeOrderStatusFn = vi.fn(async ({ query }) => ({
+      query,
+      timezone: "America/Mexico_City",
+      total: 1,
+      orders: [
+        {
+          folio: "op-status-2",
+          operation_id: "status-op-2",
+          fecha_hora_entrega: "2026-03-09 11:00",
+          nombre_cliente: "Victor",
+          producto: "cupcakes",
+          estado_pago: "pagado",
+          estado_operativo: "hoy" as const,
+          total: 450,
+          moneda: "MXN"
+        }
+      ],
+      trace_ref: "order-status:victor:a1",
+      detail: "order-status executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-status-missing"]),
+      routeIntentFn: async () => "pedido",
+      executeOrderStatusFn
+    });
+
+    const ask = await processor.handleMessage({
+      chat_id: "chat-status-missing",
+      text: "dime el estado del pedido"
+    });
+    expect(ask[0].toLowerCase()).toContain("operation_id");
+
+    const reply = await processor.handleMessage({
+      chat_id: "chat-status-missing",
+      text: "victor"
+    });
+
+    expect(reply[0]).toContain('Estado de pedidos para "victor"');
+    expect(reply[0]).toContain("Ref: order-status:victor:a1");
+    expect(executeOrderStatusFn).toHaveBeenCalledWith({
+      chat_id: "chat-status-missing",
+      query: "victor"
+    });
+  });
+
+  it("retorna mensaje controlado con ref cuando falla order.status", async () => {
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-status-fail"]),
+      newOperationId: () => "op-order-status-fail",
+      routeIntentFn: async () => "pedido",
+      executeOrderStatusFn: async () => {
+        throw new Error("order_status_gws_failed");
+      }
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-status-fail",
+      text: "estado del pedido de ana"
+    });
+
+    expect(replies[0]).toContain("No pude consultar el estado de ese pedido en este momento.");
+    expect(replies[0]).toContain("Ref: order-status:op-order-status-fail");
   });
 
   it("resuelve quote.order por fallback sin pasar por intent router", async () => {

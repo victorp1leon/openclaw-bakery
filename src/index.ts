@@ -99,6 +99,9 @@ logger.info(
       lookup: {
         limit: appConfig.orderTool.lookup.limit
       },
+      status: {
+        limit: appConfig.orderTool.status.limit
+      },
       report: {
         limit: appConfig.orderTool.report.limit
       }
@@ -216,7 +219,8 @@ const executeOrderLookup = createLookupOrderTool({
   gwsRange: appConfig.orderTool.sheets.gws.range,
   timeoutMs: appConfig.orderTool.sheets.timeoutMs,
   maxRetries: appConfig.orderTool.sheets.maxRetries,
-  timezone: appConfig.timezone
+  timezone: appConfig.timezone,
+  limit: appConfig.orderTool.status.limit
 });
 
 const executeOrderStatus = createOrderStatusTool({

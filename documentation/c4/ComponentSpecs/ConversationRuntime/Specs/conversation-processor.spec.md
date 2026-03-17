@@ -48,6 +48,8 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - `order.lookup` replies must include `Ref` (`trace_ref`) in both success and no-match responses.
 - If `order.lookup` fails at execution time, runtime must return a controlled message with support reference (`Ref: order-lookup:<operation_id>`).
 - For order status queries (e.g. `estado del pedido op-123`), route deterministically to `order-status` without entering confirm flow.
+- If user asks status intent without reference (e.g. `estado del pedido`), runtime must ask for clarification (`folio|operation_id|cliente|producto`) and continue once resolved.
+- `order.status` replies must include `Ref` (`trace_ref`) in success/no-match, and controlled failure with `Ref` when provider fails.
 - For shopping list queries (e.g. `lista de insumos para hoy`, `insumos del pedido op-123`), route deterministically to `shopping-list-generate` without entering confirm flow.
 - For day schedule queries (e.g. `agenda de hoy`, `agenda del 2026-03-20`), route deterministically to `schedule-day-view` without entering confirm flow.
 - When `schedule.day_view` excludes rows due to critical data quality issues (e.g. missing ISO datetime), runtime must still return a partial agenda plus visible `inconsistencias`.
