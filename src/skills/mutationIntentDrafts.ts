@@ -192,6 +192,35 @@ function parseOrderUpdatePatchFromText(text: string): Record<string, unknown> | 
   return Object.keys(patch).length > 0 ? patch : undefined;
 }
 
+export function extractOrderUpdatePatch(text: string): { patch?: Record<string, unknown>; jsonInvalid: boolean } {
+  const inline = parseInlineJsonObject(text.trim());
+  if (inline.ok === false) {
+    return { jsonInvalid: true };
+  }
+
+  let patch: Record<string, unknown> | undefined;
+  if (inline.ok === true) {
+    const payload = inline.value;
+    if (isObjectRecord(payload.patch)) {
+      patch = { ...payload.patch };
+    } else {
+      const filteredEntries = Object.entries(payload).filter(([key]) => ORDER_UPDATE_PATCH_FIELDS.has(key));
+      if (filteredEntries.length > 0) {
+        patch = Object.fromEntries(filteredEntries);
+      }
+    }
+  }
+
+  if (!patch) {
+    patch = parseOrderUpdatePatchFromText(text);
+  }
+
+  return {
+    patch,
+    jsonInvalid: false
+  };
+}
+
 export function parseOrderUpdateRequest(text: string): MutationParseDraft {
   const normalized = normalizeForMatch(text);
   const hasOrderWord = /\bpedidos?\b/.test(normalized);
@@ -222,17 +251,9 @@ export function parseOrderUpdateRequest(text: string): MutationParseDraft {
       reference.operation_id_ref = sanitizeOrderReferenceValue(payload.operation_id_ref);
     }
 
-    if (isObjectRecord(payload.patch)) {
-      patch = { ...payload.patch };
-    } else {
-      const filteredEntries = Object.entries(payload).filter(([key]) => ORDER_UPDATE_PATCH_FIELDS.has(key));
-      if (filteredEntries.length > 0) {
-        patch = Object.fromEntries(filteredEntries);
-      }
-    }
-  }
-
-  if (!patch) {
+    const extracted = extractOrderUpdatePatch(text);
+    patch = extracted.patch;
+  } else {
     patch = parseOrderUpdatePatchFromText(text);
   }
 

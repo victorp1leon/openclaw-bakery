@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  extractOrderUpdatePatch,
   extractOrderReferenceFromText,
   hasOrderReference,
   inventoryOrderRefLabel,
@@ -31,6 +32,21 @@ describe("mutationIntentDrafts", () => {
     expect(draft).toEqual({
       matched: true,
       result: { ok: false, source: "fallback", error: "order_update_reference_missing" }
+    });
+  });
+
+  it("extractOrderUpdatePatch parses natural language patch-only input", () => {
+    const extracted = extractOrderUpdatePatch("cantidad a 7");
+    expect(extracted).toEqual({
+      jsonInvalid: false,
+      patch: { cantidad: 7 }
+    });
+  });
+
+  it("extractOrderUpdatePatch marks invalid inline json", () => {
+    const extracted = extractOrderUpdatePatch('{"patch": invalid}');
+    expect(extracted).toEqual({
+      jsonInvalid: true
     });
   });
 

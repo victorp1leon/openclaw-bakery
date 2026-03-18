@@ -1741,21 +1741,225 @@ describe("conversation processor security flow", () => {
     });
   });
 
-  it("devuelve parse error cuando order.update no incluye patch", async () => {
-    const routeIntentFn = vi.fn(async () => "pedido" as const);
+  it("pide aclaracion cuando order.update no incluye patch y conserva operation_id", async () => {
+    const executeOrderUpdateFn = vi.fn(async ({ operation_id, reference, patch }) => ({
+      ok: true,
+      dry_run: false,
+      operation_id,
+      payload: {
+        reference,
+        patch: patch as Record<string, unknown>,
+        matched_row_index: 12,
+        updated_fields: ["cantidad", "notas"]
+      },
+      detail: "update-order executed (provider=gws, attempt=1)"
+    }));
 
     const processor = createConversationProcessor({
-      allowedChatIds: new Set(["chat-order-update-parse"]),
-      routeIntentFn
+      allowedChatIds: new Set(["chat-order-update-ask-patch"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-order-update-ask-patch",
+      routeIntentFn: async () => "pedido",
+      executeOrderUpdateFn
     });
 
-    const replies = await processor.handleMessage({
-      chat_id: "chat-order-update-parse",
+    const askPatch = await processor.handleMessage({
+      chat_id: "chat-order-update-ask-patch",
       text: "actualiza pedido folio op-xyz-123"
     });
+    expect(askPatch[0]).toContain("¿Qué cambios quieres aplicar al pedido?");
+    expect(getState("chat-order-update-ask-patch").pending?.operation_id).toBe("op-order-update-ask-patch");
 
-    expect(replies[0]).toContain("order_update_patch_missing");
-    expect(routeIntentFn).not.toHaveBeenCalled();
+    const summary = await processor.handleMessage({
+      chat_id: "chat-order-update-ask-patch",
+      text: "cantidad a 7"
+    });
+    expect(summary[0]).toContain("order.update");
+    expect(summary[0]).toContain("op-order-update-ask-patch");
+
+    const done = await processor.handleMessage({
+      chat_id: "chat-order-update-ask-patch",
+      text: "confirmar"
+    });
+    expect(done[0]).toContain("Ejecutado");
+    expect(executeOrderUpdateFn).toHaveBeenCalledWith({
+      operation_id: "op-order-update-ask-patch",
+      chat_id: "chat-order-update-ask-patch",
+      reference: { folio: "op-xyz-123" },
+      patch: { cantidad: 7 },
+      trello_card_id: "trello-dry-run-card"
+    });
+  });
+
+  it("resuelve order.update por cliente cuando hay una sola coincidencia", async () => {
+    const executeOrderLookupFn = vi.fn(async () => ({
+      query: "ana",
+      timezone: "America/Mexico_City",
+      total: 1,
+      orders: [
+        {
+          folio: "op-ana-1",
+          operation_id: "op-create-ana-1",
+          fecha_hora_entrega: "2026-03-12 10:00",
+          nombre_cliente: "Ana",
+          producto: "pastel"
+        }
+      ],
+      trace_ref: "order-lookup:ana:a1",
+      detail: "lookup-order executed (provider=gws, attempt=1)"
+    }));
+    const executeOrderUpdateFn = vi.fn(async ({ operation_id, reference, patch }) => ({
+      ok: true,
+      dry_run: false,
+      operation_id,
+      payload: {
+        reference,
+        patch: patch as Record<string, unknown>,
+        matched_row_index: 6,
+        updated_fields: ["cantidad", "notas"]
+      },
+      detail: "update-order executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-update-lookup-single"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-order-update-lookup-single",
+      routeIntentFn: async () => "pedido",
+      executeOrderLookupFn,
+      executeOrderUpdateFn
+    });
+
+    const summary = await processor.handleMessage({
+      chat_id: "chat-order-update-lookup-single",
+      text: "actualiza pedido de ana, cambia cantidad a 3"
+    });
+    expect(summary[0]).toContain("order.update");
+    expect(summary[0]).toContain("op-ana-1");
+
+    const done = await processor.handleMessage({
+      chat_id: "chat-order-update-lookup-single",
+      text: "confirmar"
+    });
+    expect(done[0]).toContain("Ejecutado");
+    expect(executeOrderLookupFn).toHaveBeenCalledWith({
+      chat_id: "chat-order-update-lookup-single",
+      query: "ana"
+    });
+    expect(executeOrderUpdateFn).toHaveBeenCalledWith({
+      operation_id: "op-order-update-lookup-single",
+      chat_id: "chat-order-update-lookup-single",
+      reference: { folio: "op-ana-1", operation_id_ref: "op-create-ana-1" },
+      patch: { cantidad: 3 },
+      trello_card_id: "trello-dry-run-card"
+    });
+  });
+
+  it("muestra opciones cuando order.update por cliente es ambiguo y permite elegir folio", async () => {
+    const executeOrderLookupFn = vi.fn(async () => ({
+      query: "ana",
+      timezone: "America/Mexico_City",
+      total: 6,
+      orders: [
+        {
+          folio: "op-ana-1",
+          operation_id: "op-create-ana-1",
+          fecha_hora_entrega: "2026-03-12 10:00",
+          nombre_cliente: "Ana G",
+          producto: "pastel"
+        },
+        {
+          folio: "op-ana-2",
+          operation_id: "op-create-ana-2",
+          fecha_hora_entrega: "2026-03-12 12:00",
+          nombre_cliente: "Ana H",
+          producto: "cupcakes"
+        },
+        {
+          folio: "op-ana-3",
+          operation_id: "op-create-ana-3",
+          fecha_hora_entrega: "2026-03-12 13:00",
+          nombre_cliente: "Ana I",
+          producto: "pastel"
+        },
+        {
+          folio: "op-ana-4",
+          operation_id: "op-create-ana-4",
+          fecha_hora_entrega: "2026-03-12 14:00",
+          nombre_cliente: "Ana J",
+          producto: "galletas"
+        },
+        {
+          folio: "op-ana-5",
+          operation_id: "op-create-ana-5",
+          fecha_hora_entrega: "2026-03-12 15:00",
+          nombre_cliente: "Ana K",
+          producto: "pay"
+        },
+        {
+          folio: "op-ana-6",
+          operation_id: "op-create-ana-6",
+          fecha_hora_entrega: "2026-03-12 16:00",
+          nombre_cliente: "Ana L",
+          producto: "pan"
+        }
+      ],
+      trace_ref: "order-lookup:ana:a1",
+      detail: "lookup-order executed (provider=gws, attempt=1)"
+    }));
+    const executeOrderUpdateFn = vi.fn(async ({ operation_id, reference, patch }) => ({
+      ok: true,
+      dry_run: false,
+      operation_id,
+      payload: {
+        reference,
+        patch: patch as Record<string, unknown>,
+        matched_row_index: 7,
+        updated_fields: ["cantidad", "notas"]
+      },
+      detail: "update-order executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-update-lookup-ambiguous"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-order-update-lookup-ambiguous",
+      routeIntentFn: async () => "pedido",
+      executeOrderLookupFn,
+      executeOrderUpdateFn
+    });
+
+    const askReference = await processor.handleMessage({
+      chat_id: "chat-order-update-lookup-ambiguous",
+      text: "actualiza pedido de ana, cambia cantidad a 3"
+    });
+    expect(askReference[0]).toContain('Encontré 6 pedidos para "ana"');
+    expect(askReference[0]).toContain("1. folio:op-ana-1");
+    expect(askReference[0]).toContain("5. folio:op-ana-5");
+    expect(askReference[0]).toContain("... y 1 más");
+    expect(askReference[0]).not.toContain("folio:op-ana-6");
+    expect(getState("chat-order-update-lookup-ambiguous").pending?.operation_id).toBe("op-order-update-lookup-ambiguous");
+
+    const summary = await processor.handleMessage({
+      chat_id: "chat-order-update-lookup-ambiguous",
+      text: "op-ana-2"
+    });
+    expect(summary[0]).toContain("order.update");
+    expect(summary[0]).toContain("op-ana-2");
+    expect(summary[0]).toContain("op-order-update-lookup-ambiguous");
+
+    const done = await processor.handleMessage({
+      chat_id: "chat-order-update-lookup-ambiguous",
+      text: "confirmar"
+    });
+    expect(done[0]).toContain("Ejecutado");
+    expect(executeOrderUpdateFn).toHaveBeenCalledWith({
+      operation_id: "op-order-update-lookup-ambiguous",
+      chat_id: "chat-order-update-lookup-ambiguous",
+      reference: { folio: "op-ana-2" },
+      patch: { cantidad: 3 },
+      trello_card_id: "trello-dry-run-card"
+    });
   });
 
   it("mantiene pendiente y marca failed cuando falla order.update", async () => {

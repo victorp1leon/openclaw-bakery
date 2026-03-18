@@ -32,6 +32,8 @@ const FIELD_PROMPTS: Record<string, string> = {
   shopping_list_query: "¿Para qué pedido(s) quieres la lista de insumos? Puedes compartir folio, nombre del cliente, producto o periodo.",
   schedule_day_query: "¿Para qué día quieres la agenda? Puedes decir hoy, mañana o una fecha (ej. 2026-03-20).",
   order_reference: "¿Me podrías pasar el folio del pedido? (también puede ser operation_id)",
+  order_update_patch:
+    "¿Qué cambios quieres aplicar al pedido? Puedes escribir algo como: cantidad a 12, estado de pago a parcial, o enviar JSON {\"patch\":{...}}.",
   payment_estado_pago: "¿Cuál es el estado de pago? (pagado | pendiente | parcial)",
   producto: "¿Qué producto es?",
   cantidad: "¿Cantidad?",

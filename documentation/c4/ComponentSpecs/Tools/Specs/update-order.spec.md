@@ -1,7 +1,7 @@
 # Spec - update-order (Phase 3 lifecycle)
 
 Status: MVP
-Last Updated: 2026-03-11
+Last Updated: 2026-03-18
 
 ## Objective
 Update an existing order after user confirmation while keeping Trello + Google Sheets consistent.
@@ -50,6 +50,7 @@ This lifecycle mutation must preserve traceability and idempotency, and must rol
 
 ## Rules
 - Consistency rule: Trello and Google Sheets must both succeed for the operation to be considered successful.
+- Runtime clarification contract: tool expects resolved `reference` + non-empty `patch`; missing/ambiguous reference and missing patch are handled by runtime clarification before execution.
 - Resolve exactly one row by `folio` or `operation_id_ref`.
 - If no unique match, fail deterministically (`not_found` / `ambiguous`).
 - Immutable columns:

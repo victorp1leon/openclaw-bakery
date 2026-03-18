@@ -1,7 +1,7 @@
 # Spec - conversationProcessor
 
 Status: MVP
-Last Updated: 2026-03-17
+Last Updated: 2026-03-18
 
 ## Objective
 Orchestrate the conversation flow for each message and produce a safe, consistent response.
@@ -55,7 +55,9 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - When `schedule.day_view` excludes rows due to critical data quality issues (e.g. missing ISO datetime), runtime must still return a partial agenda plus visible `inconsistencias`.
 - For `quote.order`, after returning the quote, require an explicit user decision (`confirmar/cancelar`) to convert quote into `pedido` draft.
 - If quote is accepted for conversion, runtime must continue with regular `pedido` flow (ask missing fields, show summary, require final confirmation before executing `order.create` connectors).
-- For `order.update`, detect update intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; apply Trello+Sheets with rollback on partial failure.
+- For `order.update`, detect update intent deterministically and require explicit `confirmar/cancelar` before tool execution; apply Trello+Sheets with rollback on partial failure.
+- If `order.update` request has no explicit reference, runtime should attempt lookup-by-query from free text; continue automatically only on unique match, otherwise ask for precise `folio|operation_id` and show up to 5 options when ambiguous.
+- If `order.update` request has no patch/cambios validos, runtime must ask for missing update fields (no hard parse fail), keep pending operation, and continue with the same `operation_id` once the user provides patch details.
 - For `order.cancel`, detect cancel intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; apply Trello+Sheets with rollback on partial failure.
 - If `order.cancel` request has no explicit reference, runtime should attempt lookup-by-customer query; continue automatically only on unique match, otherwise ask for precise `folio|operation_id`.
 - If `order.cancel` returns `already_canceled=true`, runtime must reply with deterministic no-op message (`Este pedido ya fue cancelado con folio <folio>`).
@@ -117,6 +119,9 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - `returns_shopping_list_for_supported_queries`
 - `returns_schedule_day_view_for_supported_queries`
 - `supports_order_update_summary_and_confirm_flow`
+- `supports_order_update_lookup_resolution_when_reference_missing`
+- `supports_order_update_ambiguous_reference_prompt_with_options`
+- `supports_order_update_missing_patch_clarification_flow`
 - `supports_order_cancel_summary_and_confirm_flow`
 - `supports_payment_record_summary_and_confirm_flow`
 - `supports_inventory_consume_summary_and_confirm_flow`

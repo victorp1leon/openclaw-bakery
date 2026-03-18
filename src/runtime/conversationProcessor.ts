@@ -9,6 +9,7 @@ import { type Expense, ExpenseSchema } from "../schemas/expense";
 import { type Order, OrderSchema } from "../schemas/order";
 import { type Intent, routeIntentDetailed, type RoutedIntent } from "../skills/intentRouter";
 import {
+  extractOrderUpdatePatch as extractOrderUpdatePatchSkill,
   extractOrderReferenceFromText as extractOrderReferenceFromTextSkill,
   hasOrderReference as hasOrderReferenceSkill,
   inventoryOrderRefLabel as inventoryOrderRefLabelSkill,
@@ -668,6 +669,57 @@ function detectOrderStatusRequestWithoutQuery(text: string): boolean {
   return detectOrderStatusQuery(text) == null;
 }
 
+function hasOrderUpdatePatch(value: unknown): boolean {
+  return isObjectRecord(value) && Object.keys(value).length > 0;
+}
+
+function normalizeOrderUpdateLookupCandidate(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  let out = value.trim();
+  if (!out) return undefined;
+
+  const separators = [",", ";", "."];
+  for (const separator of separators) {
+    const idx = out.indexOf(separator);
+    if (idx > 0) {
+      out = out.slice(0, idx).trim();
+    }
+  }
+
+  const patchTokenIndex = out.search(/\b(cantidad|fecha|estado|total|producto|direccion|notas?|tipo|envio)\b/);
+  if (patchTokenIndex > 1) {
+    out = out.slice(0, patchTokenIndex).trim();
+  }
+
+  out = out.replace(/^(de|para)\s+/, "").trim();
+  return out.length >= 2 ? out : undefined;
+}
+
+function extractOrderUpdateLookupQuery(text: string): string | undefined {
+  const normalized = normalizeForMatch(text);
+  const hasOrderWord = /\bpedidos?\b/.test(normalized);
+  const hasMutationVerb = /\b(actualiza|actualizar|actualizacion|modifica|modificar|cambia|cambiar)\b/.test(normalized);
+  if (!hasOrderWord || !hasMutationVerb) return undefined;
+
+  const hasExplicitReference = /\b(?:folio|id|operation_id|operacion)\s*[:=]?\s*[a-z0-9_-]{3,}\b/.test(normalized);
+  if (hasExplicitReference) return undefined;
+
+  const deMatch = normalizeOrderUpdateLookupCandidate(normalized.match(/\bpedidos?\s+de\s+(.+?)\s*$/)?.[1]);
+  if (deMatch) return deMatch;
+
+  const paraMatch = normalizeOrderUpdateLookupCandidate(normalized.match(/\bpedidos?\s+para\s+(.+?)\s*$/)?.[1]);
+  if (paraMatch) return paraMatch;
+
+  let fallback = normalized
+    .replace(/\{[\s\S]*\}/g, " ")
+    .replace(/\b(actualiza|actualizar|actualizacion|modifica|modificar|cambia|cambiar)\b/g, " ")
+    .replace(/\bpedidos?\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalizeOrderUpdateLookupCandidate(fallback);
+}
+
 function extractOrderCancelLookupQuery(text: string): string | undefined {
   const normalized = normalizeForMatch(text);
   const hasOrderWord = /\bpedidos?\b/.test(normalized);
@@ -1108,6 +1160,17 @@ function formatOrderLookupReply(result: OrderLookupResult): string {
   return `Pedidos encontrados para "${result.query}" (${result.total}):\n${lines.join("\n")}${extra}\nRef: ${result.trace_ref}`;
 }
 
+function formatOrderUpdateAmbiguousReply(args: { query: string; total: number; orders: OrderLookupResult["orders"] }): string {
+  const maxRows = 5;
+  const shown = args.orders.slice(0, maxRows);
+  const lines = shown.map((order, idx) => {
+    const operationId = order.operation_id ?? "-";
+    return `${idx + 1}. folio:${order.folio || "-"} | op:${operationId} | ${order.nombre_cliente} | ${order.producto} | ${order.fecha_hora_entrega}`;
+  });
+  const extra = args.total > shown.length ? `\n... y ${args.total - shown.length} más` : "";
+  return `Encontré ${args.total} pedidos para "${args.query}". Elige el correcto para actualizar:\n${lines.join("\n")}${extra}\nResponde con folio u operation_id.`;
+}
+
 function formatOrderStatusReply(result: OrderStatusResult): string {
   if (result.total === 0) {
     return `No encontré el estado para "${result.query}". Prueba con folio, operation_id o nombre del cliente.\nRef: ${result.trace_ref}`;
@@ -1458,6 +1521,60 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const webChatEnabled = deps.webChatEnabled ?? true;
   const inventoryConsumeEnabled = deps.inventoryConsumeEnabled ?? false;
   const rateLimiter = deps.rateLimiter;
+
+  async function tryResolveOrderUpdateReferenceByLookup(args: {
+    chat_id: string;
+    text: string;
+  }): Promise<
+    | { kind: "resolved"; reference: OrderUpdateReference; query: string }
+    | { kind: "ambiguous"; query: string; total: number; orders: OrderLookupResult["orders"] }
+    | { kind: "not_found"; query: string }
+    | { kind: "skip" | "error" }
+  > {
+    const query = extractOrderUpdateLookupQuery(args.text);
+    if (!query || query.length < 2) return { kind: "skip" };
+
+    try {
+      const lookup = await executeOrderLookupFn({
+        chat_id: args.chat_id,
+        query
+      });
+
+      if (lookup.total === 0) {
+        return { kind: "not_found", query };
+      }
+      if (lookup.total > 1) {
+        return { kind: "ambiguous", query, total: lookup.total, orders: lookup.orders };
+      }
+
+      const resolved = lookup.orders[0];
+      const folio = trimString(resolved?.folio);
+      const operationId = trimString(resolved?.operation_id);
+      if (!folio && !operationId) {
+        return { kind: "not_found", query };
+      }
+
+      return {
+        kind: "resolved",
+        query,
+        reference: {
+          ...(folio ? { folio } : {}),
+          ...(operationId ? { operation_id_ref: operationId } : {})
+        }
+      };
+    } catch (err) {
+      const safeDetail = err instanceof Error ? err.message : String(err);
+      deps.onTrace?.({
+        event: "order_update_lookup_failed",
+        chat_id: args.chat_id,
+        strict_mode,
+        intent: "order.update",
+        intent_source: "fallback",
+        detail: safeDetail
+      });
+      return { kind: "error" };
+    }
+  }
 
   async function tryResolveOrderCancelReferenceByLookup(args: {
     chat_id: string;
@@ -2701,6 +2818,118 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           }
         }
 
+        if (st.pending.action.intent === "order.update") {
+          const payload = isObjectRecord(st.pending.action.payload) ? { ...st.pending.action.payload } : {};
+          const reference = isObjectRecord(payload.reference) ? { ...payload.reference } : {};
+          const patch = isObjectRecord(payload.patch) ? { ...payload.patch } : {};
+          const mergedReference = {
+            ...reference,
+            ...referenceFromFreeTextSkill(msg.text)
+          };
+
+          let mergedPatch: Record<string, unknown> = patch;
+          if (st.pending.asked === "order_update_patch") {
+            const extracted = extractOrderUpdatePatchSkill(msg.text);
+            if (extracted.jsonInvalid) {
+              setState(msg.chat_id, st);
+              return [copy.parseError("order_update_payload_json_invalid")];
+            }
+            if (isObjectRecord(extracted.patch)) {
+              mergedPatch = {
+                ...mergedPatch,
+                ...extracted.patch
+              };
+            }
+          }
+
+          st.pending.action.payload = {
+            ...payload,
+            reference: mergedReference,
+            patch: mergedPatch
+          };
+
+          if (!hasOrderReferenceSkill(mergedReference)) {
+            const resolved = await tryResolveOrderUpdateReferenceByLookup({
+              chat_id: msg.chat_id,
+              text: msg.text
+            });
+            if (resolved.kind === "resolved") {
+              st.pending.action.payload = {
+                ...payload,
+                reference: resolved.reference,
+                patch: mergedPatch
+              };
+            } else {
+              st.pending.action.payload = {
+                ...payload,
+                reference: mergedReference,
+                patch: mergedPatch
+              };
+            }
+
+            if (resolved.kind === "ambiguous") {
+              st.pending.asked = "order_reference";
+              st.pending.missing = ["order_reference"];
+              setState(msg.chat_id, st);
+              return [formatOrderUpdateAmbiguousReply({
+                query: resolved.query,
+                total: resolved.total,
+                orders: resolved.orders
+              })];
+            }
+
+            if (resolved.kind === "not_found") {
+              st.pending.asked = "order_reference";
+              st.pending.missing = ["order_reference"];
+              setState(msg.chat_id, st);
+              return [
+                `No encontré pedidos para "${resolved.query}". Compárteme el folio u operation_id para continuar con la actualización.`
+              ];
+            }
+
+            if (!hasOrderReferenceSkill((st.pending.action.payload as Record<string, unknown>).reference)) {
+              st.pending.asked = "order_reference";
+              st.pending.missing = ["order_reference"];
+              setState(msg.chat_id, st);
+              return [copy.askFor("order_reference")];
+            }
+          } else {
+            st.pending.action.payload = {
+              ...payload,
+              reference: mergedReference,
+              patch: mergedPatch
+            };
+          }
+
+          if (!hasOrderUpdatePatch((st.pending.action.payload as Record<string, unknown>).patch)) {
+            st.pending.asked = "order_update_patch";
+            st.pending.missing = ["order_update_patch"];
+            setState(msg.chat_id, st);
+            return [copy.askFor("order_update_patch")];
+          }
+
+          st.pending.asked = undefined;
+          st.pending.missing = [];
+          setState(msg.chat_id, st);
+
+          const register = registerPendingOperation({
+            operation_id: st.pending.operation_id,
+            chat_id: msg.chat_id,
+            intent: "order.update",
+            payload: st.pending.action.payload,
+            idempotency_key: st.pending.idempotency_key ?? st.pending.operation_id
+          });
+
+          if (!register.inserted) {
+            clearPending(msg.chat_id);
+            return [
+              copy.duplicate(register.operation.operation_id, register.operation.status)
+            ];
+          }
+
+          return [copy.summary("order.update", st.pending.action.payload, st.pending.operation_id)];
+        }
+
         if (st.pending.action.intent === "order.cancel") {
           const payload = isObjectRecord(st.pending.action.payload) ? { ...st.pending.action.payload } : {};
           const reference = isObjectRecord(payload.reference) ? { ...payload.reference } : {};
@@ -3133,6 +3362,92 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     const orderUpdateDraft = parseOrderUpdateRequestSkill(msg.text);
     if (orderUpdateDraft.matched) {
       if (!orderUpdateDraft.result.ok) {
+        if (
+          orderUpdateDraft.result.error === "order_update_reference_missing" ||
+          orderUpdateDraft.result.error === "order_update_patch_missing"
+        ) {
+          const operation_id = newOperationId();
+          const reference = extractOrderReferenceFromTextSkill(msg.text);
+          const extractedPatch = extractOrderUpdatePatchSkill(msg.text);
+          const pendingPayload: Record<string, unknown> = {
+            reference: {
+              ...(reference.folio ? { folio: reference.folio } : {}),
+              ...(reference.operation_id_ref ? { operation_id_ref: reference.operation_id_ref } : {})
+            }
+          };
+
+          if (isObjectRecord(extractedPatch.patch)) {
+            pendingPayload.patch = extractedPatch.patch;
+          }
+
+          const resolved = !hasOrderReferenceSkill(pendingPayload.reference)
+            ? await tryResolveOrderUpdateReferenceByLookup({
+              chat_id: msg.chat_id,
+              text: msg.text
+            })
+            : { kind: "skip" as const };
+          if (resolved.kind === "resolved") {
+            pendingPayload.reference = resolved.reference as Record<string, unknown>;
+          }
+
+          const askField = !hasOrderReferenceSkill(pendingPayload.reference)
+            ? "order_reference"
+            : "order_update_patch";
+          const needsClarification = askField === "order_reference" || !hasOrderUpdatePatch(pendingPayload.patch);
+
+          if (!needsClarification) {
+            const pending = {
+              operation_id,
+              idempotency_key: operation_id,
+              action: { intent: "order.update" as const, payload: pendingPayload },
+              missing: [],
+              asked: undefined
+            };
+
+            setState(msg.chat_id, { pending });
+            const register = registerPendingOperation({
+              operation_id,
+              chat_id: msg.chat_id,
+              intent: "order.update",
+              payload: pendingPayload,
+              idempotency_key: operation_id
+            });
+
+            if (!register.inserted) {
+              clearPending(msg.chat_id);
+              return [
+                copy.duplicate(register.operation.operation_id, register.operation.status)
+              ];
+            }
+
+            return [copy.summary("order.update", pendingPayload, operation_id)];
+          }
+
+          const pending = {
+            operation_id,
+            idempotency_key: operation_id,
+            action: { intent: "order.update" as const, payload: pendingPayload },
+            missing: [askField],
+            asked: askField
+          };
+          setState(msg.chat_id, { pending });
+
+          if (resolved.kind === "ambiguous") {
+            return [formatOrderUpdateAmbiguousReply({
+              query: resolved.query,
+              total: resolved.total,
+              orders: resolved.orders
+            })];
+          }
+          if (resolved.kind === "not_found") {
+            return [
+              `No encontré pedidos para "${resolved.query}". Compárteme el folio u operation_id para continuar con la actualización.`
+            ];
+          }
+
+          return [copy.askFor(askField)];
+        }
+
         deps.onTrace?.({
           event: "parse_failed",
           chat_id: msg.chat_id,
