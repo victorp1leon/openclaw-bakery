@@ -1,6 +1,6 @@
 # Skill Registry
 
-Generated At (UTC): 2026-03-17 19:29:21.883 UTC
+Generated At (UTC): 2026-03-18 18:24:12.492 UTC
 
 ## Skills
 
@@ -28,10 +28,14 @@ Generated At (UTC): 2026-03-17 19:29:21.883 UTC
 |---|---|
 | approval-keyword-gate | `.codex/rules/approval-keyword-gate.md` |
 | gws-only | `.codex/rules/gws-only.md` |
+| intent-disambiguation-guard | `.codex/rules/intent-disambiguation-guard.md` |
 | intent-skill-coverage-gate | `.codex/rules/intent-skill-coverage-gate.md` |
 | live-flags-gate | `.codex/rules/live-flags-gate.md` |
 | mandatory-validation | `.codex/rules/mandatory-validation.md` |
+| mutation-clarification-flow-standard | `.codex/rules/mutation-clarification-flow-standard.md` |
 | order-dual-write-strict | `.codex/rules/order-dual-write-strict.md` |
+| read-only-clarification-flow-standard | `.codex/rules/read-only-clarification-flow-standard.md` |
+| read-only-trace-ref-standard | `.codex/rules/read-only-trace-ref-standard.md` |
 | secrets-never-commit | `.codex/rules/secrets-never-commit.md` |
 
 ## Agents
