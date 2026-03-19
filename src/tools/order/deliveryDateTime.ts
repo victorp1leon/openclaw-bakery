@@ -1,7 +1,71 @@
 const DAY_MS = 86_400_000;
+const CANONICAL_LOCAL_DATETIME = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/;
+
+const WEEKDAY_TOKEN_TO_INDEX: Record<string, number> = {
+  domingo: 0,
+  dom: 0,
+  lunes: 1,
+  lun: 1,
+  martes: 2,
+  mar: 2,
+  miercoles: 3,
+  mie: 3,
+  jueves: 4,
+  jue: 4,
+  viernes: 5,
+  vie: 5,
+  sabado: 6,
+  sab: 6
+};
 
 function normalizeForMatch(text: string): string {
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function toPositiveInt(value: string): number | undefined {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : undefined;
+}
+
+function isValidDateParts(args: { year: number; month: number; day: number }): boolean {
+  if (args.year < 1900 || args.year > 9999) return false;
+  if (args.month < 1 || args.month > 12) return false;
+  if (args.day < 1 || args.day > 31) return false;
+
+  const utc = new Date(Date.UTC(args.year, args.month - 1, args.day));
+  return (
+    utc.getUTCFullYear() === args.year &&
+    utc.getUTCMonth() === args.month - 1 &&
+    utc.getUTCDate() === args.day
+  );
+}
+
+export function isCanonicalDeliveryDateTime(value: string): boolean {
+  const match = value.match(CANONICAL_LOCAL_DATETIME);
+  if (!match) return false;
+
+  const year = toPositiveInt(match[1]);
+  const month = toPositiveInt(match[2]);
+  const day = toPositiveInt(match[3]);
+  const hour = toPositiveInt(match[4]);
+  const minute = toPositiveInt(match[5]);
+  const second = toPositiveInt(match[6]);
+  if (
+    year == null ||
+    month == null ||
+    day == null ||
+    hour == null ||
+    minute == null ||
+    second == null
+  ) {
+    return false;
+  }
+
+  if (!isValidDateParts({ year, month, day })) return false;
+  if (hour < 0 || hour > 23) return false;
+  if (minute < 0 || minute > 59) return false;
+  if (second < 0 || second > 59) return false;
+  return true;
 }
 
 function toDateKeyFromDate(date: Date, timezone: string): string {
@@ -16,6 +80,21 @@ function toDateKeyFromDate(date: Date, timezone: string): string {
   const month = parts.find((part) => part.type === "month")?.value ?? "01";
   const day = parts.find((part) => part.type === "day")?.value ?? "01";
   return `${year}-${month}-${day}`;
+}
+
+function weekdayIndex(date: Date, timezone: string): number {
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    weekday: "short"
+  }).format(date).toLowerCase();
+
+  if (weekday.startsWith("sun")) return 0;
+  if (weekday.startsWith("mon")) return 1;
+  if (weekday.startsWith("tue")) return 2;
+  if (weekday.startsWith("wed")) return 3;
+  if (weekday.startsWith("thu")) return 4;
+  if (weekday.startsWith("fri")) return 5;
+  return 6;
 }
 
 function toLocalTimeParts(date: Date, timezone: string): { hour: number; minute: number } {
@@ -71,6 +150,10 @@ function parseExplicitDateKey(value: string): string | undefined {
 }
 
 function parseRelativeDateKey(value: string, now: Date, timezone: string): string | undefined {
+  if (/\bpasado\s+manana\b/.test(value)) {
+    return toDateKeyFromDate(new Date(now.getTime() + 2 * DAY_MS), timezone);
+  }
+
   if (/\bhoy\b/.test(value)) {
     return toDateKeyFromDate(now, timezone);
   }
@@ -84,6 +167,22 @@ function parseRelativeDateKey(value: string, now: Date, timezone: string): strin
   }
 
   return undefined;
+}
+
+function parseWeekdayDateKey(value: string, now: Date, timezone: string): string | undefined {
+  const weekdayToken = value.match(/\b(domingo|dom|lunes|lun|martes|mar|miercoles|mie|jueves|jue|viernes|vie|sabado|sab)\b/)?.[1];
+  if (!weekdayToken) return undefined;
+
+  const weekday = WEEKDAY_TOKEN_TO_INDEX[weekdayToken];
+  if (weekday == null) return undefined;
+
+  const normalized = value.trim();
+  const hasNextQualifier = new RegExp(`\\b(?:proximo|siguiente)\\s+${weekdayToken}\\b`).test(normalized);
+  const current = weekdayIndex(now, timezone);
+  let delta = (weekday - current + 7) % 7;
+  if (hasNextQualifier && delta === 0) delta = 7;
+
+  return toDateKeyFromDate(new Date(now.getTime() + delta * DAY_MS), timezone);
 }
 
 function parseTimeParts(value: string): { hour: number; minute: number } | undefined {
@@ -116,32 +215,47 @@ function parseTimeParts(value: string): { hour: number; minute: number } | undef
   return undefined;
 }
 
+function hasOffsetOrZulu(value: string): boolean {
+  return /(?:z|[+-]\d{2}:?\d{2})$/i.test(value.trim());
+}
+
 export function normalizeDeliveryDateTime(args: {
   value: string;
   timezone: string;
   now?: Date;
+  requireTime?: boolean;
 }): string | undefined {
   const raw = args.value.trim();
   if (!raw) return undefined;
 
+  if (isCanonicalDeliveryDateTime(raw)) {
+    return raw;
+  }
+
   const timezone = args.timezone.trim() || "America/Mexico_City";
   const now = args.now ?? new Date();
+  const requireTime = args.requireTime ?? false;
   const normalized = normalizeForMatch(raw);
+  const parsedInstant = Date.parse(raw);
 
   const explicitDateKey = parseExplicitDateKey(normalized);
   const relativeDateKey = parseRelativeDateKey(normalized, now, timezone);
-  const parsedInstant = Date.parse(raw);
+  const weekdayDateKey = parseWeekdayDateKey(normalized, now, timezone);
   const dateKey =
     explicitDateKey ??
     relativeDateKey ??
+    weekdayDateKey ??
     (Number.isFinite(parsedInstant) ? toDateKeyFromDate(new Date(parsedInstant), timezone) : undefined);
 
   if (!dateKey) return undefined;
 
   const explicitTime = parseTimeParts(normalized);
-  const timeParts =
-    explicitTime ??
-    (Number.isFinite(parsedInstant) ? toLocalTimeParts(new Date(parsedInstant), timezone) : { hour: 0, minute: 0 });
+  const canUseInstantTime = Number.isFinite(parsedInstant) && hasOffsetOrZulu(raw);
+  if (requireTime && !explicitTime && !canUseInstantTime) {
+    return undefined;
+  }
+
+  const timeParts = explicitTime ?? (canUseInstantTime ? toLocalTimeParts(new Date(parsedInstant), timezone) : { hour: 0, minute: 0 });
 
   return `${dateKey}T${pad2(timeParts.hour)}:${pad2(timeParts.minute)}:00`;
 }

@@ -136,9 +136,13 @@ function parseOrderUpdatePatchFromText(text: string): Record<string, unknown> | 
   const normalized = normalizeForMatch(text);
   const patch: Record<string, unknown> = {};
 
-  const deliveryMatch = text.match(
-    /\b(?:fecha(?:\s+y)?\s*hora(?:\s+de)?\s*entrega|fecha(?:\s+de)?\s+entrega|entrega)\s*(?:a|para|=|:)?\s*((?:\d{4}[/-]\d{1,2}[/-]\d{1,2})(?:[ t]\d{1,2}:\d{2})?)\b/i
-  )?.[1];
+  const deliveryMatch =
+    text.match(
+      /\b(?:fecha(?:\s+y)?\s*hora(?:\s+de)?\s*entrega|fecha(?:\s+de)?\s+entrega|entrega)\s*(?:a|para|=|:)?\s*((?:\d{4}[/-]\d{1,2}[/-]\d{1,2})(?:[ t]\d{1,2}:\d{2})?)\b/i
+    )?.[1] ??
+    text.match(
+      /\b(?:fecha(?:\s+y)?\s*hora(?:\s+de)?\s*entrega|fecha(?:\s+de)?\s+entrega|entrega)\s*(?:a|para|=|:)?\s*([^,.;\n]+?)(?=\s+y\s+(?:estado|cantidad|total|producto|direccion|tipo|notas?|nombre)\b|$)/i
+    )?.[1];
   if (deliveryMatch) {
     patch.fecha_hora_entrega = deliveryMatch.replace(/[Tt]/g, " ").replace(/\//g, "-").trim();
   }

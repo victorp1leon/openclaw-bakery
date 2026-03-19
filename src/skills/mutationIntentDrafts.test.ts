@@ -43,6 +43,14 @@ describe("mutationIntentDrafts", () => {
     });
   });
 
+  it("extractOrderUpdatePatch captures natural delivery expressions", () => {
+    const extracted = extractOrderUpdatePatch("cambia fecha de entrega a mañana 5pm");
+    expect(extracted).toEqual({
+      jsonInvalid: false,
+      patch: { fecha_hora_entrega: "mañana 5pm" }
+    });
+  });
+
   it("extractOrderUpdatePatch marks invalid inline json", () => {
     const extracted = extractOrderUpdatePatch('{"patch": invalid}');
     expect(extracted).toEqual({

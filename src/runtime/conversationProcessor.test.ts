@@ -1653,7 +1653,7 @@ describe("conversation processor security flow", () => {
         producto: "Pastel mediano",
         cantidad: 1,
         tipo_envio: "recoger_en_tienda",
-        fecha_hora_entrega: "2026-03-20 17:00",
+        fecha_hora_entrega: "2026-03-20T17:00:00",
         estado_pago: "pendiente",
         total: 650,
         moneda: "MXN",
@@ -1745,8 +1745,8 @@ describe("conversation processor security flow", () => {
     expect(executeOrderUpdateFn).toHaveBeenCalledWith({
       operation_id: "op-order-update-natural",
       chat_id: "chat-order-update-natural",
-      reference: { folio: "op-xyz-123", operation_id_ref: undefined },
-      patch: { fecha_hora_entrega: "2026-03-12 17:00", estado_pago: "parcial" },
+      reference: { folio: "op-xyz-123" },
+      patch: { fecha_hora_entrega: "2026-03-12T17:00:00", estado_pago: "parcial" },
       trello_card_id: "trello-dry-run-card"
     });
   });
@@ -2764,6 +2764,65 @@ describe("conversation processor security flow", () => {
     expect(parseOrderFn).toHaveBeenCalledTimes(1);
     expect(executeOrderReportFn).not.toHaveBeenCalled();
     expect(executeOrderLookupFn).not.toHaveBeenCalled();
+  });
+
+  it("normaliza fecha_hora_entrega relativa antes del resumen de pedido", async () => {
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-delivery-normalized"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      newOperationId: () => "op-order-delivery-normalized",
+      routeIntentFn: async () => "pedido",
+      parseOrderFn: async () => ({
+        ok: true,
+        payload: {
+          nombre_cliente: "Ramiro",
+          producto: "pastel mediano",
+          cantidad: 1,
+          tipo_envio: "recoger_en_tienda",
+          fecha_hora_entrega: "mañana 2pm",
+          moneda: "MXN"
+        }
+      })
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-order-delivery-normalized",
+      text: "pedido Ramiro pastel mediano para mañana 2pm recoger en tienda"
+    });
+
+    expect(replies[0]).toContain("\"fecha_hora_entrega\": \"2026-03-08T14:00:00\"");
+  });
+
+  it("pide hora cuando la fecha de entrega no la incluye y permite completarla", async () => {
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-delivery-missing-time"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      newOperationId: () => "op-order-delivery-missing-time",
+      routeIntentFn: async () => "pedido",
+      parseOrderFn: async () => ({
+        ok: true,
+        payload: {
+          nombre_cliente: "Ramiro",
+          producto: "pastel mediano",
+          cantidad: 1,
+          tipo_envio: "recoger_en_tienda",
+          fecha_hora_entrega: "mañana",
+          moneda: "MXN"
+        }
+      })
+    });
+
+    const ask = await processor.handleMessage({
+      chat_id: "chat-order-delivery-missing-time",
+      text: "pedido Ramiro pastel mediano para mañana"
+    });
+    expect(ask[0]).toContain("Necesito también la hora de entrega");
+
+    const summary = await processor.handleMessage({
+      chat_id: "chat-order-delivery-missing-time",
+      text: "5pm"
+    });
+    expect(summary[0]).toContain("\"fecha_hora_entrega\": \"2026-03-08T17:00:00\"");
   });
 
   it("pregunta solo 1 faltante por turno y luego confirma", async () => {

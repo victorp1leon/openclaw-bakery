@@ -438,6 +438,30 @@ function ensurePatch(value: unknown): OrderUpdatePatch {
   return out;
 }
 
+function normalizeDeliveryFieldInPatch(args: {
+  patch: OrderUpdatePatch;
+  timezone: string;
+  now: Date;
+}): OrderUpdatePatch {
+  const raw = trimOptional(args.patch.fecha_hora_entrega);
+  if (!raw) return args.patch;
+
+  const canonical = normalizeDeliveryDateTime({
+    value: raw,
+    timezone: args.timezone,
+    now: args.now,
+    requireTime: true
+  });
+  if (!canonical) {
+    throw new Error("order_update_patch_value_invalid_fecha_hora_entrega");
+  }
+
+  return {
+    ...args.patch,
+    fecha_hora_entrega: canonical
+  };
+}
+
 function mapRowsWithIndex(rows: string[][], startRow: number): RowMatch[] {
   const hasHeader = rows.length > 0 && isHeaderRow(rows[0]);
   const skip = hasHeader ? 1 : 0;
@@ -595,7 +619,12 @@ export function createUpdateOrderTool(config: UpdateOrderToolConfig = {}) {
     dryRun?: boolean;
   }): Promise<ToolExecutionResult<OrderUpdateExecutionPayload>> {
     const reference = ensureReference(args.reference);
-    const patch = ensurePatch(args.patch);
+    const patchBase = ensurePatch(args.patch);
+    const patch = normalizeDeliveryFieldInPatch({
+      patch: patchBase,
+      timezone,
+      now: now()
+    });
     const dry_run = args.dryRun ?? dryRunDefault;
 
     if (dry_run) {

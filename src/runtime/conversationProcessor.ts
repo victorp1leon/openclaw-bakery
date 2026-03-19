@@ -70,6 +70,7 @@ import {
   type OrderUpdateExecutionPayload,
   type OrderUpdateReference
 } from "../tools/order/updateOrder";
+import { normalizeDeliveryDateTime } from "../tools/order/deliveryDateTime";
 import { type WebPublishPayload, createPublishSiteTool } from "../tools/web/publishSite";
 import { createBotCopy, type BotPersona } from "./persona";
 
@@ -1525,8 +1526,100 @@ function validateWebPayloadDraft(payload: Record<string, unknown>):
   return { ok: true, data: out };
 }
 
+function hasDeliveryDateCue(value: string): boolean {
+  const normalized = normalizeForMatch(value);
+  return (
+    /\b(hoy|manana|pasado\s+manana|lunes|martes|miercoles|jueves|viernes|sabado|domingo|proximo|siguiente|este)\b/.test(
+      normalized
+    ) ||
+    /\b\d{4}[/-]\d{1,2}[/-]\d{1,2}\b/.test(normalized) ||
+    /\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\b/.test(normalized)
+  );
+}
+
+function hasDeliveryTimeCue(value: string): boolean {
+  const normalized = normalizeForMatch(value);
+  return /(?:^|[^0-9])\d{1,2}\s*:\s*\d{2}\b/.test(normalized) || /(?:^|[^0-9])\d{1,2}\s*(am|pm)\b/.test(normalized);
+}
+
+function isTimeOnlyDeliveryAnswer(value: string): boolean {
+  return hasDeliveryTimeCue(value) && !hasDeliveryDateCue(value);
+}
+
+function normalizeOrderPayloadDelivery(args: {
+  payload: Record<string, unknown>;
+  timezone: string;
+  now: Date;
+}): { payload: Record<string, unknown>; deliveryError?: "time_missing" | "invalid" } {
+  const raw = trimString(args.payload.fecha_hora_entrega);
+  if (!raw) return { payload: { ...args.payload } };
+
+  const canonical = normalizeDeliveryDateTime({
+    value: raw,
+    timezone: args.timezone,
+    now: args.now,
+    requireTime: true
+  });
+  if (canonical) {
+    return {
+      payload: {
+        ...args.payload,
+        fecha_hora_entrega: canonical
+      }
+    };
+  }
+
+  return {
+    payload: { ...args.payload },
+    deliveryError: hasDeliveryDateCue(raw) && !hasDeliveryTimeCue(raw) ? "time_missing" : "invalid"
+  };
+}
+
+function normalizeOrderUpdatePatchDelivery(args: {
+  patch: Record<string, unknown>;
+  timezone: string;
+  now: Date;
+}): { patch: Record<string, unknown>; deliveryError?: "time_missing" | "invalid" } {
+  const raw = trimString(args.patch.fecha_hora_entrega);
+  if (!raw) return { patch: { ...args.patch } };
+
+  const canonical = normalizeDeliveryDateTime({
+    value: raw,
+    timezone: args.timezone,
+    now: args.now,
+    requireTime: true
+  });
+  if (canonical) {
+    return {
+      patch: {
+        ...args.patch,
+        fecha_hora_entrega: canonical
+      }
+    };
+  }
+
+  return {
+    patch: { ...args.patch },
+    deliveryError: hasDeliveryDateCue(raw) && !hasDeliveryTimeCue(raw) ? "time_missing" : "invalid"
+  };
+}
+
+function deliveryDateTimePrompt(reason: "time_missing" | "invalid"): string {
+  if (reason === "time_missing") {
+    return "Necesito también la hora de entrega. Ejemplos: mañana 5pm o 2026-03-20 17:00.";
+  }
+  return "No pude interpretar la fecha/hora de entrega. Usa formato como: 2026-03-20 17:00 o mañana 5pm.";
+}
+
 function mergeField(payload: Record<string, unknown>, field: string, userText: string): Record<string, unknown> {
   const t = userText.trim();
+  if (field === "fecha_hora_entrega") {
+    const existing = trimString(payload.fecha_hora_entrega);
+    if (existing && isTimeOnlyDeliveryAnswer(t)) {
+      return { ...payload, [field]: `${existing} ${t}`.trim() };
+    }
+    return { ...payload, [field]: t };
+  }
   if (field === "monto" || field === "cantidad" || field === "total") {
     const match = t.match(/[-+]?\d+(?:[.,]\d+)?/);
     const parsed = match ? Number(match[0].replace(",", ".")) : Number.NaN;
@@ -1757,10 +1850,15 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     operation_id: string;
     payload: Record<string, unknown>;
   }): string[] {
-    const v = validateWith(OrderSchema, args.payload);
+    const normalizedOrder = normalizeOrderPayloadDelivery({
+      payload: args.payload,
+      timezone: orderReportTimezone,
+      now: new Date(nowMs())
+    });
+    const v = validateWith(OrderSchema, normalizedOrder.payload);
     const pending = {
       operation_id: args.operation_id,
-      action: { intent: "pedido" as const, payload: args.payload },
+      action: { intent: "pedido" as const, payload: normalizedOrder.payload },
       missing: v.ok ? [] : v.missing,
       asked: v.ok ? undefined : pickOneMissing(v.missing)
     };
@@ -1768,6 +1866,9 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     setState(args.chat_id, { pending });
 
     if (!v.ok) {
+      if (pending.asked === "fecha_hora_entrega" && normalizedOrder.deliveryError) {
+        return [deliveryDateTimePrompt(normalizedOrder.deliveryError)];
+      }
       return [copy.askFor(pending.asked ?? "unknown")];
     }
 
@@ -2968,6 +3069,13 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             }
           }
 
+          const normalizedPatch = normalizeOrderUpdatePatchDelivery({
+            patch: mergedPatch,
+            timezone: orderReportTimezone,
+            now: new Date(nowMs())
+          });
+          mergedPatch = normalizedPatch.patch;
+
           st.pending.action.payload = {
             ...payload,
             reference: mergedReference,
@@ -3025,6 +3133,13 @@ export function createConversationProcessor(deps: ProcessorDeps) {
               reference: mergedReference,
               patch: mergedPatch
             };
+          }
+
+          if (normalizedPatch.deliveryError) {
+            st.pending.asked = "order_update_patch";
+            st.pending.missing = ["order_update_patch"];
+            setState(msg.chat_id, st);
+            return [deliveryDateTimePrompt(normalizedPatch.deliveryError)];
           }
 
           if (!hasOrderUpdatePatch((st.pending.action.payload as Record<string, unknown>).patch)) {
@@ -3289,7 +3404,20 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         }
 
         const updatedPayload = mergeField(st.pending.action.payload, st.pending.asked, msg.text);
-        st.pending.action.payload = updatedPayload;
+        let payloadForValidation = updatedPayload;
+        let orderDeliveryError: "time_missing" | "invalid" | undefined;
+
+        if (st.pending.action.intent === "pedido") {
+          const normalizedOrder = normalizeOrderPayloadDelivery({
+            payload: updatedPayload,
+            timezone: orderReportTimezone,
+            now: new Date(nowMs())
+          });
+          payloadForValidation = normalizedOrder.payload;
+          orderDeliveryError = normalizedOrder.deliveryError;
+        }
+
+        st.pending.action.payload = payloadForValidation;
 
         if (st.pending.action.intent === "web") {
           const vWeb = validateWebPayloadDraft(updatedPayload);
@@ -3325,7 +3453,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         }
 
         const schema = st.pending.action.intent === "gasto" ? ExpenseSchema : OrderSchema;
-        const v = validateWith(schema, updatedPayload);
+        const v = validateWith(schema, payloadForValidation);
 
         if (v.ok) {
           const intent = st.pending.action.intent as "gasto" | "pedido";
@@ -3358,6 +3486,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         const next = pickOneMissing(v.missing, st.pending.asked);
         st.pending.asked = next ?? undefined;
         setState(msg.chat_id, st);
+
+        if (st.pending.action.intent === "pedido" && st.pending.asked === "fecha_hora_entrega" && orderDeliveryError) {
+          return [deliveryDateTimePrompt(orderDeliveryError)];
+        }
 
         return [copy.askFor(st.pending.asked ?? "unknown")];
       }
@@ -3530,7 +3662,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             ];
           }
 
-          return [copy.askFor(askField)];
+          return [copy.askFor(askField ?? "order_update_patch")];
         }
 
         deps.onTrace?.({
@@ -3604,6 +3736,17 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             pendingPayload.patch = extractedPatch.patch;
           }
 
+          let patchDeliveryError: "time_missing" | "invalid" | undefined;
+          if (isObjectRecord(pendingPayload.patch)) {
+            const normalizedPatch = normalizeOrderUpdatePatchDelivery({
+              patch: pendingPayload.patch,
+              timezone: orderReportTimezone,
+              now: new Date(nowMs())
+            });
+            pendingPayload.patch = normalizedPatch.patch;
+            patchDeliveryError = normalizedPatch.deliveryError;
+          }
+
           const resolved = !hasOrderReferenceSkill(pendingPayload.reference)
             ? await tryResolveOrderUpdateReferenceByLookup({
               chat_id: msg.chat_id,
@@ -3614,10 +3757,12 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             pendingPayload.reference = resolved.reference as Record<string, unknown>;
           }
 
-          const askField = !hasOrderReferenceSkill(pendingPayload.reference)
+          const hasReference = hasOrderReferenceSkill(pendingPayload.reference);
+          const hasPatch = hasOrderUpdatePatch(pendingPayload.patch);
+          const askField = !hasReference
             ? "order_reference"
-            : "order_update_patch";
-          const needsClarification = askField === "order_reference" || !hasOrderUpdatePatch(pendingPayload.patch);
+            : (!hasPatch || patchDeliveryError ? "order_update_patch" : undefined);
+          const needsClarification = askField !== undefined;
 
           if (!needsClarification) {
             const pending = {
@@ -3651,7 +3796,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             operation_id,
             idempotency_key: operation_id,
             action: { intent: "order.update" as const, payload: pendingPayload },
-            missing: [askField],
+            missing: [askField ?? "order_update_patch"],
             asked: askField
           };
           setState(msg.chat_id, { pending });
@@ -3667,6 +3812,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             return [
               `No encontré pedidos para "${resolved.query}". Compárteme el folio u operation_id para continuar con la actualización.`
             ];
+          }
+
+          if (askField === "order_update_patch" && patchDeliveryError) {
+            return [deliveryDateTimePrompt(patchDeliveryError)];
           }
 
           return [copy.askFor(askField)];
@@ -3685,7 +3834,30 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       }
 
       const operation_id = newOperationId();
-      const payload = orderUpdateDraft.result.payload as Record<string, unknown>;
+      const payloadRaw = orderUpdateDraft.result.payload as Record<string, unknown>;
+      const patchRaw = isObjectRecord(payloadRaw.patch) ? payloadRaw.patch : {};
+      const normalizedPatch = normalizeOrderUpdatePatchDelivery({
+        patch: patchRaw,
+        timezone: orderReportTimezone,
+        now: new Date(nowMs())
+      });
+      const payload = {
+        ...payloadRaw,
+        patch: normalizedPatch.patch
+      };
+
+      if (normalizedPatch.deliveryError) {
+        const pending = {
+          operation_id,
+          idempotency_key: operation_id,
+          action: { intent: "order.update" as const, payload },
+          missing: ["order_update_patch"],
+          asked: "order_update_patch"
+        };
+        setState(msg.chat_id, { pending });
+        return [deliveryDateTimePrompt(normalizedPatch.deliveryError)];
+      }
+
       const pending = {
         operation_id,
         idempotency_key: operation_id,

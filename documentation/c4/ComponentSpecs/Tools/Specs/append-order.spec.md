@@ -1,7 +1,7 @@
 # Spec - append-order (Phase 3 connector-ready + gws-only sheets)
 
 Status: MVP
-Last Updated: 2026-03-17
+Last Updated: 2026-03-19
 
 ## Objective
 Append a confirmed order row to Google Sheets.
@@ -22,7 +22,9 @@ The adapter uses `gws` (`googleworkspace/cli`) as the only Google Sheets integra
 - Include `operation_id` in outbound payload and result for traceability.
 - Include `chat_id` in emitted payload/result for downstream auditing.
 - Map order payload to stable external row schema/column order.
-- Keep `fecha_hora_entrega` as free-text source and also emit `fecha_hora_entrega_iso` (normalized local datetime) when inferable.
+- Enforce canonical delivery datetime in payload (`fecha_hora_entrega`: `YYYY-MM-DDTHH:mm:ss`, timezone `America/Mexico_City`).
+- Reject append when delivery datetime cannot be canonicalized.
+- Emit `fecha_hora_entrega_iso` aligned with canonical `fecha_hora_entrega`.
 - In live mode (`dryRun=false`), require `gws` command, spreadsheet id, and target range.
 - Apply controlled timeout and bounded retry policy.
 - Retry only on transport transient failures and retriable statuses (`429`, `5xx`).

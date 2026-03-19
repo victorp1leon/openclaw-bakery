@@ -134,6 +134,24 @@ describe("appendOrderTool", () => {
     expect(row[18]).toBe("2026-03-07T18:00:00");
   });
 
+  it("fails when delivery datetime cannot be normalized to canonical format", async () => {
+    const tool = createAppendOrderTool({
+      timezone: "America/Mexico_City",
+      now: () => new Date("2026-03-07T12:00:00.000Z")
+    });
+
+    await expect(
+      tool({
+        operation_id: "op-gws-invalid-delivery",
+        chat_id: "chat-gws-invalid-delivery",
+        payload: {
+          ...buildOrder(),
+          fecha_hora_entrega: "mañana"
+        }
+      })
+    ).rejects.toThrow("order_connector_delivery_datetime_invalid");
+  });
+
   it("retries gws call on timeout and then succeeds", async () => {
     const gwsRunner = vi
       .fn()

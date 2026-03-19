@@ -1,7 +1,7 @@
 # Spec - parser (expense/order)
 
 Status: MVP
-Last Updated: 2026-02-26
+Last Updated: 2026-03-19
 
 ## Objective
 Convert free-form text into JSON drafts for `expense` and `order` using OpenClaw + local heuristics.
@@ -22,6 +22,7 @@ It must extract/normalize draft payloads and must not authorize or execute exter
 - Sanitize optional fields that are hallucinated or not evidenced by the input text.
 - Normalize currency (`pesos` -> `MXN`, `dolares` -> `USD`) when reasonable.
 - Keep compatibility with Zod draft schemas (optional fields allowed).
+- For order drafts, allow natural delivery expressions (`hoy`, `mañana`, `pasado mañana`, `viernes`) as draft input, but final canonicalization to `YYYY-MM-DDTHH:mm:ss` (`America/Mexico_City`) is enforced by runtime/tool validation before confirmation/execution.
 
 ## Error Handling Classification
 - Retriable: transient upstream runtime failures when OpenClaw path is used.

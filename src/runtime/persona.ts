@@ -76,6 +76,7 @@ function neutralMessages(): MessageBuilder {
         "- Reporte diario: que pedidos tengo hoy",
         "- Agenda diaria: dame la agenda de hoy",
         "- Lista de insumos: dame lista de insumos para hoy",
+        "- Cotización: cotiza pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas",
         "- Gasto: gasto 380 harina y azúcar en Costco",
         "Notas:",
         "- Si falta información te la voy pidiendo (folio, estado de pago, producto, etc.)",
@@ -126,6 +127,7 @@ function bakeryWarmMessages(): MessageBuilder {
         "- Reporte diario: que pedidos tengo hoy",
         "- Agenda diaria: dame la agenda de hoy",
         "- Lista de insumos: dame lista de insumos para hoy",
+        "- Cotización: cotiza pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas",
         "- Gasto: gasto 380 harina y azúcar en Costco",
         "Tips:",
         "- Si falta información te voy preguntando lo necesario",
@@ -169,6 +171,7 @@ function conciseMessages(): MessageBuilder {
         "- Reporte diario: que pedidos tengo hoy",
         "- Agenda diaria: dame la agenda de hoy",
         "- Lista de insumos: dame lista de insumos para hoy",
+        "- Cotización: cotiza pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas",
         "- Gasto: gasto 380 harina y azúcar en Costco",
         "- Si falta información te la pido",
         "- Responde confirmar | cancelar después del resumen"

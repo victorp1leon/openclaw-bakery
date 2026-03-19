@@ -1,11 +1,14 @@
 import { z } from "zod";
+import { isCanonicalDeliveryDateTime } from "../tools/order/deliveryDateTime";
 
 export const OrderSchema = z.object({
   nombre_cliente: z.string().min(2),
   producto: z.string().min(2),
   cantidad: z.number().int().positive(),
   tipo_envio: z.enum(["envio_domicilio", "recoger_en_tienda"]),
-  fecha_hora_entrega: z.string().min(4), // luego lo normalizamos a datetime local
+  fecha_hora_entrega: z
+    .string()
+    .refine(isCanonicalDeliveryDateTime, "fecha_hora_entrega debe usar formato YYYY-MM-DDTHH:mm:ss (America/Mexico_City)"),
   direccion: z.string().optional(),
 
   telefono: z.string().optional(),

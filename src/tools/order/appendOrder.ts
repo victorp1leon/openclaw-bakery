@@ -83,16 +83,21 @@ function toGwsValues(args: {
   now: Date;
   timezone: string;
 }): Array<string | number> {
-  const fecha_hora_entrega_iso = normalizeDeliveryDateTime({
+  const fecha_hora_entrega = normalizeDeliveryDateTime({
     value: args.payload.fecha_hora_entrega,
     timezone: args.timezone,
-    now: args.now
+    now: args.now,
+    requireTime: true
   });
+  if (!fecha_hora_entrega) {
+    throw new Error("order_connector_delivery_datetime_invalid");
+  }
+  const fecha_hora_entrega_iso = fecha_hora_entrega;
 
   return [
     args.now.toISOString(),
     args.operation_id,
-    args.payload.fecha_hora_entrega,
+    fecha_hora_entrega,
     args.payload.nombre_cliente,
     args.payload.telefono ?? "",
     args.payload.producto,
@@ -108,7 +113,7 @@ function toGwsValues(args: {
     args.payload.notas ?? "",
     args.chat_id,
     args.operation_id,
-    fecha_hora_entrega_iso ?? "",
+    fecha_hora_entrega_iso,
     args.estado_pedido,
     args.trello_card_id ?? ""
   ];
@@ -181,8 +186,21 @@ export function createAppendOrderTool(config: AppendOrderToolConfig = {}) {
   }>> {
     const dry_run = args.dryRun ?? dryRunDefault;
     const estado_pedido = args.estado_pedido?.trim() || "activo";
-    const payloadWithChat = {
+    const canonicalDeliveryDateTime = normalizeDeliveryDateTime({
+      value: args.payload.fecha_hora_entrega,
+      timezone,
+      now: now(),
+      requireTime: true
+    });
+    if (!canonicalDeliveryDateTime) {
+      throw new Error("order_connector_delivery_datetime_invalid");
+    }
+    const normalizedPayload: Order = {
       ...args.payload,
+      fecha_hora_entrega: canonicalDeliveryDateTime
+    };
+    const payloadWithChat = {
+      ...normalizedPayload,
       chat_id: args.chat_id,
       trello_card_id: args.trello_card_id,
       estado_pedido
@@ -213,6 +231,7 @@ export function createAppendOrderTool(config: AppendOrderToolConfig = {}) {
       values: [
         toGwsValues({
           ...args,
+          payload: normalizedPayload,
           estado_pedido,
           now: now(),
           timezone

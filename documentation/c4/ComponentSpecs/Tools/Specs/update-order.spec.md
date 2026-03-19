@@ -1,7 +1,7 @@
 # Spec - update-order (Phase 3 lifecycle)
 
 Status: MVP
-Last Updated: 2026-03-18
+Last Updated: 2026-03-19
 
 ## Objective
 Update an existing order after user confirmation while keeping Trello + Google Sheets consistent.
@@ -61,7 +61,8 @@ This lifecycle mutation must preserve traceability and idempotency, and must rol
 - Apply only fields present in `patch`; no implicit overwrite to empty values.
 - Re-validate shipping invariant after patch:
   - if `tipo_envio=envio_domicilio`, `direccion` is mandatory.
-- If `fecha_hora_entrega` changes, recompute `fecha_hora_entrega_iso`.
+- If `fecha_hora_entrega` changes, canonicalize to `YYYY-MM-DDTHH:mm:ss` (`America/Mexico_City`) and recompute `fecha_hora_entrega_iso`.
+- Reject patch when `fecha_hora_entrega` cannot be canonicalized or is missing explicit time.
 - Execute Trello sync first (due/comment), then persist update via `gws` on exact target row range (`A:U` for that row).
 - If Sheets write fails after Trello sync, rollback Trello card to previous snapshot and fail operation.
 - If Trello update fails after partial mutation, rollback Trello card internally and fail operation.

@@ -204,6 +204,39 @@ describe("update-order tool", () => {
     expect(body.values[0][5]).toBe("pastel");
   });
 
+  it("normalizes relative delivery patch into canonical datetime in dry-run", async () => {
+    const tool = createUpdateOrderTool({
+      timezone: "America/Mexico_City",
+      now: () => new Date("2026-03-07T12:00:00.000Z")
+    });
+
+    const result = await tool({
+      operation_id: "op-update-6b",
+      chat_id: "chat-1",
+      reference: { folio: "op-order-1" },
+      patch: { fecha_hora_entrega: "mañana 5pm" }
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.payload.patch.fecha_hora_entrega).toBe("2026-03-08T17:00:00");
+  });
+
+  it("fails when delivery patch is missing explicit time", async () => {
+    const tool = createUpdateOrderTool({
+      timezone: "America/Mexico_City",
+      now: () => new Date("2026-03-07T12:00:00.000Z")
+    });
+
+    await expect(
+      tool({
+        operation_id: "op-update-6c",
+        chat_id: "chat-1",
+        reference: { folio: "op-order-1" },
+        patch: { fecha_hora_entrega: "mañana" }
+      })
+    ).rejects.toThrow("order_update_patch_value_invalid_fecha_hora_entrega");
+  });
+
   it("updates only allowed fields and preserves others", async () => {
     const gwsRunner = vi
       .fn()

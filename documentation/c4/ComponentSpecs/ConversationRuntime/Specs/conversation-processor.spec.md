@@ -1,7 +1,7 @@
 # Spec - conversationProcessor
 
 Status: MVP
-Last Updated: 2026-03-18
+Last Updated: 2026-03-19
 
 ## Objective
 Orchestrate the conversation flow for each message and produce a safe, consistent response.
@@ -41,6 +41,9 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - For `gasto`, execute `append-expense` adapter on confirm path.
 - For `pedido`, execute `create-card` + `append-order` on confirm path and rollback Trello card creation if Sheets append fails.
 - For `pedido`, if rollback fails after partial execution, keep user-facing response controlled/generic and log internal failure detail for support.
+- For `pedido`, `fecha_hora_entrega` must be canonicalized before summary/confirmation as `YYYY-MM-DDTHH:mm:ss` in `America/Mexico_City` (no free-text allowed in final payload).
+- Runtime must accept natural delivery expressions (`hoy`, `mañana`, `pasado mañana`, `para el viernes`, `este/proximo viernes`) only if they can be converted to canonical datetime.
+- If delivery date is present without explicit time, runtime must request hour clarification before showing summary.
 - For order reporting queries (e.g. `pedidos hoy`, `pedidos del 28 de abril`, `pedidos esta semana`, `pedidos del mes de mayo`, `pedidos de este año`), route deterministically to `report-orders` without entering confirm flow.
 - When `OPENCLAW_READONLY_ROUTING_ENABLE=1`, evaluate read-only OpenClaw routing before deterministic read-only detectors (`report/orders`, `lookup`, `status`, `schedule`, `shopping`, `quote`).
 - If read-only OpenClaw routing is active and strict mode is enabled (`OPENCLAW_STRICT=1`), do not use deterministic read-only fallback when OpenClaw returns `unknown`/invalid payload; return controlled clarification instead.
@@ -60,6 +63,7 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - For `quote.order`, after returning the quote, require an explicit user decision (`confirmar/cancelar`) to convert quote into `pedido` draft.
 - If quote is accepted for conversion, runtime must continue with regular `pedido` flow (ask missing fields, show summary, require final confirmation before executing `order.create` connectors).
 - For `order.update`, detect update intent deterministically and require explicit `confirmar/cancelar` before tool execution; apply Trello+Sheets with rollback on partial failure.
+- If `order.update.patch.fecha_hora_entrega` is provided, it must be canonicalized to `YYYY-MM-DDTHH:mm:ss` (`America/Mexico_City`) before summary/execution; if conversion fails or time is missing, runtime must keep pending state and ask for patch clarification.
 - If `order.update` request has no explicit reference, runtime should attempt lookup-by-query from free text; continue automatically only on unique match, otherwise ask for precise `folio|operation_id` and show up to 5 options when ambiguous.
 - If `order.update` request has no patch/cambios validos, runtime must ask for missing update fields (no hard parse fail), keep pending operation, and continue with the same `operation_id` once the user provides patch details.
 - For `order.cancel`, detect cancel intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; apply Trello+Sheets with rollback on partial failure.
