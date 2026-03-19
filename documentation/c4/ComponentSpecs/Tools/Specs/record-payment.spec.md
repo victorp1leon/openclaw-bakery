@@ -1,7 +1,7 @@
 # Spec - record-payment (Phase 3 lifecycle)
 
 Status: MVP
-Last Updated: 2026-03-11
+Last Updated: 2026-03-18
 
 ## Objective
 Register a payment movement for an existing order in Sheets `Pedidos`.
@@ -21,7 +21,7 @@ This adapter mutates payment fields and must preserve an auditable movement trai
 - Google Workspace CLI config:
   - command + args
   - spreadsheet id
-  - read range (`Pedidos!A:R`)
+  - read range (`Pedidos!A:U`)
   - timeout/retries
 
 ## Outputs
@@ -38,11 +38,12 @@ This adapter mutates payment fields and must preserve an auditable movement trai
 - Source of truth is Google Sheets `Pedidos`.
 - Resolve exactly one row by `folio` or `operation_id_ref`.
 - If no unique match, fail deterministically (`not_found` / `ambiguous`).
-- If row has cancellation marker (`[CANCELADO]`), reject payment mutation.
+- If `estado_pedido=cancelado`, reject payment mutation.
 - Update column `estado_pago` with requested value.
 - Append payment event to `notas`:
   - `[PAGO] <timestamp> op:<operation_id> estado:<estado_pago> monto:<monto|n/a> metodo:<metodo|n/a> nota:<notas|n/a>`
-- Persist update via `gws` on exact target row range (`A:R` for that row).
+- Normalize `payment.notas` before event append (single-line, trimmed, max 160 chars).
+- Persist update via `gws` on exact target row range (`A:U` for that row).
 - Do not overwrite historical notes; append with line break.
 
 ## Error Handling Classification
@@ -74,6 +75,8 @@ This adapter mutates payment fields and must preserve an auditable movement trai
 - `fails_when_order_not_found`
 - `fails_when_order_reference_is_ambiguous`
 - `rejects_payment_update_for_canceled_order`
+- `does_not_reject_marker_only_when_estado_pedido_not_cancelado`
 - `updates_estado_pago_and_appends_payment_event`
+- `normalizes_payment_notas_before_event_append`
 - `retries_on_transient_gws_failure_then_succeeds`
 - `fails_when_gws_command_unavailable`

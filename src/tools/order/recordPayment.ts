@@ -64,7 +64,6 @@ const INDEX = {
 
 const PAYMENT_VALUES = new Set(["pagado", "pendiente", "parcial"]);
 const PAYMENT_METHOD_VALUES = new Set(["efectivo", "transferencia", "tarjeta", "otro"]);
-const CANCEL_MARKER = "[CANCELADO]";
 const PAYMENT_MARKER = "[PAGO]";
 
 function sleep(ms: number): Promise<void> {
@@ -132,13 +131,26 @@ function normalizeReadRange(value: string | undefined): string | undefined {
   if (!range) return undefined;
 
   const bang = range.indexOf("!");
-  if (bang === -1) return `${range}!A:R`;
+  if (bang === -1) return `${range}!A:U`;
   const sheet = range.slice(0, bang).trim();
   const a1 = range.slice(bang + 1).trim();
   if (!sheet) return undefined;
-  if (!a1) return `${sheet}!A:R`;
-  if (a1.includes(":")) return `${sheet}!${a1}`;
-  return `${sheet}!A:R`;
+  if (!a1) return `${sheet}!A:U`;
+  if (!a1.includes(":")) return `${sheet}!A:U`;
+
+  const [startTokenRaw, endTokenRaw] = a1.split(":");
+  const startToken = startTokenRaw?.trim() || "A";
+  const endToken = endTokenRaw?.trim() || "U";
+  const endMatch = endToken.match(/^([A-Za-z]+)(\d+)?$/);
+  if (!endMatch) return `${sheet}!${a1}`;
+
+  const endCol = endMatch[1].toUpperCase();
+  const endRow = endMatch[2] ?? "";
+  if (lettersToColumnNumber(endCol) >= lettersToColumnNumber("U")) {
+    return `${sheet}!${a1}`;
+  }
+
+  return `${sheet}!${startToken}:U${endRow}`;
 }
 
 function lettersToColumnNumber(value: string): number {
@@ -238,6 +250,13 @@ function ensureReference(value: PaymentRecordReference): PaymentRecordReference 
   return { folio, operation_id_ref };
 }
 
+function normalizePaymentNote(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const collapsed = value.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!collapsed) return undefined;
+  return collapsed.length > 160 ? collapsed.slice(0, 160).trim() : collapsed;
+}
+
 function toStrictPositiveNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
   if (typeof value === "string") {
@@ -271,11 +290,13 @@ function ensurePayment(value: unknown): PaymentRecordInput {
     throw new Error("payment_record_metodo_invalid");
   }
 
+  const notas = normalizePaymentNote(raw.notas);
+
   return {
     estado_pago: estado as PaymentRecordInput["estado_pago"],
     ...(monto != null ? { monto } : {}),
     ...(metodo ? { metodo: metodo as PaymentRecordInput["metodo"] } : {}),
-    ...(trimOptional(raw.notas) ? { notas: trimOptional(raw.notas) } : {})
+    ...(notas ? { notas } : {})
   };
 }
 
@@ -340,9 +361,8 @@ function applyPayment(args: {
 
   const notes = trimOptional(updatedRow[INDEX.notas]) ?? "";
   const estadoPedido = trimOptional(updatedRow[INDEX.estado_pedido]) ?? "";
-  const canceledByMarker = notes.toLowerCase().includes(CANCEL_MARKER.toLowerCase());
   const canceledByStatus = estadoPedido.toLowerCase() === "cancelado";
-  if (canceledByMarker || canceledByStatus) {
+  if (canceledByStatus) {
     throw new Error("payment_record_order_canceled");
   }
 
@@ -383,7 +403,7 @@ export function createRecordPaymentTool(config: RecordPaymentToolConfig = {}) {
   const gwsCommand = config.gwsCommand?.trim() || "gws";
   const gwsCommandArgs = config.gwsCommandArgs ?? [];
   const gwsSpreadsheetId = config.gwsSpreadsheetId?.trim() || undefined;
-  const normalizedRange = normalizeReadRange(config.gwsRange) ?? "Pedidos!A:R";
+  const normalizedRange = normalizeReadRange(config.gwsRange) ?? "Pedidos!A:U";
   const gwsValueInputOption = config.gwsValueInputOption ?? "USER_ENTERED";
   const timeoutMs = Number.isFinite(config.timeoutMs) && (config.timeoutMs ?? 0) > 0 ? Math.trunc(config.timeoutMs!) : 5000;
   const maxRetries = Number.isFinite(config.maxRetries) && (config.maxRetries ?? -1) >= 0 ? Math.trunc(config.maxRetries!) : 2;
@@ -437,7 +457,7 @@ export function createRecordPaymentTool(config: RecordPaymentToolConfig = {}) {
     }
 
     const rangeMeta = parseRangeMeta(normalizedRange);
-    const writeWidth = rangeMeta.width;
+    const writeWidth = Math.max(rangeMeta.width, INDEX.estado_pedido + 1);
     const readParams = {
       spreadsheetId: gwsSpreadsheetId,
       range: normalizedRange

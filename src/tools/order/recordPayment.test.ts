@@ -153,7 +153,7 @@ describe("record-payment tool", () => {
 
   it("rejects payment mutation for canceled order", async () => {
     const row = buildRow({
-      15: "nota previa | [CANCELADO] 2026-03-10 op:abc chat:chat-1 motivo:n/a",
+      15: "nota previa",
       19: "cancelado"
     });
     const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: [buildHeader(), row] }));
@@ -172,6 +172,34 @@ describe("record-payment tool", () => {
         payment: { estado_pago: "pagado", monto: 100 }
       })
     ).rejects.toThrow("payment_record_order_canceled");
+  });
+
+  it("does not reject marker-only legacy row when estado_pedido is not cancelado", async () => {
+    const row = buildRow({
+      15: "nota previa | [CANCELADO] 2026-03-10 op:abc chat:chat-1 motivo:n/a",
+      19: ""
+    });
+    const gwsRunner = vi
+      .fn()
+      .mockResolvedValueOnce(okJson({ values: [buildHeader(), row] }))
+      .mockResolvedValueOnce(okJson({ updatedRange: "Pedidos!A2:U2" }));
+    const tool = createRecordPaymentTool({
+      dryRunDefault: false,
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:R",
+      now: () => new Date("2026-03-11T12:00:00.000Z"),
+      gwsRunner
+    });
+
+    const result = await tool({
+      operation_id: "op-pay-6b",
+      chat_id: "chat-1",
+      reference: { folio: "op-order-1" },
+      payment: { estado_pago: "pagado", monto: 100 }
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.payload.after.estado_pago).toBe("pagado");
   });
 
   it("updates estado_pago and appends payment event", async () => {
@@ -248,6 +276,39 @@ describe("record-payment tool", () => {
     expect(result.ok).toBe(true);
     expect(result.payload.already_recorded).toBe(true);
     expect(gwsRunner).toHaveBeenCalledTimes(1);
+  });
+
+  it("normalizes payment notas before appending event", async () => {
+    const gwsRunner = vi
+      .fn()
+      .mockResolvedValueOnce(okJson({ values: [buildHeader(), buildRow()] }))
+      .mockResolvedValueOnce(okJson({ updatedRange: "Pedidos!A2:U2" }));
+
+    const tool = createRecordPaymentTool({
+      dryRunDefault: false,
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:R",
+      now: () => new Date("2026-03-11T12:00:00.000Z"),
+      gwsRunner
+    });
+
+    const result = await tool({
+      operation_id: "op-pay-8b",
+      chat_id: "chat-1",
+      reference: { folio: "op-order-1" },
+      payment: {
+        estado_pago: "parcial",
+        monto: 350,
+        metodo: "transferencia",
+        notas: `  primer  renglon\n\nsegundo renglon ${"x".repeat(220)} `
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.payload.payment_event).toContain("nota:primer renglon segundo renglon");
+    expect(result.payload.payment_event).not.toContain("\n");
+    const notePart = result.payload.payment_event.split("nota:")[1] ?? "";
+    expect(notePart.length).toBeLessThanOrEqual(160);
   });
 
   it("retries on transient gws failure then succeeds", async () => {
