@@ -1,7 +1,7 @@
 # Spec - schedule-day-view (Phase 3 scheduling)
 
 Status: MVP
-Last Updated: 2026-03-17
+Last Updated: 2026-03-19
 
 ## Objective
 Build a read-only day schedule for bakery operations using Google Sheets `Pedidos` rows.
@@ -40,6 +40,8 @@ The result must summarize deliveries, preparation focus, and suggested purchases
 - Rows without valid `fecha_hora_entrega_iso` must not enter operational blocks and must be reported in `inconsistencies`.
 - Day filter matches exact `dateKey` in configured timezone (`America/Mexico_City` by default).
 - Operational blocks (`deliveries`, `preparation`, `suggestedPurchases`) must exclude canceled orders (`estado_pedido=cancelado`).
+- Cancellation source of truth for this tool is strictly `estado_pedido=cancelado`.
+- Legacy markers in `notas` (e.g. `[CANCELADO]`) must not be interpreted as canceled state by this tool.
 - `deliveries` keeps one row per order with normalized delivery datetime and key references (`folio|operation_id`).
 - Invalid/missing quantity must not fail the whole schedule:
   - keep row in `deliveries` with `cantidad_invalida=true`,
@@ -70,10 +72,14 @@ The result must summarize deliveries, preparation focus, and suggested purchases
 - No logging of credentials or full command env.
 - Error tokens must be sanitized before surfacing upstream.
 
+## Operational Note
+- Before enabling strict cancellation behavior in live data, run a controlled cleanup/backfill for test/legacy rows in `Pedidos` so `estado_pedido` is authoritative.
+
 ## Test Cases
 - `fails_when_spreadsheet_id_missing`
 - `filters_orders_for_exact_day`
 - `ignores_canceled_orders_in_operational_blocks`
+- `does_not_treat_notes_cancel_marker_as_canceled_without_estado_pedido`
 - `excludes_rows_without_iso_and_reports_inconsistencies`
 - `keeps_invalid_quantity_in_deliveries_but_excludes_from_preparation_and_purchases`
 - `builds_deliveries_preparation_and_suggested_purchases_with_catalog_fallback`

@@ -31,6 +31,8 @@
     "sheets:inventory:preview": "INVENTORY_TABS_APPLY=0 INVENTORY_TABS_OVERWRITE=0 npm run sheets:inventory:init",
     "sheets:orders:backfill-canceled-status": "npx ts-node --transpile-only scripts/sheets/backfill-canceled-order-status.ts",
     "sheets:orders:backfill-canceled-status:preview": "ORDER_CANCEL_STATUS_BACKFILL_APPLY=0 npm run sheets:orders:backfill-canceled-status",
+    "sheets:orders:clear": "npx ts-node --transpile-only scripts/sheets/clear-orders-sheet.ts",
+    "sheets:orders:clear:preview": "ORDER_SHEETS_CLEAR_APPLY=0 npm run sheets:orders:clear",
     "sheets:tabs:init:schema": "npx ts-node --transpile-only scripts/sheets/init-sheet-tabs-from-schema.ts",
     "sheets:tabs:validate:schema": "npx ts-node --transpile-only scripts/sheets/validate-tabs-schemas.ts",
     "sheets:pricing:validate": "npx ts-node --transpile-only scripts/sheets/validate-pricing-catalog-tabs.ts",

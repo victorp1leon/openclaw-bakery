@@ -310,13 +310,8 @@ function parseRecipeProfiles(rows: string[][]): { profiles: RecipeProfile[]; ass
   return { profiles, assumptions };
 }
 
-function isCanceledOrder(estadoPedido: string | undefined, notas: string | undefined): boolean {
-  if (normalizeForMatch(estadoPedido ?? "") === "cancelado") {
-    return true;
-  }
-
-  const notes = normalizeForMatch(notas ?? "");
-  return /\bcancelado\b/.test(notes);
+function isCanceledOrder(estadoPedido: string | undefined): boolean {
+  return normalizeForMatch(estadoPedido ?? "") === "cancelado";
 }
 
 function mapRows(rows: string[][], timezone: string): { rows: ParsedOrderRow[]; totalRows: number } {
@@ -335,7 +330,6 @@ function mapRows(rows: string[][], timezone: string): { rows: ParsedOrderRow[]; 
       const total = toNumberMaybe(row[13]);
       const moneda = row[14] || undefined;
       const estado_pedido = row[19] || undefined;
-      const notas = row[15] || undefined;
       const rawCantidad = toNumberMaybe(row[7]);
       const quantityValid = rawCantidad != null && rawCantidad > 0;
       const cantidad = quantityValid ? Math.trunc(rawCantidad!) : 0;
@@ -357,7 +351,7 @@ function mapRows(rows: string[][], timezone: string): { rows: ParsedOrderRow[]; 
         estado_pedido,
         _isoDateKey: extractDateKeyFromIso(fecha_hora_entrega_iso, timezone),
         _productKey: normalizePhrase(producto),
-        _isCanceled: isCanceledOrder(estado_pedido, notas),
+        _isCanceled: isCanceledOrder(estado_pedido),
         _quantityValid: quantityValid,
         _reference: reference
       };

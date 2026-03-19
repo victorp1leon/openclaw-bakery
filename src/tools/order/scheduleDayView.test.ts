@@ -38,7 +38,7 @@ function buildRows(): string[][] {
     ],
     ["2026-03-07", "op-1", "2026-03-07 14:00", "Ana", "", "cupcakes clasicos", "", "12", "", "", "recoger_en_tienda", "", "pagado", "480", "MXN", "", "chat-1", "op-1", "2026-03-07T14:00:00", "activo"],
     ["2026-03-07", "op-2", "2026-03-07 18:00", "Luis", "", "pastel red velvet", "", "1", "", "", "envio_domicilio", "", "pendiente", "900", "MXN", "", "chat-1", "op-2", "2026-03-07T18:00:00", "activo"],
-    ["2026-03-07", "op-3", "2026-03-07 20:00", "Eva", "", "galletas", "", "20", "", "", "recoger_en_tienda", "", "pagado", "300", "MXN", "[CANCELADO] cliente aviso", "chat-1", "op-3", "2026-03-07T20:00:00", ""],
+    ["2026-03-07", "op-3", "2026-03-07 20:00", "Eva", "", "galletas", "", "20", "", "", "recoger_en_tienda", "", "pagado", "300", "MXN", "[CANCELADO] cliente aviso", "chat-1", "op-3", "2026-03-07T20:00:00", "cancelado"],
     ["2026-03-07", "op-4", "2026-03-08 09:00", "Iris", "", "mesa de postres", "", "2", "", "", "recoger_en_tienda", "", "pagado", "1200", "MXN", "", "chat-1", "op-4", "2026-03-08T09:00:00", "activo"]
   ];
 }
@@ -79,6 +79,29 @@ describe("schedule-day-view tool", () => {
     expect(result.totalOrders).toBe(2);
     expect(result.deliveries.map((item) => item.folio)).toEqual(["op-1", "op-2"]);
     expect(result.inconsistencies).toHaveLength(0);
+  });
+
+  it("does not treat notes cancel marker as canceled without estado_pedido", async () => {
+    const rows = [
+      ...buildRows().slice(0, 1),
+      ["2026-03-07", "op-notes-marker", "2026-03-07 19:00", "Eva", "", "galletas", "", "20", "", "", "recoger_en_tienda", "", "pagado", "300", "MXN", "[CANCELADO] cliente aviso", "chat-1", "op-notes-marker", "2026-03-07T19:00:00", ""]
+    ];
+
+    const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: rows }));
+    const tool = createScheduleDayViewTool({
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:T",
+      gwsRunner,
+      timezone: "America/Mexico_City"
+    });
+
+    const result = await tool({
+      chat_id: "chat-1",
+      day: { type: "day", dateKey: "2026-03-07", label: "hoy" }
+    });
+
+    expect(result.totalOrders).toBe(1);
+    expect(result.deliveries[0]?.folio).toBe("op-notes-marker");
   });
 
   it("excludes rows without ISO and reports inconsistencies", async () => {
