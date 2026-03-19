@@ -9,7 +9,7 @@ describe("OrderSchema", () => {
       producto: "pastel",
       cantidad: 1,
       tipo_envio: "envio_domicilio",
-      fecha_hora_entrega: "2026-02-20 14:00"
+      fecha_hora_entrega: "2026-02-20T14:00:00"
     });
 
     expect(result.success).toBe(false);
@@ -21,7 +21,7 @@ describe("OrderSchema", () => {
       producto: "pastel",
       cantidad: 1,
       tipo_envio: "recoger_en_tienda",
-      fecha_hora_entrega: "2026-02-20 14:00"
+      fecha_hora_entrega: "2026-02-20T14:00:00"
     });
 
     expect(result.success).toBe(true);

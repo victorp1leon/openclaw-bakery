@@ -1,6 +1,6 @@
 # Skill Registry
 
-Generated At (UTC): 2026-03-19 20:20:36.002 UTC
+Generated At (UTC): 2026-03-19 23:10:15.679 UTC
 
 ## Skills
 
@@ -17,6 +17,7 @@ Generated At (UTC): 2026-03-19 20:20:36.002 UTC
 | read-only-intent-delivery | Deliver read-only intents end-to-end with consistent patterns for deterministic routing, optional missing-field prompts, tool execution without confirmation flow, reply formatting, tests, smoke registration, and docs/plan closure. Use for intents like schedule.day_view, report.reminders, and similar query/reporting capabilities. | `.codex/skills/read-only-intent-delivery/SKILL.md` |
 | release-check | Run pre-commit release quality checks and summarize readiness. Use when the user asks if current changes are ready to commit, merge, or ship. | `.codex/skills/release-check/SKILL.md` |
 | repo-audit-safety | Run safety-first repository audits for OpenClaw Bakery with evidence-based findings and low-risk remediation. Use when the user asks to audit, clean up, review operational health, or align docs/config/paths without risky architectural rewrites. | `.codex/skills/repo-audit-safety/SKILL.md` |
+| sheets-orders-expenses-cleanup | Safely preview, apply, and verify cleanup of Google Sheets tabs Pedidos and Gastos (clear data rows and restore canonical headers) for test-data resets. | `.codex/skills/sheets-orders-expenses-cleanup/SKILL.md` |
 | skill-creator | Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Codex's capabilities with specialized knowledge, workflows, or tool integrations. | `.codex/skills/skill-creator/SKILL.md` |
 | skill-registry-sync | Maintain a deterministic local registry of project operational assets (skills, rules, agents, and instructions) to prevent cross-session drift. Use when files are added, removed, or renamed under `.codex/skills`, `.codex/rules`, `.github/agents`, or `.github/instructions`, and before closing a collaboration session that changed these artifacts. | `.codex/skills/skill-registry-sync/SKILL.md` |
 | test-smoke-integration | Run and summarize smoke and integration validation flows when the user asks to verify end-to-end behavior. Use for mock/default smoke checks, optional live smoke checks, and reading markdown/json summary artifacts. | `.codex/skills/test-smoke-integration/SKILL.md` |
