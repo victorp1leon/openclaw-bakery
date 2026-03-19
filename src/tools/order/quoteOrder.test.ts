@@ -131,4 +131,53 @@ describe("quote-order tool", () => {
       tool({ chat_id: "chat-1", query: "cotiza macarons para 20 personas" })
     ).rejects.toThrow("quote_order_product_not_found");
   });
+
+  it("fails when home delivery quote does not include a recognized shipping zone", async () => {
+    const pricingRows = [
+      ["tipo", "clave", "nombre", "monto_mxn", "modo_calculo", "aplica_a", "cantidad_min", "cantidad_max", "horas_max_anticipacion", "zona", "activo"],
+      ["PRODUCTO", "pastel_mediano", "Pastel mediano", "650", "fijo", "todo", "", "", "", "", "1"],
+      ["ENVIO", "zona_villa_alvarez", "Envio Villa de Alvarez", "70", "fijo", "envio_domicilio", "", "", "", "Villa de Alvarez", "1"],
+      ["ENVIO", "zona_colima_centro", "Envio Colima Centro", "60", "fijo", "envio_domicilio", "", "", "", "Colima Centro", "1"]
+    ];
+
+    const gwsRunner = vi.fn(async ({ commandArgs }: { commandArgs: string[] }) => {
+      const paramsIndex = commandArgs.indexOf("--params");
+      const params = JSON.parse(commandArgs[paramsIndex + 1]) as { range: string };
+      if (params.range.startsWith("CatalogoPrecios")) return okJson({ values: pricingRows });
+      return okJson({ values: [] });
+    });
+
+    const tool = createQuoteOrderTool({
+      gwsSpreadsheetId: "sheet-1",
+      gwsRunner
+    });
+
+    await expect(
+      tool({ chat_id: "chat-1", query: "cotiza pastel mediano x1 envio a domicilio para mañana" })
+    ).rejects.toThrow("quote_order_shipping_zone_missing");
+  });
+
+  it("fails when modifier matching is ambiguous and requires clarification", async () => {
+    const pricingRows = [
+      ["tipo", "clave", "nombre", "monto_mxn", "modo_calculo", "aplica_a", "cantidad_min", "cantidad_max", "horas_max_anticipacion", "zona", "activo"],
+      ["PRODUCTO", "pastel_mediano", "Pastel mediano", "650", "fijo", "todo", "", "", "", "", "1"],
+      ["EXTRA", "decoracion_personalizada", "Decoracion personalizada", "120", "fijo", "pedido", "", "", "", "", "1"]
+    ];
+
+    const gwsRunner = vi.fn(async ({ commandArgs }: { commandArgs: string[] }) => {
+      const paramsIndex = commandArgs.indexOf("--params");
+      const params = JSON.parse(commandArgs[paramsIndex + 1]) as { range: string };
+      if (params.range.startsWith("CatalogoPrecios")) return okJson({ values: pricingRows });
+      return okJson({ values: [] });
+    });
+
+    const tool = createQuoteOrderTool({
+      gwsSpreadsheetId: "sheet-1",
+      gwsRunner
+    });
+
+    await expect(
+      tool({ chat_id: "chat-1", query: "cotiza pastel mediano x1 recoger en tienda personalizada decoracion" })
+    ).rejects.toThrow("quote_order_modifier_ambiguous");
+  });
 });

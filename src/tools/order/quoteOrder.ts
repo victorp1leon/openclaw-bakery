@@ -107,6 +107,9 @@ const STOPWORDS = new Set([
   "cotizar",
   "cotizacion"
 ]);
+const MODIFIER_MATCH_HIGH_CONFIDENCE = 8;
+const MODIFIER_MATCH_AMBIGUOUS_MIN = 4;
+const SHIPPING_ZONE_MATCH_MIN = 3;
 
 function sleep(ms: number): Promise<void> {
   if (ms <= 0) return Promise.resolve();
@@ -579,6 +582,10 @@ function matchModifier(args: { query: string; key: string; name: string }): bool
   return matched >= Math.min(2, tokens.length);
 }
 
+function hasNoExtraModifierPreference(query: string): boolean {
+  return /\b(sin\s+(?:extra|extras|adicional|adicionales|opcion|opciones)|ningun(?:a|o)?\s+(?:extra|adicional))\b/.test(query);
+}
+
 function detectLeadHours(query: string): number | undefined {
   const normalized = normalizeForMatch(query);
   if (/\bhoy\b/.test(normalized)) return 12;
@@ -773,15 +780,27 @@ export function createQuoteOrderTool(config: QuoteOrderToolConfig = {}) {
           ...extraRows.map((row) => ({ source: "extra" as const, row }))
         ];
 
+        const skipModifiers = hasNoExtraModifierPreference(normalizedQuery);
         const seenKeys = new Set<string>();
+        const ambiguousModifierKeys = new Set<string>();
         for (const modifier of modifiers) {
           const row = modifier.row;
-          const key = row.key;
-          if (seenKeys.has(normalizeForMatch(key))) continue;
+          const normalizedKey = normalizeForMatch(row.key);
+          if (seenKeys.has(normalizedKey)) continue;
           if (!isAppliesToProduct(row.appliesTo, product)) continue;
-          if (!matchModifier({ query: normalizedQuery, key: row.key, name: row.name })) continue;
+          if (skipModifiers) continue;
 
-          seenKeys.add(normalizeForMatch(key));
+          const likelyMatch = matchModifier({ query: normalizedQuery, key: row.key, name: row.name });
+          if (!likelyMatch) continue;
+
+          const score = scoreMatch({ query: normalizedQuery, key: row.key, name: row.name });
+          if (score < MODIFIER_MATCH_AMBIGUOUS_MIN) continue;
+          if (score < MODIFIER_MATCH_HIGH_CONFIDENCE) {
+            ambiguousModifierKeys.add(normalizedKey);
+            continue;
+          }
+
+          seenKeys.add(normalizedKey);
           const amount = roundMoney(
             calcAmountByMode({
               amount: row.amount,
@@ -802,6 +821,10 @@ export function createQuoteOrderTool(config: QuoteOrderToolConfig = {}) {
           subtotal = roundMoney(subtotal + amount);
         }
 
+        if (ambiguousModifierKeys.size > 0) {
+          throw makeQuoteError("quote_order_modifier_ambiguous");
+        }
+
         const shippingMode = detectShippingMode(args.query);
         if (shippingMode === "envio_domicilio") {
           const shippingRows = pricingRows.filter((row) => row.type === "envio");
@@ -817,13 +840,18 @@ export function createQuoteOrderTool(config: QuoteOrderToolConfig = {}) {
               }))
               .sort((a, b) => b.score - a.score);
 
-            let shipping = rankedShipping[0]?.row;
-            const hasZoneMatch = (rankedShipping[0]?.score ?? 0) > 0;
-
-            if (!hasZoneMatch) {
-              shipping = shippingRows.slice().sort((a, b) => a.amount - b.amount)[0];
-              assumptions.push("No se detectó zona de envío; se aplicó la tarifa mínima disponible.");
+            const strongCandidates = rankedShipping.filter((candidate) => candidate.score >= SHIPPING_ZONE_MATCH_MIN);
+            if (strongCandidates.length === 0) {
+              throw makeQuoteError("quote_order_shipping_zone_missing");
             }
+
+            const topCandidate = strongCandidates[0];
+            const secondCandidate = strongCandidates[1];
+            if (topCandidate && secondCandidate && topCandidate.score === secondCandidate.score) {
+              throw makeQuoteError("quote_order_shipping_zone_ambiguous");
+            }
+
+            const shipping = topCandidate?.row;
 
             if (shipping && shipping.amount > 0) {
               lines.push({

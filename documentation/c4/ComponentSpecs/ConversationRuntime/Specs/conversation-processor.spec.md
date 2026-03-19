@@ -61,7 +61,11 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - For day schedule queries (e.g. `agenda de hoy`, `agenda del 2026-03-20`), route deterministically to `schedule-day-view` without entering confirm flow.
 - When `schedule.day_view` excludes rows due to critical data quality issues (e.g. missing ISO datetime), runtime must still return a partial agenda plus visible `inconsistencias`.
 - For `quote.order`, after returning the quote, require an explicit user decision (`confirmar/cancelar`) to convert quote into `pedido` draft.
+- For `quote.order` with `envio_domicilio`, if zone is missing/ambiguous runtime must ask for `zona` before closing quote total.
+- For `quote.order`, if options/extras matching is ambiguous, runtime must ask explicit clarification (or allow `sin extras`) before continuing.
+- Before converting accepted quote to `pedido`, runtime must recalculate quote from latest catalog and compare snapshot (`total` + lines); if changed, show updated quote and require reconfirmation.
 - If quote is accepted for conversion, runtime must continue with regular `pedido` flow (ask missing fields, show summary, require final confirmation before executing `order.create` connectors).
+- Orders created from quote conversion must include lightweight traceability `quote_id` in `notas` (`Creado desde cotizacion (quote_id: ...)`).
 - For `order.update`, detect update intent deterministically and require explicit `confirmar/cancelar` before tool execution; apply Trello+Sheets with rollback on partial failure.
 - If `order.update.patch.fecha_hora_entrega` is provided, it must be canonicalized to `YYYY-MM-DDTHH:mm:ss` (`America/Mexico_City`) before summary/execution; if conversion fails or time is missing, runtime must keep pending state and ask for patch clarification.
 - If `order.update` request has no explicit reference, runtime should attempt lookup-by-query from free text; continue automatically only on unique match, otherwise ask for precise `folio|operation_id` and show up to 5 options when ambiguous.

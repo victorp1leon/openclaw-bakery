@@ -1,7 +1,7 @@
 # Spec - quote-order (Phase 3 pricing catalog)
 
 Status: MVP
-Last Updated: 2026-03-12
+Last Updated: 2026-03-19
 
 ## Objective
 Generate a read-only order quote from Google Sheets pricing catalogs (`CatalogoPrecios`, `CatalogoOpciones`, `CatalogoReferencias`) without creating or mutating orders.
@@ -41,7 +41,10 @@ Generate a read-only order quote from Google Sheets pricing catalogs (`CatalogoP
 - Base product is mandatory; if none matches, return `quote_order_product_not_found`.
 - Quantity defaults to `1` when not explicit.
 - Shipping cost is included only when query indicates home delivery.
+- Home delivery requires an explicit/recognized shipping zone; otherwise return `quote_order_shipping_zone_missing` (or `quote_order_shipping_zone_ambiguous`).
 - Urgency surcharge is applied when query contains urgency/lead-time hints and matching policy rows exist.
+- Options/extras are auto-applied only with high-confidence fuzzy score.
+- When options/extras are partially matched (gray zone), return `quote_order_modifier_ambiguous` to force runtime clarification.
 - Policy rows may define:
   - suggested deposit (`anticipo`)
   - quote validity hours (`vigencia`)
@@ -58,6 +61,8 @@ Generate a read-only order quote from Google Sheets pricing catalogs (`CatalogoP
   - command unavailable (`ENOENT`)
   - empty pricing catalog
   - product not found in catalog
+  - shipping zone missing/ambiguous for home delivery
+  - ambiguous modifier matching requiring user clarification
 
 ## Security Constraints
 - No write operations against Sheets in this tool.
@@ -68,3 +73,5 @@ Generate a read-only order quote from Google Sheets pricing catalogs (`CatalogoP
 - `fails_when_spreadsheet_id_missing`
 - `calculates_quote_from_base_options_extras_shipping_urgency`
 - `fails_when_no_product_can_be_matched`
+- `fails_when_home_delivery_zone_missing`
+- `fails_when_modifier_matching_is_ambiguous`

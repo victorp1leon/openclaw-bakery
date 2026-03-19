@@ -1,6 +1,6 @@
 # Skill Registry
 
-Generated At (UTC): 2026-03-18 18:24:12.492 UTC
+Generated At (UTC): 2026-03-19 20:20:36.002 UTC
 
 ## Skills
 
@@ -37,6 +37,7 @@ Generated At (UTC): 2026-03-18 18:24:12.492 UTC
 | read-only-clarification-flow-standard | `.codex/rules/read-only-clarification-flow-standard.md` |
 | read-only-trace-ref-standard | `.codex/rules/read-only-trace-ref-standard.md` |
 | secrets-never-commit | `.codex/rules/secrets-never-commit.md` |
+| test-failure-priority-gate | `.codex/rules/test-failure-priority-gate.md` |
 
 ## Agents
 

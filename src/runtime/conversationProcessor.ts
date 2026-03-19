@@ -1050,6 +1050,93 @@ function appendQuoteHint(query: string, hint: string): string {
 }
 
 const QUOTE_TO_ORDER_CONFIRM_FIELD = "quote_to_order_confirm";
+const QUOTE_TO_ORDER_RECONFIRM_FIELD = "quote_to_order_reconfirm";
+const QUOTE_SHIPPING_ZONE_FIELD = "quote_shipping_zone";
+const QUOTE_MODIFIER_FIELD = "quote_modifier";
+
+type StoredQuoteSnapshot = {
+  total: number;
+  currency: string;
+  lines: string[];
+};
+
+function buildQuoteLineFingerprint(line: QuoteOrderResult["lines"][number]): string {
+  const amount = Math.round(line.amount * 100) / 100;
+  return `${line.kind}|${normalizeForMatch(line.key)}|${amount.toFixed(2)}`;
+}
+
+function buildStoredQuoteSnapshot(quote: QuoteOrderResult): StoredQuoteSnapshot {
+  return {
+    total: Math.round(quote.total * 100) / 100,
+    currency: quote.currency,
+    lines: quote.lines.map((line) => buildQuoteLineFingerprint(line))
+  };
+}
+
+function parseStoredQuoteSnapshot(value: unknown): StoredQuoteSnapshot | undefined {
+  if (!isObjectRecord(value)) return undefined;
+  const total = typeof value.total === "number" ? value.total : Number.NaN;
+  const currency = trimString(value.currency);
+  const lines = Array.isArray(value.lines)
+    ? value.lines
+      .filter((line): line is string => typeof line === "string")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+    : [];
+  if (!Number.isFinite(total) || !currency) return undefined;
+  return {
+    total: Math.round(total * 100) / 100,
+    currency,
+    lines
+  };
+}
+
+function hasQuoteSnapshotChanges(previous: StoredQuoteSnapshot, current: StoredQuoteSnapshot): boolean {
+  if (previous.currency !== current.currency) return true;
+  if (previous.total !== current.total) return true;
+  if (previous.lines.length !== current.lines.length) return true;
+  for (let i = 0; i < previous.lines.length; i += 1) {
+    if (previous.lines[i] !== current.lines[i]) return true;
+  }
+  return false;
+}
+
+function quoteShippingZonePrompt(): string {
+  return "Para envío a domicilio necesito la zona para cotizar exacto. Ejemplo: Villa de Alvarez, Colima centro o Comala.";
+}
+
+function quoteModifierClarificationPrompt(): string {
+  return "Necesito confirmar los extras/opciones. Escríbeme exactamente cuál quieres agregar (ej. decoracion personalizada) o responde sin extras.";
+}
+
+function quoteToOrderConfirmPrompt(): string {
+  return "¿Deseas crear el pedido con esta cotización? Responde confirmar o cancelar.";
+}
+
+function formatQuoteReconfirmationPrompt(args: {
+  previous: StoredQuoteSnapshot;
+  current: QuoteOrderResult;
+}): string {
+  const currentSnapshot = buildStoredQuoteSnapshot(args.current);
+  const totalChanged = args.previous.total !== currentSnapshot.total || args.previous.currency !== currentSnapshot.currency;
+  const linesChanged = args.previous.lines.length !== currentSnapshot.lines.length ||
+    args.previous.lines.some((line, idx) => line !== currentSnapshot.lines[idx]);
+
+  const changes: string[] = [];
+  if (totalChanged) {
+    changes.push(`total: ${args.previous.total} ${args.previous.currency} -> ${currentSnapshot.total} ${currentSnapshot.currency}`);
+  }
+  if (linesChanged) {
+    changes.push("líneas de la cotización");
+  }
+
+  const changedSummary = changes.length > 0 ? changes.join(" | ") : "la cotización";
+  return [
+    `La cotización cambió al momento de confirmar (${changedSummary}).`,
+    formatQuoteOrderReply(args.current),
+    quoteToOrderConfirmPrompt()
+  ].join("\n\n");
+}
 
 function extractQuoteCustomizationSegment(args: {
   query: string;
@@ -1102,15 +1189,16 @@ function parseOrderFlavorFillingFromQuery(query: string): "cajeta" | "mermelada_
   return undefined;
 }
 
-function buildOrderPayloadFromQuote(args: { query: string; quote: QuoteOrderResult }): Record<string, unknown> {
+function buildOrderPayloadFromQuote(args: { query: string; quote: QuoteOrderResult; quoteId?: string }): Record<string, unknown> {
   const nonBaseLabels = args.quote.lines.filter((line) => line.kind !== "base").map((line) => line.label.trim()).filter((label) => label.length > 0);
+  const notesBase = args.quoteId ? `Creado desde cotizacion (quote_id: ${args.quoteId})` : "Creado desde cotizacion";
   const payload: Record<string, unknown> = {
     producto: args.quote.product.name,
     cantidad: args.quote.quantity,
     total: args.quote.total,
     moneda: args.quote.currency,
     estado_pago: "pendiente",
-    notas: "Creado desde cotizacion"
+    notas: notesBase
   };
 
   if (args.quote.shippingMode === "envio_domicilio" || args.quote.shippingMode === "recoger_en_tienda") {
@@ -1135,7 +1223,7 @@ function buildOrderPayloadFromQuote(args: { query: string; quote: QuoteOrderResu
 }
 
 function formatQuoteReplyWithOrderCta(quote: QuoteOrderResult): string {
-  return `${formatQuoteOrderReply(quote)}\n\n¿Deseas crear el pedido con esta cotización? Responde confirmar o cancelar.`;
+  return `${formatQuoteOrderReply(quote)}\n\n${quoteToOrderConfirmPrompt()}`;
 }
 
 function parseQuoteOptionSuggestions(value: unknown): QuoteOptionSuggestions | undefined {
@@ -1934,18 +2022,96 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         let query = trimString(payload.query) ?? "";
         const asked = st.pending.asked;
         const payloadSuggestions = parseQuoteOptionSuggestions(payload.quote_option_suggestions);
+        const quoteId = trimString(payload.quote_id) ?? `quote-${st.pending.operation_id}`;
+        payload.quote_id = quoteId;
 
-        if (asked === QUOTE_TO_ORDER_CONFIRM_FIELD) {
+        if (asked === QUOTE_TO_ORDER_CONFIRM_FIELD || asked === QUOTE_TO_ORDER_RECONFIRM_FIELD) {
           if (!isConfirm(msg.text)) {
-            return ["¿Deseas crear el pedido con esta cotización? Responde confirmar o cancelar."];
+            return [quoteToOrderConfirmPrompt()];
           }
 
-          const orderPayload = isObjectRecord(payload.quote_order_payload)
-            ? { ...payload.quote_order_payload }
-            : undefined;
-          if (!orderPayload) {
+          if (!query) {
             clearPending(msg.chat_id);
             return ["No pude recuperar la cotización para crear el pedido. Pídeme una nueva cotización."];
+          }
+
+          const previousSnapshot = parseStoredQuoteSnapshot(payload.quote_snapshot);
+          let quote: QuoteOrderResult;
+          try {
+            quote = await executeQuoteOrderFn({
+              chat_id: msg.chat_id,
+              query
+            });
+          } catch (err) {
+            const safeDetail = err instanceof Error ? err.message : String(err);
+
+            deps.onTrace?.({
+              event: "quote_order_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "quote.order",
+              intent_source: "fallback",
+              detail: safeDetail
+            });
+
+            if (safeDetail === "quote_order_product_not_found") {
+              st.pending.asked = "quote_product";
+              st.pending.missing = ["quote.product"];
+              setState(msg.chat_id, st);
+              return ["No pude identificar el producto base. ¿Qué producto quieres cotizar? Ejemplo: pastel mediano o caja de 12 cupcakes."];
+            }
+
+            if (safeDetail === "quote_order_shipping_zone_missing" || safeDetail === "quote_order_shipping_zone_ambiguous") {
+              st.pending.asked = QUOTE_SHIPPING_ZONE_FIELD;
+              st.pending.missing = ["quote.shipping_zone"];
+              setState(msg.chat_id, st);
+              return [quoteShippingZonePrompt()];
+            }
+
+            if (safeDetail === "quote_order_modifier_ambiguous") {
+              st.pending.asked = QUOTE_MODIFIER_FIELD;
+              st.pending.missing = ["quote.modifier"];
+              setState(msg.chat_id, st);
+              return [quoteModifierClarificationPrompt()];
+            }
+
+            clearPending(msg.chat_id);
+            return ["No pude generar la cotización en este momento. Intenta de nuevo en unos minutos."];
+          }
+
+          const customizationField = nextQuoteCustomizationField(query);
+          if (customizationField) {
+            const nextSuggestions = quote.optionSuggestions ?? payloadSuggestions;
+            if (nextSuggestions) {
+              payload.quote_option_suggestions = nextSuggestions;
+            }
+            payload.query = query;
+            payload.quote_id = quoteId;
+            st.pending.action.payload = payload;
+            st.pending.asked = customizationField;
+            st.pending.missing = [customizationField];
+            setState(msg.chat_id, st);
+            return [quotePromptForField(customizationField, nextSuggestions?.[customizationField])];
+          }
+
+          const currentSnapshot = buildStoredQuoteSnapshot(quote);
+          const orderPayload = buildOrderPayloadFromQuote({ query, quote, quoteId });
+          payload.query = query;
+          payload.quote_id = quoteId;
+          payload.quote_snapshot = currentSnapshot;
+          payload.quote_order_payload = orderPayload;
+          st.pending.action.payload = payload;
+
+          if (previousSnapshot && hasQuoteSnapshotChanges(previousSnapshot, currentSnapshot)) {
+            st.pending.asked = QUOTE_TO_ORDER_RECONFIRM_FIELD;
+            st.pending.missing = [QUOTE_TO_ORDER_RECONFIRM_FIELD];
+            setState(msg.chat_id, st);
+            return [
+              formatQuoteReconfirmationPrompt({
+                previous: previousSnapshot,
+                current: quote
+              })
+            ];
           }
 
           deps.onTrace?.({
@@ -1986,6 +2152,23 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             return ["¿La entrega será para recoger en tienda o envío a domicilio?"];
           }
           query = appendQuoteHint(query, shipping === "recoger_en_tienda" ? "recoger en tienda" : "envio a domicilio");
+          payload.query = query;
+          st.pending.action.payload = payload;
+        } else if (asked === QUOTE_SHIPPING_ZONE_FIELD) {
+          const zoneText = msg.text.trim();
+          if (zoneText.length < 2) {
+            return [quoteShippingZonePrompt()];
+          }
+          query = appendQuoteHint(query, zoneText);
+          payload.query = query;
+          st.pending.action.payload = payload;
+        } else if (asked === QUOTE_MODIFIER_FIELD) {
+          const modifierText = parseQuoteCustomizationAnswer(msg.text);
+          if (!modifierText) {
+            return [quoteModifierClarificationPrompt()];
+          }
+          const hint = isQuoteSkipAnswer(modifierText) ? "sin extras" : modifierText;
+          query = appendQuoteHint(query, hint);
           payload.query = query;
           st.pending.action.payload = payload;
         } else if (
@@ -2046,6 +2229,20 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             return ["No pude identificar el producto base. ¿Qué producto quieres cotizar? Ejemplo: pastel mediano o caja de 12 cupcakes."];
           }
 
+          if (safeDetail === "quote_order_shipping_zone_missing" || safeDetail === "quote_order_shipping_zone_ambiguous") {
+            st.pending.asked = QUOTE_SHIPPING_ZONE_FIELD;
+            st.pending.missing = ["quote.shipping_zone"];
+            setState(msg.chat_id, st);
+            return [quoteShippingZonePrompt()];
+          }
+
+          if (safeDetail === "quote_order_modifier_ambiguous") {
+            st.pending.asked = QUOTE_MODIFIER_FIELD;
+            st.pending.missing = ["quote.modifier"];
+            setState(msg.chat_id, st);
+            return [quoteModifierClarificationPrompt()];
+          }
+
           clearPending(msg.chat_id);
           return ["No pude generar la cotización en este momento. Intenta de nuevo en unos minutos."];
         }
@@ -2072,8 +2269,11 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           detail: `product=${quote.product.key};total=${quote.total}`
         });
 
-        const orderPayload = buildOrderPayloadFromQuote({ query, quote });
+        const orderPayload = buildOrderPayloadFromQuote({ query, quote, quoteId });
+        const quoteSnapshot = buildStoredQuoteSnapshot(quote);
         payload.query = query;
+        payload.quote_id = quoteId;
+        payload.quote_snapshot = quoteSnapshot;
         payload.quote_order_payload = orderPayload;
         st.pending.action.payload = payload;
         st.pending.asked = QUOTE_TO_ORDER_CONFIRM_FIELD;
@@ -4371,7 +4571,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             idempotency_key: operation_id,
             action: {
               intent: "quote.order",
-              payload: { query: quoteQuery }
+              payload: {
+                query: quoteQuery,
+                quote_id: `quote-${operation_id}`
+              }
             },
             missing: ["quote.quantity"],
             asked: "quote_quantity"
@@ -4389,7 +4592,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             idempotency_key: operation_id,
             action: {
               intent: "quote.order",
-              payload: { query: quoteQuery }
+              payload: {
+                query: quoteQuery,
+                quote_id: `quote-${operation_id}`
+              }
             },
             missing: ["quote.shipping"],
             asked: "quote_shipping"
@@ -4424,7 +4630,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
               idempotency_key: operation_id,
               action: {
                 intent: "quote.order",
-                payload: { query: quoteQuery }
+                payload: {
+                  query: quoteQuery,
+                  quote_id: `quote-${operation_id}`
+                }
               },
               missing: ["quote.product"],
               asked: "quote_product"
@@ -4433,13 +4642,56 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           return ["No pude identificar el producto base. ¿Qué producto quieres cotizar? Ejemplo: pastel mediano o caja de 12 cupcakes."];
         }
 
+        if (safeDetail === "quote_order_shipping_zone_missing" || safeDetail === "quote_order_shipping_zone_ambiguous") {
+          const operation_id = newOperationId();
+          setState(msg.chat_id, {
+            pending: {
+              operation_id,
+              idempotency_key: operation_id,
+              action: {
+                intent: "quote.order",
+                payload: {
+                  query: quoteQuery,
+                  quote_id: `quote-${operation_id}`
+                }
+              },
+              missing: ["quote.shipping_zone"],
+              asked: QUOTE_SHIPPING_ZONE_FIELD
+            }
+          });
+          return [quoteShippingZonePrompt()];
+        }
+
+        if (safeDetail === "quote_order_modifier_ambiguous") {
+          const operation_id = newOperationId();
+          setState(msg.chat_id, {
+            pending: {
+              operation_id,
+              idempotency_key: operation_id,
+              action: {
+                intent: "quote.order",
+                payload: {
+                  query: quoteQuery,
+                  quote_id: `quote-${operation_id}`
+                }
+              },
+              missing: ["quote.modifier"],
+              asked: QUOTE_MODIFIER_FIELD
+            }
+          });
+          return [quoteModifierClarificationPrompt()];
+        }
+
         return ["No pude generar la cotización en este momento. Intenta de nuevo en unos minutos."];
       }
 
       const customizationField = nextQuoteCustomizationField(quoteQuery);
       if (customizationField) {
         const operation_id = newOperationId();
-        const nextPayload: Record<string, unknown> = { query: quoteQuery };
+        const nextPayload: Record<string, unknown> = {
+          query: quoteQuery,
+          quote_id: `quote-${operation_id}`
+        };
         if (quote.optionSuggestions) {
           nextPayload.quote_option_suggestions = quote.optionSuggestions;
         }
@@ -4468,10 +4720,13 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       });
 
       const operation_id = newOperationId();
+      const quoteId = `quote-${operation_id}`;
       const quoteOrderPayload = buildOrderPayloadFromQuote({
         query: quoteQuery,
-        quote
+        quote,
+        quoteId
       });
+      const quoteSnapshot = buildStoredQuoteSnapshot(quote);
       setState(msg.chat_id, {
         pending: {
           operation_id,
@@ -4480,6 +4735,8 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             intent: "quote.order",
             payload: {
               query: quoteQuery,
+              quote_id: quoteId,
+              quote_snapshot: quoteSnapshot,
               quote_order_payload: quoteOrderPayload
             }
           },

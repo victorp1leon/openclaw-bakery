@@ -1626,6 +1626,11 @@ describe("conversation processor security flow", () => {
       text: "confirmar"
     });
     expect(askCustomer[0]).toContain("Nombre del cliente");
+    expect(executeQuoteOrderFn).toHaveBeenCalledTimes(2);
+    expect(executeQuoteOrderFn.mock.calls[1]?.[0]).toEqual({
+      chat_id: "chat-quote-to-order",
+      query: "cotiza pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas"
+    });
 
     const askDelivery = await processor.handleMessage({
       chat_id: "chat-quote-to-order",
@@ -1658,7 +1663,8 @@ describe("conversation processor security flow", () => {
         total: 650,
         moneda: "MXN",
         sabor_pan: "vainilla",
-        sabor_relleno: "oreo"
+        sabor_relleno: "oreo",
+        notas: "Creado desde cotizacion (quote_id: quote-op-quote-ready)"
       })
     }));
     expect(executeAppendOrderFn).toHaveBeenCalledWith(expect.objectContaining({
@@ -1666,6 +1672,186 @@ describe("conversation processor security flow", () => {
       chat_id: "chat-quote-to-order",
       estado_pedido: "activo"
     }));
+  });
+
+  it("recalcula quote al confirmar y pide reconfirmacion si cambian total o lineas", async () => {
+    const ids = ["op-quote-drift", "op-order-drift"];
+    const executeQuoteOrderFn = vi
+      .fn()
+      .mockResolvedValueOnce({
+        query: "cotiza pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas",
+        currency: "MXN",
+        quantity: 1,
+        shippingMode: "recoger_en_tienda" as const,
+        product: {
+          key: "pastel_mediano",
+          name: "Pastel mediano",
+          unitAmount: 650
+        },
+        lines: [{ kind: "base" as const, key: "pastel_mediano", label: "Pastel mediano", amount: 650 }],
+        subtotal: 650,
+        total: 650,
+        assumptions: [],
+        detail: "quote-order executed (provider=gws, attempt=1)"
+      })
+      .mockResolvedValueOnce({
+        query: "cotiza pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas",
+        currency: "MXN",
+        quantity: 1,
+        shippingMode: "recoger_en_tienda" as const,
+        product: {
+          key: "pastel_mediano",
+          name: "Pastel mediano",
+          unitAmount: 700
+        },
+        lines: [{ kind: "base" as const, key: "pastel_mediano", label: "Pastel mediano", amount: 700 }],
+        subtotal: 700,
+        total: 700,
+        assumptions: [],
+        detail: "quote-order executed (provider=gws, attempt=1)"
+      })
+      .mockResolvedValueOnce({
+        query: "cotiza pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas",
+        currency: "MXN",
+        quantity: 1,
+        shippingMode: "recoger_en_tienda" as const,
+        product: {
+          key: "pastel_mediano",
+          name: "Pastel mediano",
+          unitAmount: 700
+        },
+        lines: [{ kind: "base" as const, key: "pastel_mediano", label: "Pastel mediano", amount: 700 }],
+        subtotal: 700,
+        total: 700,
+        assumptions: [],
+        detail: "quote-order executed (provider=gws, attempt=1)"
+      });
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-quote-drift"]),
+      routeIntentFn: async () => "pedido",
+      newOperationId: () => ids.shift() ?? "op-fallback",
+      executeQuoteOrderFn
+    });
+
+    const quoteReply = await processor.handleMessage({
+      chat_id: "chat-quote-drift",
+      text: "cotiza pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas"
+    });
+    expect(quoteReply[0]).toContain("¿Deseas crear el pedido con esta cotización?");
+
+    const reconfirm = await processor.handleMessage({
+      chat_id: "chat-quote-drift",
+      text: "confirmar"
+    });
+    expect(reconfirm[0]).toContain("La cotización cambió al momento de confirmar");
+    expect(reconfirm[0]).toContain("Total estimado: 700 MXN");
+    expect(reconfirm[0]).toContain("¿Deseas crear el pedido con esta cotización?");
+
+    const askCustomer = await processor.handleMessage({
+      chat_id: "chat-quote-drift",
+      text: "confirmar"
+    });
+    expect(askCustomer[0]).toContain("Nombre del cliente");
+    expect(executeQuoteOrderFn).toHaveBeenCalledTimes(3);
+  });
+
+  it("pide zona cuando quote.order detecta envio a domicilio sin zona valida", async () => {
+    const executeQuoteOrderFn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("quote_order_shipping_zone_missing"))
+      .mockResolvedValueOnce({
+        query: "cotiza pastel mediano x1 envio a domicilio sabor de pan vainilla relleno oreo betun buttercream topping fresas Villa de Alvarez",
+        currency: "MXN",
+        quantity: 1,
+        shippingMode: "envio_domicilio" as const,
+        product: {
+          key: "pastel_mediano",
+          name: "Pastel mediano",
+          unitAmount: 650
+        },
+        lines: [
+          { kind: "base" as const, key: "pastel_mediano", label: "Pastel mediano", amount: 650 },
+          { kind: "shipping" as const, key: "zona_villa_alvarez", label: "Envio Villa de Alvarez", amount: 70 }
+        ],
+        subtotal: 720,
+        total: 720,
+        assumptions: [],
+        detail: "quote-order executed (provider=gws, attempt=1)"
+      });
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-quote-zone"]),
+      routeIntentFn: async () => "pedido",
+      executeQuoteOrderFn
+    });
+
+    const askZone = await processor.handleMessage({
+      chat_id: "chat-quote-zone",
+      text: "cotiza pastel mediano x1 envio a domicilio sabor de pan vainilla relleno oreo betun buttercream topping fresas"
+    });
+    expect(askZone[0]).toContain("necesito la zona");
+
+    const quoteReply = await processor.handleMessage({
+      chat_id: "chat-quote-zone",
+      text: "Villa de Alvarez"
+    });
+    expect(quoteReply[0]).toContain("Cotizacion estimada");
+    expect(quoteReply[0]).toContain("¿Deseas crear el pedido con esta cotización?");
+    expect(executeQuoteOrderFn.mock.calls[1]?.[0]).toEqual({
+      chat_id: "chat-quote-zone",
+      query:
+        "cotiza pastel mediano x1 envio a domicilio sabor de pan vainilla relleno oreo betun buttercream topping fresas Villa de Alvarez"
+    });
+  });
+
+  it("pide aclaracion cuando extras/opciones tienen match ambiguo", async () => {
+    const executeQuoteOrderFn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("quote_order_modifier_ambiguous"))
+      .mockResolvedValueOnce({
+        query:
+          "cotiza pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas decoracion personalizada",
+        currency: "MXN",
+        quantity: 1,
+        shippingMode: "recoger_en_tienda" as const,
+        product: {
+          key: "pastel_mediano",
+          name: "Pastel mediano",
+          unitAmount: 650
+        },
+        lines: [
+          { kind: "base" as const, key: "pastel_mediano", label: "Pastel mediano", amount: 650 },
+          { kind: "option" as const, key: "decoracion_personalizada", label: "Decoracion personalizada", amount: 120 }
+        ],
+        subtotal: 770,
+        total: 770,
+        assumptions: [],
+        detail: "quote-order executed (provider=gws, attempt=1)"
+      });
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-quote-modifier"]),
+      routeIntentFn: async () => "pedido",
+      executeQuoteOrderFn
+    });
+
+    const askModifier = await processor.handleMessage({
+      chat_id: "chat-quote-modifier",
+      text: "cotiza pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas decoracion personalizada elegante"
+    });
+    expect(askModifier[0]).toContain("extras/opciones");
+
+    const quoteReply = await processor.handleMessage({
+      chat_id: "chat-quote-modifier",
+      text: "decoracion personalizada"
+    });
+    expect(quoteReply[0]).toContain("Cotizacion estimada");
+    expect(executeQuoteOrderFn.mock.calls[1]?.[0]).toEqual({
+      chat_id: "chat-quote-modifier",
+      query:
+        "cotiza pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas decoracion personalizada elegante decoracion personalizada"
+    });
   });
 
   it("inicia flujo de order.update con resumen y confirmacion", async () => {

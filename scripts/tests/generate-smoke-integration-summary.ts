@@ -251,6 +251,11 @@ function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
+function buildIsolatedSmokeChatId(args: { runId: string; scenario: string; index: number }): string {
+  const scenarioTag = sanitizeForFileName(args.scenario).slice(0, 20) || "scenario";
+  return `smoke-${args.runId}-${String(args.index + 1).padStart(2, "0")}-${scenarioTag}`;
+}
+
 function inferSmokeTestLabel(payload: Record<string, unknown>): string {
   const input = payload.input;
   if (typeof input === "string" && input.trim().length > 0) return truncate(input.trim());
@@ -566,12 +571,25 @@ function main(): void {
   ];
 
   const smokeRows: SummaryRow[] = [];
-  for (const smoke of smokeCommands) {
+  const runId = timestamp;
+  for (const [index, smoke] of smokeCommands.entries()) {
     const logPath = path.join(historyDir, `${timestamp}-${sanitizeForFileName(smoke.scenario)}.log`);
+    const isolatedChatId = buildIsolatedSmokeChatId({
+      runId,
+      scenario: smoke.scenario,
+      index
+    });
     const result = runNpmScript({
       script: smoke.npmScript,
       logPath,
       env: smoke.env
+        ? {
+          ...smoke.env,
+          SMOKE_CHAT_ID: isolatedChatId
+        }
+        : {
+          SMOKE_CHAT_ID: isolatedChatId
+        }
     });
 
     smokeRows.push(
