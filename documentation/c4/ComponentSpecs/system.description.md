@@ -1,7 +1,7 @@
 # System Description (C4 - Container Level)
 
 Status: MVP
-Last Updated: 2026-03-13
+Last Updated: 2026-03-19
 
 ## System
 `OpenClaw Bakery Bot` (`bot-bakery`) is a Node.js/TypeScript application that provides a conversational assistant for bakery business operations.
@@ -40,17 +40,19 @@ Last Updated: 2026-03-13
 3. The rate-limit guard throttles bursts per `chat_id`.
 4. The runtime determines whether the message is a confirmation/cancellation or a new request.
 5. The intent router classifies the capability.
-6. The parser builds JSON (OpenClaw + local heuristic fallback).
-7. Guards validate, normalize, and request missing fields when needed.
-8. The runtime builds a summary + `operation_id`.
-9. After confirmation, the tool executor invokes external integrations.
-10. State/result and idempotency records are persisted.
+6. For read-only intents, an OpenClaw-first router may extract scope/query under feature flags; for action intents, the standard intent router applies.
+7. The parser builds JSON drafts (OpenClaw + local heuristic fallback) for confirmable action flows.
+8. Guards validate, normalize, and request missing fields when needed.
+9. The runtime builds a summary + `operation_id`.
+10. After confirmation, the tool executor invokes external integrations.
+11. State/result and idempotency records are persisted.
 
 ## Conversation Runtime L3 Components (Reference)
 - `conversationProcessor`
 - `allowlistGuard`
 - `rateLimitGuard`
 - `intentRouter`
+- `readOnlyIntentRouter`
 - `parser`
 - `validationGuard`
 - `missingFieldPicker`

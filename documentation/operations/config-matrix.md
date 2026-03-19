@@ -132,6 +132,8 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 | `OPENCLAW_PROFILE` | _(unset)_ | No | openclaw runtime | Optional OpenClaw profile selection. |
 | `OPENCLAW_TIMEOUT_SECONDS` | `30` | No | openclaw runtime | OpenClaw invocation timeout. |
 | `OPENCLAW_THINKING` | _(unset)_ | No | openclaw runtime | Optional OpenClaw thinking mode. |
+| `OPENCLAW_READONLY_ROUTING_ENABLE` | `0` | No | conversation runtime | Enables OpenClaw-first routing/extraction for read-only intents (`report/orders`, `lookup`, `status`, `schedule`, `shopping`, `quote`). |
+| `OPENCLAW_READONLY_QUOTE_ENABLE` | `1` | No | conversation runtime | Controls whether `quote.order` is included in OpenClaw read-only routing when `OPENCLAW_READONLY_ROUTING_ENABLE=1`. |
 | `OPENCLAW_STRICT` | `0` | No | conversation runtime | Enables strict runtime mode traces/behavior gates. |
 | `OPENCLAW_STRICT_SOFTFAIL` | `0` | No | failover behavior | Allows fallback on transient OpenClaw failures. |
 | `OPENCLAW_BIN` | `npx` | No | openclaw runtime | Binary used to invoke OpenClaw CLI. |

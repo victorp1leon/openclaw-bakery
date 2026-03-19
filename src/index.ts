@@ -144,7 +144,9 @@ logger.info(
       timeoutSeconds: appConfig.openclaw.timeoutSeconds,
       strict: appConfig.openclaw.strict,
       strictSoftfail: appConfig.openclaw.strictSoftfail,
-      thinking: appConfig.openclaw.thinking ?? "default"
+      thinking: appConfig.openclaw.thinking ?? "default",
+      readOnlyRoutingEnabled: appConfig.openclaw.readOnlyRoutingEnabled,
+      readOnlyQuoteEnabled: appConfig.openclaw.readOnlyQuoteEnabled
     },
     telegram: {
       configured: Boolean(appConfig.telegram.botToken),

@@ -42,6 +42,10 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - For `pedido`, execute `create-card` + `append-order` on confirm path and rollback Trello card creation if Sheets append fails.
 - For `pedido`, if rollback fails after partial execution, keep user-facing response controlled/generic and log internal failure detail for support.
 - For order reporting queries (e.g. `pedidos hoy`, `pedidos del 28 de abril`, `pedidos esta semana`, `pedidos del mes de mayo`, `pedidos de este año`), route deterministically to `report-orders` without entering confirm flow.
+- When `OPENCLAW_READONLY_ROUTING_ENABLE=1`, evaluate read-only OpenClaw routing before deterministic read-only detectors (`report/orders`, `lookup`, `status`, `schedule`, `shopping`, `quote`).
+- If read-only OpenClaw routing is active and strict mode is enabled (`OPENCLAW_STRICT=1`), do not use deterministic read-only fallback when OpenClaw returns `unknown`/invalid payload; return controlled clarification instead.
+- If read-only OpenClaw routing is active and strict mode is disabled (`OPENCLAW_STRICT=0`), deterministic read-only fallback remains allowed when OpenClaw returns `unknown`.
+- `OPENCLAW_READONLY_QUOTE_ENABLE=0` disables OpenClaw read-only routing for `quote.order` only; quote flow remains available through deterministic routing.
 - If user asks report intent without period (e.g. `reporte de pedidos`), runtime must ask for clarification (`hoy|semana|mes|año`) and continue once resolved.
 - `report.orders` replies must include `Ref` (`trace_ref`) in success/no-match, and controlled failure with `Ref` when provider fails.
 - For order lookup queries (e.g. `consulta pedido de ana`, `buscar pedido op-123`), route deterministically to `lookup-order` without entering confirm flow.
@@ -63,6 +67,8 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - If `order.cancel` returns `already_canceled=true`, runtime must reply with deterministic no-op message (`Este pedido ya fue cancelado con folio <folio>`).
 - If `order.cancel` fails during execution, runtime must return controlled failure with support reference (`Ref: order-cancel:<operation_id>`), while internal traces keep failure detail.
 - For `payment.record`, detect payment intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; persist payment movement in Sheets with audit trail in `notas`.
+- If `payment.record` request has no explicit reference, runtime should attempt lookup-by-query from free text; continue automatically only on unique match, otherwise ask for precise `folio|operation_id` and show up to 5 options when ambiguous.
+- If `payment.record` execution returns `already_recorded=true`, runtime must reply with deterministic no-op message (`Pago ya registrado para <folio>. operation_id: <operation_id>`).
 - For `inventory.consume`, detect inventory consume intent deterministically, show summary, and require explicit `confirmar/cancelar` before tool execution; decrement `Inventario` and append `MovimientosInventario` entries with idempotency guarantees.
 - `inventory.consume` must be feature-gated via `INVENTORY_CONSUME_ENABLE` (default `0`); when disabled, runtime must return a controlled message without executing the tool.
 - In MVP, `inventory.consume` is explicit-command only (no automatic trigger from `order.create` confirmation path).
@@ -124,9 +130,15 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - `supports_order_update_missing_patch_clarification_flow`
 - `supports_order_cancel_summary_and_confirm_flow`
 - `supports_payment_record_summary_and_confirm_flow`
+- `supports_payment_record_lookup_resolution_when_reference_missing`
+- `supports_payment_record_ambiguous_reference_prompt_with_options`
+- `supports_payment_record_noop_message_when_already_recorded`
 - `supports_inventory_consume_summary_and_confirm_flow`
 - `blocks_inventory_consume_when_feature_flag_disabled`
 - `does_not_auto_trigger_inventory_consume_from_order_create`
 - `supports_quote_to_order_conversion_flow`
+- `routes_readonly_intents_via_openclaw_when_feature_flag_enabled`
+- `does_not_fallback_readonly_in_strict_mode_when_openclaw_returns_unknown`
+- `falls_back_to_deterministic_readonly_in_non_strict_mode_when_openclaw_returns_unknown`
 - `emits_allowlist_reject_trace`
 - `rejects_message_when_rate_limited`

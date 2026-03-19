@@ -70,7 +70,9 @@ export function runHealthcheck(args: {
       `enabled=${args.config.openclaw.enabled ? "1" : "0"}`,
       `agent=${args.config.openclaw.agentId}`,
       `profile=${args.config.openclaw.profile ?? "default"}`,
-      `timeout=${args.config.openclaw.timeoutSeconds}s`
+      `timeout=${args.config.openclaw.timeoutSeconds}s`,
+      `readOnlyRouting=${args.config.openclaw.readOnlyRoutingEnabled ? "1" : "0"}`,
+      `readOnlyQuote=${args.config.openclaw.readOnlyQuoteEnabled ? "1" : "0"}`
     ].join(", ")
   });
 

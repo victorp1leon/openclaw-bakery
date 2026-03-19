@@ -4,8 +4,9 @@ Status: MVP
 Last Updated: 2026-02-26
 
 ## Objective
-Classify free-form text into high-level intents (`gasto`, `pedido`, `web`, `ayuda`, `unknown`).
-It must classify intent only and must not execute tools or mutate state.
+Classify free-form text into high-level action intents (`gasto`, `pedido`, `web`, `ayuda`, `unknown`).
+Read-only operational intents are handled by a dedicated read-only router layer.
+This component must classify intent only and must not execute tools or mutate state.
 
 ## Inputs
 - `text: string`
@@ -21,6 +22,7 @@ It must classify intent only and must not execute tools or mutate state.
 - Require valid JSON output from OpenClaw runtime.
 - On transient errors (timeout/aborted/rate-limit), use local fallback if softfail is enabled.
 - Emit traces with `intent_source` and fallback reason.
+- Keep deterministic local priority for command-like `ayuda/help`.
 
 ## Error Handling Classification
 - Retriable: transient OpenClaw invocation failures.

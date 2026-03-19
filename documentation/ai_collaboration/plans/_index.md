@@ -1,15 +1,16 @@
 # Plans Index (AI Collaboration)
 
-Last Updated: 2026-03-18
+Last Updated: 2026-03-19
 
 ## Active Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
-| _None_ | - | - | - |
 
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `runtime/implementation/openclaw-readonly-routing-expansion-v1.md` | Implementation | Complete | 2026-03-19 |
+| `runtime/implementation/phase3-payment-record-grill-closure-v1.md` | Implementation | Complete | 2026-03-18 |
 | `runtime/implementation/phase3-order-update-grill-closure-v1.md` | Implementation | Complete | 2026-03-18 |
 | `runtime/implementation/phase3-order-status-grill-hardening-v1.md` | Implementation | Complete | 2026-03-17 |
 | `runtime/implementation/phase3-order-report-grill-hardening-v1.md` | Implementation | Complete | 2026-03-17 |

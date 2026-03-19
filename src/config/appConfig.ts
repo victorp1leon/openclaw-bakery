@@ -28,6 +28,8 @@ export type AppConfig = {
     strict: boolean;
     strictSoftfail: boolean;
     thinking?: string;
+    readOnlyRoutingEnabled: boolean;
+    readOnlyQuoteEnabled: boolean;
   };
   telegram: {
     botToken?: string;
@@ -236,7 +238,9 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       timeoutSeconds: toPositiveInt(env.OPENCLAW_TIMEOUT_SECONDS, 30),
       strict: env.OPENCLAW_STRICT === "1",
       strictSoftfail: env.OPENCLAW_STRICT_SOFTFAIL === "1",
-      thinking: env.OPENCLAW_THINKING?.trim() || undefined
+      thinking: env.OPENCLAW_THINKING?.trim() || undefined,
+      readOnlyRoutingEnabled: env.OPENCLAW_READONLY_ROUTING_ENABLE === "1",
+      readOnlyQuoteEnabled: (env.OPENCLAW_READONLY_QUOTE_ENABLE ?? "1") === "1"
     },
     telegram: {
       botToken: env.TELEGRAM_BOT_TOKEN?.trim() || undefined,

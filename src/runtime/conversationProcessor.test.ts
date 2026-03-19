@@ -22,6 +22,16 @@ let createConversationProcessor: (args: {
     strict_mode: boolean;
     openclaw_error?: string;
   }>;
+  routeReadOnlyIntentFn?: (args: { text: string; enableQuote: boolean }) => Promise<{
+    intent: "report.orders" | "order.lookup" | "order.status" | "schedule.day_view" | "shopping.list.generate" | "quote.order" | "unknown";
+    source: "openclaw" | "fallback" | "custom";
+    strict_mode: boolean;
+    openclaw_error?: string;
+    period?: unknown;
+    query?: string;
+    day?: unknown;
+    scope?: unknown;
+  }>;
   routeIntentFn?: (text: string) => Promise<"gasto" | "pedido" | "web" | "ayuda" | "unknown">;
   parseExpenseFn?: (text: string) => Promise<
     { ok: true; payload: Record<string, unknown>; source?: "openclaw" | "fallback" | "custom" } |
@@ -2360,6 +2370,217 @@ describe("conversation processor security flow", () => {
     expect(routeIntentFn).not.toHaveBeenCalled();
   });
 
+  it("resuelve payment.record por cliente cuando hay una sola coincidencia", async () => {
+    const executeOrderLookupFn = vi.fn(async () => ({
+      query: "ana",
+      timezone: "America/Mexico_City",
+      total: 1,
+      orders: [
+        {
+          folio: "op-ana-pay-1",
+          operation_id: "op-create-ana-pay-1",
+          fecha_hora_entrega: "2026-03-12 10:00",
+          nombre_cliente: "Ana",
+          producto: "pastel"
+        }
+      ],
+      trace_ref: "order-lookup:ana:a1",
+      detail: "lookup-order executed (provider=gws, attempt=1)"
+    }));
+    const executePaymentRecordFn = vi.fn(async ({ operation_id, reference, payment }) => ({
+      ok: true,
+      dry_run: false,
+      operation_id,
+      payload: {
+        reference,
+        matched_row_index: 11,
+        before: { estado_pago: "pendiente" },
+        after: { estado_pago: payment.estado_pago },
+        payment_event: `[PAGO] 2026-03-11T12:00:00.000Z op:${operation_id} estado:${payment.estado_pago} monto:${payment.monto ?? "n/a"} metodo:${payment.metodo ?? "n/a"} nota:${payment.notas ?? "n/a"}`,
+        already_recorded: false
+      },
+      detail: "record-payment executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-payment-record-lookup-single"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-payment-record-lookup-single",
+      routeIntentFn: async () => "pedido",
+      executeOrderLookupFn,
+      executePaymentRecordFn
+    });
+
+    const summary = await processor.handleMessage({
+      chat_id: "chat-payment-record-lookup-single",
+      text: "registra pago del pedido de ana parcial"
+    });
+    expect(summary[0]).toContain("payment.record");
+    expect(summary[0]).toContain("op-ana-pay-1");
+    expect(summary[0]).toContain("op-payment-record-lookup-single");
+
+    const done = await processor.handleMessage({
+      chat_id: "chat-payment-record-lookup-single",
+      text: "confirmar"
+    });
+    expect(done[0]).toContain("Ejecutado");
+    expect(executeOrderLookupFn).toHaveBeenCalledWith({
+      chat_id: "chat-payment-record-lookup-single",
+      query: "ana"
+    });
+    expect(executePaymentRecordFn).toHaveBeenCalledWith({
+      operation_id: "op-payment-record-lookup-single",
+      chat_id: "chat-payment-record-lookup-single",
+      reference: { folio: "op-ana-pay-1", operation_id_ref: "op-create-ana-pay-1" },
+      payment: {
+        estado_pago: "parcial"
+      }
+    });
+  });
+
+  it("muestra opciones cuando payment.record por cliente es ambiguo y permite elegir folio", async () => {
+    const executeOrderLookupFn = vi.fn(async () => ({
+      query: "ana",
+      timezone: "America/Mexico_City",
+      total: 6,
+      orders: [
+        {
+          folio: "op-ana-pay-1",
+          operation_id: "op-create-ana-pay-1",
+          fecha_hora_entrega: "2026-03-12 10:00",
+          nombre_cliente: "Ana G",
+          producto: "pastel"
+        },
+        {
+          folio: "op-ana-pay-2",
+          operation_id: "op-create-ana-pay-2",
+          fecha_hora_entrega: "2026-03-12 12:00",
+          nombre_cliente: "Ana H",
+          producto: "cupcakes"
+        },
+        {
+          folio: "op-ana-pay-3",
+          operation_id: "op-create-ana-pay-3",
+          fecha_hora_entrega: "2026-03-12 13:00",
+          nombre_cliente: "Ana I",
+          producto: "pastel"
+        },
+        {
+          folio: "op-ana-pay-4",
+          operation_id: "op-create-ana-pay-4",
+          fecha_hora_entrega: "2026-03-12 14:00",
+          nombre_cliente: "Ana J",
+          producto: "galletas"
+        },
+        {
+          folio: "op-ana-pay-5",
+          operation_id: "op-create-ana-pay-5",
+          fecha_hora_entrega: "2026-03-12 15:00",
+          nombre_cliente: "Ana K",
+          producto: "pay"
+        },
+        {
+          folio: "op-ana-pay-6",
+          operation_id: "op-create-ana-pay-6",
+          fecha_hora_entrega: "2026-03-12 16:00",
+          nombre_cliente: "Ana L",
+          producto: "pan"
+        }
+      ],
+      trace_ref: "order-lookup:ana:a1",
+      detail: "lookup-order executed (provider=gws, attempt=1)"
+    }));
+    const executePaymentRecordFn = vi.fn(async ({ operation_id, reference, payment }) => ({
+      ok: true,
+      dry_run: false,
+      operation_id,
+      payload: {
+        reference,
+        matched_row_index: 11,
+        before: { estado_pago: "pendiente" },
+        after: { estado_pago: payment.estado_pago },
+        payment_event: `[PAGO] 2026-03-11T12:00:00.000Z op:${operation_id} estado:${payment.estado_pago} monto:${payment.monto ?? "n/a"} metodo:${payment.metodo ?? "n/a"} nota:${payment.notas ?? "n/a"}`,
+        already_recorded: false
+      },
+      detail: "record-payment executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-payment-record-lookup-ambiguous"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-payment-record-lookup-ambiguous",
+      routeIntentFn: async () => "pedido",
+      executeOrderLookupFn,
+      executePaymentRecordFn
+    });
+
+    const askReference = await processor.handleMessage({
+      chat_id: "chat-payment-record-lookup-ambiguous",
+      text: "registra pago del pedido de ana parcial"
+    });
+    expect(askReference[0]).toContain('Encontré 6 pedidos para "ana"');
+    expect(askReference[0]).toContain("1. folio:op-ana-pay-1");
+    expect(askReference[0]).toContain("5. folio:op-ana-pay-5");
+    expect(askReference[0]).toContain("... y 1 más");
+    expect(askReference[0]).not.toContain("folio:op-ana-pay-6");
+    expect(getState("chat-payment-record-lookup-ambiguous").pending?.operation_id).toBe("op-payment-record-lookup-ambiguous");
+
+    const summary = await processor.handleMessage({
+      chat_id: "chat-payment-record-lookup-ambiguous",
+      text: "op-ana-pay-2"
+    });
+    expect(summary[0]).toContain("payment.record");
+    expect(summary[0]).toContain("op-ana-pay-2");
+    expect(summary[0]).toContain("op-payment-record-lookup-ambiguous");
+
+    const done = await processor.handleMessage({
+      chat_id: "chat-payment-record-lookup-ambiguous",
+      text: "confirmar"
+    });
+    expect(done[0]).toContain("Ejecutado");
+    expect(executePaymentRecordFn).toHaveBeenCalledWith({
+      operation_id: "op-payment-record-lookup-ambiguous",
+      chat_id: "chat-payment-record-lookup-ambiguous",
+      reference: { folio: "op-ana-pay-2" },
+      payment: {
+        estado_pago: "parcial"
+      }
+    });
+  });
+
+  it("responde no-op explicito cuando payment.record ya estaba aplicado", async () => {
+    const executePaymentRecordFn = vi.fn(async ({ operation_id, reference, payment }) => ({
+      ok: true,
+      dry_run: false,
+      operation_id,
+      payload: {
+        reference,
+        matched_row_index: 11,
+        before: { estado_pago: payment.estado_pago },
+        after: { estado_pago: payment.estado_pago },
+        payment_event: `[PAGO] 2026-03-11T12:00:00.000Z op:${operation_id} estado:${payment.estado_pago} monto:${payment.monto ?? "n/a"} metodo:${payment.metodo ?? "n/a"} nota:${payment.notas ?? "n/a"}`,
+        already_recorded: true
+      },
+      detail: "record-payment already-recorded (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-payment-record-noop"]),
+      nowMs: () => Date.parse("2026-03-11T12:00:00.000Z"),
+      newOperationId: () => "op-payment-record-noop",
+      routeIntentFn: async () => "pedido",
+      executePaymentRecordFn
+    });
+
+    await processor.handleMessage({
+      chat_id: "chat-payment-record-noop",
+      text: 'registra pago del pedido folio op-xyz-123 {"payment":{"estado_pago":"pagado","monto":900}}'
+    });
+    const done = await processor.handleMessage({ chat_id: "chat-payment-record-noop", text: "confirmar" });
+
+    expect(done[0]).toBe("Pago ya registrado para op-xyz-123. operation_id: op-payment-record-noop");
+  });
+
   it("mantiene pendiente y marca failed cuando falla payment.record", async () => {
     const executePaymentRecordFn = vi.fn(async () => {
       throw new Error("payment_record_gws_write_rate_limit");
@@ -2945,6 +3166,137 @@ describe("conversation processor security flow", () => {
 
     expect(intentTrace?.intent_source).toBe("openclaw");
     expect(parseTrace?.parse_source).toBe("fallback");
+  });
+
+  it("usa ruta read-only OpenClaw para order.status cuando el flag está activo", async () => {
+    const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+    process.env.OPENCLAW_READONLY_ROUTING_ENABLE = "1";
+
+    try {
+      const routeReadOnlyIntentFn = vi.fn(async () => ({
+        intent: "order.status" as const,
+        source: "openclaw" as const,
+        strict_mode: false,
+        query: "ana"
+      }));
+      const executeOrderStatusFn = vi.fn(async () => ({
+        query: "ana",
+        timezone: "America/Mexico_City",
+        total: 1,
+        orders: [
+          {
+            folio: "op-ana-1",
+            fecha_hora_entrega: "2026-03-20 10:00",
+            nombre_cliente: "Ana",
+            producto: "pastel",
+            estado_pago: "pendiente" as const,
+            estado_operativo: "programado" as const,
+            total: 450,
+            moneda: "MXN",
+            operation_id: "op-ana-1"
+          }
+        ],
+        trace_ref: "order-status:ana:a1",
+        detail: "order-status executed (provider=gws, attempt=1)"
+      }));
+
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-readonly-openclaw"]),
+        routeReadOnlyIntentFn,
+        executeOrderStatusFn,
+        routeIntentFn: async () => "unknown"
+      });
+
+      const replies = await processor.handleMessage({ chat_id: "chat-readonly-openclaw", text: "como va ana?" });
+      expect(replies[0]).toContain("Ref: order-status:ana:a1");
+      expect(routeReadOnlyIntentFn).toHaveBeenCalledWith({ text: "como va ana?", enableQuote: true });
+      expect(executeOrderStatusFn).toHaveBeenCalledWith({
+        chat_id: "chat-readonly-openclaw",
+        query: "ana"
+      });
+    } finally {
+      if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+      else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+    }
+  });
+
+  it("en estricto no cae a fallback read-only cuando OpenClaw responde unknown", async () => {
+    const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+    const prevStrict = process.env.OPENCLAW_STRICT;
+    process.env.OPENCLAW_READONLY_ROUTING_ENABLE = "1";
+    process.env.OPENCLAW_STRICT = "1";
+
+    try {
+      const executeOrderStatusFn = vi.fn();
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-readonly-strict"]),
+        routeReadOnlyIntentFn: async () => ({
+          intent: "unknown",
+          source: "openclaw",
+          strict_mode: true,
+          openclaw_error: "openclaw_down"
+        }),
+        executeOrderStatusFn
+      });
+
+      const replies = await processor.handleMessage({ chat_id: "chat-readonly-strict", text: "estado del pedido op-123" });
+      expect(replies[0]).toContain("No pude resolver esa consulta con seguridad");
+      expect(executeOrderStatusFn).not.toHaveBeenCalled();
+    } finally {
+      if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+      else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+      if (prevStrict == null) delete process.env.OPENCLAW_STRICT;
+      else process.env.OPENCLAW_STRICT = prevStrict;
+    }
+  });
+
+  it("en no estricto usa fallback read-only local cuando OpenClaw responde unknown", async () => {
+    const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+    const prevStrict = process.env.OPENCLAW_STRICT;
+    process.env.OPENCLAW_READONLY_ROUTING_ENABLE = "1";
+    process.env.OPENCLAW_STRICT = "0";
+
+    try {
+      const executeOrderStatusFn = vi.fn(async () => ({
+        query: "op-xyz-123",
+        timezone: "America/Mexico_City",
+        total: 1,
+        orders: [
+          {
+            folio: "op-xyz-123",
+            fecha_hora_entrega: "2026-03-20 10:00",
+            nombre_cliente: "Ana",
+            producto: "pastel",
+            estado_pago: "pendiente" as const,
+            estado_operativo: "programado" as const,
+            total: 450,
+            moneda: "MXN",
+            operation_id: "op-xyz-123"
+          }
+        ],
+        trace_ref: "order-status:op-xyz-123:a1",
+        detail: "order-status executed (provider=gws, attempt=1)"
+      }));
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-readonly-fallback"]),
+        routeReadOnlyIntentFn: async () => ({
+          intent: "unknown",
+          source: "openclaw",
+          strict_mode: false,
+          openclaw_error: "openclaw_down"
+        }),
+        executeOrderStatusFn
+      });
+
+      const replies = await processor.handleMessage({ chat_id: "chat-readonly-fallback", text: "estado del pedido folio op-xyz-123" });
+      expect(replies[0]).toContain("Ref: order-status:op-xyz-123:a1");
+      expect(executeOrderStatusFn).toHaveBeenCalledTimes(1);
+    } finally {
+      if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+      else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+      if (prevStrict == null) delete process.env.OPENCLAW_STRICT;
+      else process.env.OPENCLAW_STRICT = prevStrict;
+    }
   });
 
   it("rechaza mensaje cuando el rate limit está activo", async () => {

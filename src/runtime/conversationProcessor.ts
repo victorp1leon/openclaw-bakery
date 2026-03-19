@@ -9,6 +9,10 @@ import { type Expense, ExpenseSchema } from "../schemas/expense";
 import { type Order, OrderSchema } from "../schemas/order";
 import { type Intent, routeIntentDetailed, type RoutedIntent } from "../skills/intentRouter";
 import {
+  routeReadOnlyIntentDetailed,
+  type ReadOnlyRoutedIntent
+} from "../skills/readOnlyIntentRouter";
+import {
   extractOrderUpdatePatch as extractOrderUpdatePatchSkill,
   extractOrderReferenceFromText as extractOrderReferenceFromTextSkill,
   hasOrderReference as hasOrderReferenceSkill,
@@ -79,6 +83,7 @@ type ProcessorDeps = {
   nowMs?: () => number;
   newOperationId?: () => string;
   routeIntentDetailedFn?: (text: string) => Promise<RoutedIntent>;
+  routeReadOnlyIntentFn?: (args: { text: string; enableQuote: boolean }) => Promise<ReadOnlyRoutedIntent>;
   routeIntentFn?: (text: string) => Promise<Intent>;
   parseExpenseFn?: (text: string) => Promise<ParseResult>;
   parseOrderFn?: (text: string) => Promise<ParseResult>;
@@ -720,6 +725,55 @@ function extractOrderUpdateLookupQuery(text: string): string | undefined {
   return normalizeOrderUpdateLookupCandidate(fallback);
 }
 
+function normalizePaymentRecordLookupCandidate(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  let out = value.trim();
+  if (!out) return undefined;
+
+  const separators = [",", ";", "."];
+  for (const separator of separators) {
+    const idx = out.indexOf(separator);
+    if (idx > 0) {
+      out = out.slice(0, idx).trim();
+    }
+  }
+
+  const paymentTokenIndex = out.search(/\b(pagado|pendiente|parcial|abono|pago|monto|metodo|nota)\b/);
+  if (paymentTokenIndex > 1) {
+    out = out.slice(0, paymentTokenIndex).trim();
+  }
+
+  out = out.replace(/^(de|para)\s+/, "").trim();
+  return out.length >= 2 ? out : undefined;
+}
+
+function extractPaymentRecordLookupQuery(text: string): string | undefined {
+  const normalized = normalizeForMatch(text);
+  const hasOrderWord = /\bpedidos?\b/.test(normalized);
+  const hasMutationVerb = /\b(registra|registrar|marca|marcar|aplica|aplicar|abona|abonar|liquida|liquidar)\b/.test(normalized);
+  const hasPaymentHint = /\b(pago|abono|liquidacion)\b/.test(normalized) || /\bestado\s+de\s+pago\b/.test(normalized);
+  if (!hasOrderWord || !hasMutationVerb || !hasPaymentHint) return undefined;
+
+  const hasExplicitReference = /\b(?:folio|id|operation_id|operacion)\s*[:=]?\s*[a-z0-9_-]{3,}\b/.test(normalized);
+  if (hasExplicitReference) return undefined;
+
+  const deMatch = normalizePaymentRecordLookupCandidate(normalized.match(/\bpedidos?\s+de\s+(.+?)\s*$/)?.[1]);
+  if (deMatch) return deMatch;
+
+  const paraMatch = normalizePaymentRecordLookupCandidate(normalized.match(/\bpedidos?\s+para\s+(.+?)\s*$/)?.[1]);
+  if (paraMatch) return paraMatch;
+
+  let fallback = normalized
+    .replace(/\{[\s\S]*\}/g, " ")
+    .replace(/\b(registra|registrar|marca|marcar|aplica|aplicar|abona|abonar|liquida|liquidar)\b/g, " ")
+    .replace(/\b(pago|abono|liquidacion)\b/g, " ")
+    .replace(/\bpedidos?\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalizePaymentRecordLookupCandidate(fallback);
+}
+
 function extractOrderCancelLookupQuery(text: string): string | undefined {
   const normalized = normalizeForMatch(text);
   const hasOrderWord = /\bpedidos?\b/.test(normalized);
@@ -1171,6 +1225,17 @@ function formatOrderUpdateAmbiguousReply(args: { query: string; total: number; o
   return `Encontré ${args.total} pedidos para "${args.query}". Elige el correcto para actualizar:\n${lines.join("\n")}${extra}\nResponde con folio u operation_id.`;
 }
 
+function formatPaymentRecordAmbiguousReply(args: { query: string; total: number; orders: OrderLookupResult["orders"] }): string {
+  const maxRows = 5;
+  const shown = args.orders.slice(0, maxRows);
+  const lines = shown.map((order, idx) => {
+    const operationId = order.operation_id ?? "-";
+    return `${idx + 1}. folio:${order.folio || "-"} | op:${operationId} | ${order.nombre_cliente} | ${order.producto} | ${order.fecha_hora_entrega}`;
+  });
+  const extra = args.total > shown.length ? `\n... y ${args.total - shown.length} más` : "";
+  return `Encontré ${args.total} pedidos para "${args.query}". Elige el correcto para registrar el pago:\n${lines.join("\n")}${extra}\nResponde con folio u operation_id.`;
+}
+
 function formatOrderStatusReply(result: OrderStatusResult): string {
   if (result.total === 0) {
     return `No encontré el estado para "${result.query}". Prueba con folio, operation_id o nombre del cliente.\nRef: ${result.trace_ref}`;
@@ -1494,9 +1559,12 @@ function mergeField(payload: Record<string, unknown>, field: string, userText: s
 
 export function createConversationProcessor(deps: ProcessorDeps) {
   const strict_mode = process.env.OPENCLAW_STRICT === "1";
+  const openclawReadOnlyRoutingEnabled = process.env.OPENCLAW_READONLY_ROUTING_ENABLE === "1";
+  const openclawReadOnlyQuoteEnabled = (process.env.OPENCLAW_READONLY_QUOTE_ENABLE ?? "1") === "1";
   const nowMs = deps.nowMs ?? (() => Date.now());
   const newOperationId = deps.newOperationId ?? uuidv4;
   const routeIntentDetailedFn = deps.routeIntentDetailedFn ?? routeIntentDetailed;
+  const routeReadOnlyIntentFn = deps.routeReadOnlyIntentFn ?? routeReadOnlyIntentDetailed;
   const routeIntentFn = deps.routeIntentFn;
   const parseExpenseFn = deps.parseExpenseFn ?? parseExpense;
   const parseOrderFn = deps.parseOrderFn ?? parseOrder;
@@ -1569,6 +1637,60 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         chat_id: args.chat_id,
         strict_mode,
         intent: "order.update",
+        intent_source: "fallback",
+        detail: safeDetail
+      });
+      return { kind: "error" };
+    }
+  }
+
+  async function tryResolvePaymentRecordReferenceByLookup(args: {
+    chat_id: string;
+    text: string;
+  }): Promise<
+    | { kind: "resolved"; reference: PaymentRecordReference; query: string }
+    | { kind: "ambiguous"; query: string; total: number; orders: OrderLookupResult["orders"] }
+    | { kind: "not_found"; query: string }
+    | { kind: "skip" | "error" }
+  > {
+    const query = extractPaymentRecordLookupQuery(args.text);
+    if (!query || query.length < 2) return { kind: "skip" };
+
+    try {
+      const lookup = await executeOrderLookupFn({
+        chat_id: args.chat_id,
+        query
+      });
+
+      if (lookup.total === 0) {
+        return { kind: "not_found", query };
+      }
+      if (lookup.total > 1) {
+        return { kind: "ambiguous", query, total: lookup.total, orders: lookup.orders };
+      }
+
+      const resolved = lookup.orders[0];
+      const folio = trimString(resolved?.folio);
+      const operationId = trimString(resolved?.operation_id);
+      if (!folio && !operationId) {
+        return { kind: "not_found", query };
+      }
+
+      return {
+        kind: "resolved",
+        query,
+        reference: {
+          ...(folio ? { folio } : {}),
+          ...(operationId ? { operation_id_ref: operationId } : {})
+        }
+      };
+    } catch (err) {
+      const safeDetail = err instanceof Error ? err.message : String(err);
+      deps.onTrace?.({
+        event: "payment_record_lookup_failed",
+        chat_id: args.chat_id,
+        strict_mode,
+        intent: "payment.record",
         intent_source: "fallback",
         detail: safeDetail
       });
@@ -2358,6 +2480,10 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             });
 
             clearPending(msg.chat_id);
+            if (execution.payload.already_recorded) {
+              const ref = execution.payload.reference.folio || execution.payload.reference.operation_id_ref || "pedido";
+              return [`Pago ya registrado para ${ref}. operation_id: ${st.pending.operation_id}`];
+            }
             return [copy.executed(st.pending.operation_id, execution.dry_run)];
           } catch (err) {
             const safeDetail = err instanceof Error ? err.message : String(err);
@@ -3034,10 +3160,56 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           };
 
           if (!hasOrderReferenceSkill(mergedReference)) {
-            st.pending.asked = "order_reference";
-            st.pending.missing = ["order_reference"];
-            setState(msg.chat_id, st);
-            return [copy.askFor("order_reference")];
+            const resolved = await tryResolvePaymentRecordReferenceByLookup({
+              chat_id: msg.chat_id,
+              text: msg.text
+            });
+            if (resolved.kind === "resolved") {
+              st.pending.action.payload = {
+                ...payload,
+                reference: resolved.reference,
+                payment
+              };
+            } else {
+              st.pending.action.payload = {
+                ...payload,
+                reference: mergedReference,
+                payment
+              };
+            }
+
+            if (resolved.kind === "ambiguous") {
+              st.pending.asked = "order_reference";
+              st.pending.missing = ["order_reference"];
+              setState(msg.chat_id, st);
+              return [formatPaymentRecordAmbiguousReply({
+                query: resolved.query,
+                total: resolved.total,
+                orders: resolved.orders
+              })];
+            }
+
+            if (resolved.kind === "not_found") {
+              st.pending.asked = "order_reference";
+              st.pending.missing = ["order_reference"];
+              setState(msg.chat_id, st);
+              return [
+                `No encontré pedidos para "${resolved.query}". Compárteme el folio u operation_id para registrar el pago correcto.`
+              ];
+            }
+
+            if (!hasOrderReferenceSkill((st.pending.action.payload as Record<string, unknown>).reference)) {
+              st.pending.asked = "order_reference";
+              st.pending.missing = ["order_reference"];
+              setState(msg.chat_id, st);
+              return [copy.askFor("order_reference")];
+            }
+          } else {
+            st.pending.action.payload = {
+              ...payload,
+              reference: mergedReference,
+              payment
+            };
           }
 
           if (typeof payment.estado_pago !== "string" || payment.estado_pago.trim().length === 0) {
@@ -3294,9 +3466,48 @@ export function createConversationProcessor(deps: ProcessorDeps) {
             }
           };
 
-          const askField = hasOrderReferenceSkill(pendingPayload.reference)
-            ? "payment_estado_pago"
-            : "order_reference";
+          const resolved = !hasOrderReferenceSkill(pendingPayload.reference)
+            ? await tryResolvePaymentRecordReferenceByLookup({
+              chat_id: msg.chat_id,
+              text: msg.text
+            })
+            : { kind: "skip" as const };
+          if (resolved.kind === "resolved") {
+            pendingPayload.reference = resolved.reference as Record<string, unknown>;
+          }
+
+          const hasReference = hasOrderReferenceSkill(pendingPayload.reference);
+          const hasEstadoPago = typeof (pendingPayload.payment as Record<string, unknown>)?.estado_pago === "string";
+          const askField = !hasReference ? "order_reference" : (!hasEstadoPago ? "payment_estado_pago" : undefined);
+
+          if (!askField) {
+            const pending = {
+              operation_id,
+              idempotency_key: operation_id,
+              action: { intent: "payment.record" as const, payload: pendingPayload },
+              missing: [],
+              asked: undefined
+            };
+
+            setState(msg.chat_id, { pending });
+            const register = registerPendingOperation({
+              operation_id,
+              chat_id: msg.chat_id,
+              intent: "payment.record",
+              payload: pendingPayload,
+              idempotency_key: operation_id
+            });
+
+            if (!register.inserted) {
+              clearPending(msg.chat_id);
+              return [
+                copy.duplicate(register.operation.operation_id, register.operation.status)
+              ];
+            }
+
+            return [copy.summary("payment.record", pendingPayload, operation_id)];
+          }
+
           const pending = {
             operation_id,
             idempotency_key: operation_id,
@@ -3306,6 +3517,19 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           };
 
           setState(msg.chat_id, { pending });
+          if (resolved.kind === "ambiguous") {
+            return [formatPaymentRecordAmbiguousReply({
+              query: resolved.query,
+              total: resolved.total,
+              orders: resolved.orders
+            })];
+          }
+          if (resolved.kind === "not_found") {
+            return [
+              `No encontré pedidos para "${resolved.query}". Compárteme el folio u operation_id para registrar el pago correcto.`
+            ];
+          }
+
           return [copy.askFor(askField)];
         }
 
@@ -3625,26 +3849,123 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       return [copy.summary("order.cancel", payload, operation_id)];
     }
 
-    const reportPeriod = detectOrderReportPeriod({
+    const now = new Date(nowMs());
+    let reportPeriod = detectOrderReportPeriod({
       text: msg.text,
-      now: new Date(nowMs()),
+      now,
       timezone: orderReportTimezone
     });
-    const reportNeedsPeriod = detectOrderReportRequestWithoutPeriod({
+    let reportNeedsPeriod = detectOrderReportRequestWithoutPeriod({
       text: msg.text,
-      now: new Date(nowMs()),
+      now,
       timezone: orderReportTimezone
     });
-    const scheduleDayPeriod = detectScheduleDayPeriod({
+    let scheduleDayPeriod = detectScheduleDayPeriod({
       text: msg.text,
-      now: new Date(nowMs()),
+      now,
       timezone: orderReportTimezone
     });
-    const scheduleDayNeedsScope = detectScheduleDayRequestWithoutScope({
+    let scheduleDayNeedsScope = detectScheduleDayRequestWithoutScope({
       text: msg.text,
-      now: new Date(nowMs()),
+      now,
       timezone: orderReportTimezone
     });
+    let shoppingScope = detectShoppingListScope({
+      text: msg.text,
+      now,
+      timezone: orderReportTimezone
+    });
+    let shoppingNeedsScope = detectShoppingListRequestWithoutScope({
+      text: msg.text,
+      now,
+      timezone: orderReportTimezone
+    });
+    let lookupQuery = detectOrderLookupQuery(msg.text);
+    let lookupNeedsQuery = detectOrderLookupRequestWithoutQuery(msg.text);
+    let statusQuery = detectOrderStatusQuery(msg.text);
+    let statusNeedsQuery = detectOrderStatusRequestWithoutQuery(msg.text);
+    let quoteQuery = detectQuoteOrderQuery(msg.text);
+
+    if (openclawReadOnlyRoutingEnabled) {
+      const routedReadOnly = await routeReadOnlyIntentFn({
+        text: msg.text,
+        enableQuote: openclawReadOnlyQuoteEnabled
+      });
+
+      deps.onTrace?.({
+        event: "readonly_intent_routed",
+        chat_id: msg.chat_id,
+        strict_mode,
+        intent: routedReadOnly.intent,
+        intent_source: routedReadOnly.source,
+        detail: routedReadOnly.openclaw_error
+      });
+
+      const hasDeterministicReadOnlyHint = Boolean(
+        reportPeriod ||
+        reportNeedsPeriod ||
+        scheduleDayPeriod ||
+        scheduleDayNeedsScope ||
+        shoppingScope ||
+        shoppingNeedsScope ||
+        lookupQuery ||
+        lookupNeedsQuery ||
+        statusQuery ||
+        statusNeedsQuery ||
+        (openclawReadOnlyQuoteEnabled && quoteQuery)
+      );
+
+      if (routedReadOnly.intent === "unknown") {
+        if (strict_mode && hasDeterministicReadOnlyHint) {
+          return [
+            "No pude resolver esa consulta con seguridad. Puedes intentar con una referencia más clara (folio u operation_id) o indicar periodo/fecha exacta."
+          ];
+        }
+      } else {
+        reportPeriod = undefined;
+        reportNeedsPeriod = false;
+        scheduleDayPeriod = undefined;
+        scheduleDayNeedsScope = false;
+        shoppingScope = undefined;
+        shoppingNeedsScope = false;
+        lookupQuery = undefined;
+        lookupNeedsQuery = false;
+        statusQuery = undefined;
+        statusNeedsQuery = false;
+        quoteQuery = undefined;
+
+        if (routedReadOnly.intent === "report.orders") {
+          reportPeriod = routedReadOnly.period;
+          reportNeedsPeriod = !routedReadOnly.period;
+        }
+
+        if (routedReadOnly.intent === "schedule.day_view") {
+          scheduleDayPeriod = routedReadOnly.day;
+          scheduleDayNeedsScope = !routedReadOnly.day;
+        }
+
+        if (routedReadOnly.intent === "shopping.list.generate") {
+          shoppingScope = routedReadOnly.scope;
+          shoppingNeedsScope = !routedReadOnly.scope;
+        }
+
+        if (routedReadOnly.intent === "order.lookup") {
+          lookupQuery = routedReadOnly.query;
+          lookupNeedsQuery = !routedReadOnly.query;
+        }
+
+        if (routedReadOnly.intent === "order.status") {
+          statusQuery = routedReadOnly.query;
+          statusNeedsQuery = !routedReadOnly.query;
+        }
+
+        if (routedReadOnly.intent === "quote.order" && openclawReadOnlyQuoteEnabled) {
+          const extracted = trimString(routedReadOnly.query);
+          quoteQuery = extracted ?? msg.text.trim();
+        }
+      }
+    }
+
     if (scheduleDayNeedsScope) {
       const operation_id = newOperationId();
       setState(msg.chat_id, {
@@ -3747,16 +4068,6 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       }
     }
 
-    const shoppingScope = detectShoppingListScope({
-      text: msg.text,
-      now: new Date(nowMs()),
-      timezone: orderReportTimezone
-    });
-    const shoppingNeedsScope = detectShoppingListRequestWithoutScope({
-      text: msg.text,
-      now: new Date(nowMs()),
-      timezone: orderReportTimezone
-    });
     if (shoppingNeedsScope) {
       const operation_id = newOperationId();
       setState(msg.chat_id, {
@@ -3807,11 +4118,6 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       }
     }
 
-    const lookupQuery = detectOrderLookupQuery(msg.text);
-    const lookupNeedsQuery = detectOrderLookupRequestWithoutQuery(msg.text);
-    const statusQuery = detectOrderStatusQuery(msg.text);
-    const statusNeedsQuery = detectOrderStatusRequestWithoutQuery(msg.text);
-    const quoteQuery = detectQuoteOrderQuery(msg.text);
     if (statusNeedsQuery) {
       const operation_id = newOperationId();
       setState(msg.chat_id, {

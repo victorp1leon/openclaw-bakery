@@ -9,6 +9,8 @@ describe("appConfig", () => {
     expect(config.botPersona).toBe("neutral");
     expect(config.channelMode).toBe("console");
     expect(config.openclaw.timeoutSeconds).toBe(30);
+    expect(config.openclaw.readOnlyRoutingEnabled).toBe(false);
+    expect(config.openclaw.readOnlyQuoteEnabled).toBe(true);
     expect(config.rateLimit.enabled).toBe(true);
     expect(config.rateLimit.windowMs).toBe(10_000);
     expect(config.rateLimit.maxMessagesPerWindow).toBe(8);
@@ -82,7 +84,9 @@ describe("appConfig", () => {
       OPENCLAW_TIMEOUT_SECONDS: "90",
       OPENCLAW_STRICT: "1",
       OPENCLAW_STRICT_SOFTFAIL: "1",
-      OPENCLAW_THINKING: "medium"
+      OPENCLAW_THINKING: "medium",
+      OPENCLAW_READONLY_ROUTING_ENABLE: "1",
+      OPENCLAW_READONLY_QUOTE_ENABLE: "0"
     } as NodeJS.ProcessEnv);
 
     expect(config.openclaw.enabled).toBe(true);
@@ -92,6 +96,8 @@ describe("appConfig", () => {
     expect(config.openclaw.strict).toBe(true);
     expect(config.openclaw.strictSoftfail).toBe(true);
     expect(config.openclaw.thinking).toBe("medium");
+    expect(config.openclaw.readOnlyRoutingEnabled).toBe(true);
+    expect(config.openclaw.readOnlyQuoteEnabled).toBe(false);
   });
 
   it("parses bot persona and falls back on unknown values", () => {
