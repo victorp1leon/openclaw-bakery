@@ -521,6 +521,15 @@ function main(): void {
       env: smokeLive ? undefined : { SMOKE_STATUS_LIVE: "0" }
     },
     {
+      scenario: "smoke:readonly-routing-trace",
+      npmScript: "smoke:readonly-routing-trace",
+      env: {
+        OPENCLAW_READONLY_ROUTING_ENABLE: "1",
+        OPENCLAW_READONLY_QUOTE_ENABLE: "1",
+        OPENCLAW_STRICT: "0"
+      }
+    },
+    {
       scenario: "smoke:schedule",
       npmScript: "smoke:schedule",
       env: smokeLive ? undefined : { SMOKE_SCHEDULE_LIVE: "0" }

@@ -1,6 +1,6 @@
 # Plans Index (AI Collaboration)
 
-Last Updated: 2026-03-19
+Last Updated: 2026-03-20
 
 ## Active Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
@@ -9,6 +9,7 @@ Last Updated: 2026-03-19
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `platform/implementation/smoke-readonly-trace-observability-v1.md` | Implementation | Complete | 2026-03-20 |
 | `runtime/implementation/phase3-schedule-day-view-grill-closure-v2.md` | Implementation | Complete | 2026-03-19 |
 | `runtime/implementation/phase3-quote-order-grill-closure-v1.md` | Implementation | Complete | 2026-03-19 |
 | `runtime/implementation/phase3-order-delivery-datetime-canonical-mx-v1.md` | Implementation | Complete | 2026-03-19 |

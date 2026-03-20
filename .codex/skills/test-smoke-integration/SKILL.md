@@ -9,6 +9,7 @@ description: Run and summarize smoke and integration validation flows when the u
 1. Run default validation (mock-safe).
 - Command: `npm run test:smoke-integration:summary`
 - This runs smoke scripts in safe/mock mode plus integration tests.
+- Includes explicit trace validation for OpenClaw read-only routing (`readonly_intent_routed`).
 
 2. Run live validation only when requested.
 - Command: `SMOKE_SUMMARY_LIVE=1 npm run test:smoke-integration:summary`
@@ -23,6 +24,7 @@ description: Run and summarize smoke and integration validation flows when the u
 - Start from `Failed Details` in latest summary.
 - Open matching `history/<timestamp>-*.log` file.
 - Re-run only the failing smoke command (`npm run smoke:<name>`) if needed.
+- For read-only trace failures, re-run: `npm run smoke:readonly-routing-trace`.
 
 ## Common Live Failure Patterns
 - `expense_connector_gws_spreadsheet_id_missing`: missing `EXPENSE_GWS_SPREADSHEET_ID`.
@@ -38,3 +40,4 @@ description: Run and summarize smoke and integration validation flows when the u
 - Default: `npm run test:smoke-integration:summary`
 - Live: `SMOKE_SUMMARY_LIVE=1 npm run test:smoke-integration:summary`
 - Lifecycle only: `npm run smoke:lifecycle`
+- Read-only trace only: `npm run smoke:readonly-routing-trace`
