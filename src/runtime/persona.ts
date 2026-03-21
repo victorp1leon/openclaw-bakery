@@ -98,23 +98,23 @@ function bakeryWarmMessages(): MessageBuilder {
   return {
     askFor: (field) => {
       const base = FIELD_PROMPTS[field] ?? `Falta: ${field}. ¿Cuál es el valor?`;
-      return `Perfecto, para continuar: ${base}`;
+      return `Perfecto, para dejarlo listo: ${base}`;
     },
     summary: (intent, payload, operationId) =>
-      `Resumen listo:\n${JSON.stringify({ intent, operation_id: operationId, ...payload }, null, 2)}\n\nPara continuar responde: confirmar | cancelar`,
+      `Resumen listo para confirmar:\n${JSON.stringify({ intent, operation_id: operationId, ...payload }, null, 2)}\n\nSi todo está bien responde: confirmar | cancelar`,
     unauthorized: () => "Este chat no está autorizado para usar el bot.",
-    rateLimited: (retryAfterSeconds) => `Vamos muy rápido. Intenta de nuevo en ${retryAfterSeconds}s.`,
+    rateLimited: (retryAfterSeconds) => `Recibí varios mensajes seguidos. Intenta de nuevo en ${retryAfterSeconds}s.`,
     expenseFailed: (operationId) =>
-      `No pude ejecutar el gasto. operation_id: ${operationId}. Puedes reintentar con confirmar o cancelar.`,
+      `No pude registrar el gasto. operation_id: ${operationId}. Si quieres, lo intentamos de nuevo con confirmar o lo detenemos con cancelar.`,
     orderFailed: (operationId) =>
-      `No pude ejecutar el pedido. operation_id: ${operationId}. Puedes reintentar con confirmar o cancelar.`,
+      `No pude registrar el pedido. operation_id: ${operationId}. Si quieres, lo intentamos de nuevo con confirmar o lo detenemos con cancelar.`,
     webFailed: (operationId) =>
-      `No pude ejecutar la publicación web. operation_id: ${operationId}. Puedes reintentar con confirmar o cancelar.`,
-    executed: (operationId, dryRun) => `Listo${dryRun ? " (dry-run)" : ""}. operation_id: ${operationId}`,
-    executedSimulated: (operationId) => `Listo (simulado). operation_id: ${operationId}`,
-    canceled: (operationId) => `Operación cancelada. operation_id: ${operationId}`,
+      `No pude ejecutar la publicación web. operation_id: ${operationId}. Si quieres, lo intentamos de nuevo con confirmar o lo detenemos con cancelar.`,
+    executed: (operationId, dryRun) => `Perfecto, quedó registrado${dryRun ? " (dry-run)" : ""}. operation_id: ${operationId}`,
+    executedSimulated: (operationId) => `Perfecto, quedó registrado en simulación. operation_id: ${operationId}`,
+    canceled: (operationId) => `Listo, operación cancelada. operation_id: ${operationId}`,
     pendingOperation: (operationId) =>
-      `Tienes una operación pendiente (${operationId}). Primero responde confirmar o cancelar.`,
+      `Tengo una operación pendiente (${operationId}). Primero responde confirmar o cancelar para continuar.`,
     help: () =>
       [
         "Guía rápida:",
@@ -129,19 +129,19 @@ function bakeryWarmMessages(): MessageBuilder {
         "- Lista de insumos: dame lista de insumos para hoy",
         "- Cotización: cotiza pastel mediano x1 recoger en tienda sabor de pan vainilla relleno oreo betun buttercream topping fresas",
         "- Gasto: gasto 380 harina y azúcar en Costco",
-        "Tips:",
+        "Notas útiles:",
         "- Si falta información te voy preguntando lo necesario",
         "- Para tipo de envío puedes escribir: envío a domicilio o recoger en tienda",
         "- Cuando veas el resumen responde: confirmar | cancelar"
       ].join("\n"),
-    unknown: () => "No te entendí. Escribe 'ayuda' y te muestro ejemplos.",
+    unknown: () => "Te ayudo con eso. Escribe 'ayuda' y te muestro ejemplos claros.",
     webDisabled: () =>
       "La operación web por chat está deshabilitada. Usa publicación content-driven por terminal/CI (`npm run web:publish`).",
     inventoryConsumeDisabled: () =>
       "La operación inventory.consume está deshabilitada. Activa INVENTORY_CONSUME_ENABLE=1 para usarla.",
     inventoryConsumeReplay: (orderRef, operationId) => `Consumo ya aplicado para ${orderRef}. operation_id: ${operationId}`,
-    parseError: (error) => `No pude interpretar el mensaje. Detalle: ${error}`,
-    duplicate: (operationId, status) => `Ya existe una operación similar. operation_id: ${operationId}, status: ${status}`
+    parseError: (error) => `No pude interpretar ese mensaje todavía. Detalle: ${error}`,
+    duplicate: (operationId, status) => `Ya existe una operación muy similar. operation_id: ${operationId}, status: ${status}`
   };
 }
 

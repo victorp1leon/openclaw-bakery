@@ -3544,6 +3544,45 @@ describe("conversation processor security flow", () => {
     }
   });
 
+  it("ignora quote.order read-only sin query cuando el mensaje no trae señales de cotización", async () => {
+    const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+    const prevReadOnlyQuote = process.env.OPENCLAW_READONLY_QUOTE_ENABLE;
+    process.env.OPENCLAW_READONLY_ROUTING_ENABLE = "1";
+    process.env.OPENCLAW_READONLY_QUOTE_ENABLE = "1";
+
+    try {
+      const routeReadOnlyIntentFn = vi.fn(async () => ({
+        intent: "quote.order" as const,
+        source: "openclaw" as const,
+        strict_mode: false
+      }));
+      const routeIntentFn = vi.fn(async () => "unknown" as const);
+      const executeQuoteOrderFn = vi.fn();
+
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-readonly-quote-no-query"]),
+        routeReadOnlyIntentFn,
+        routeIntentFn,
+        executeQuoteOrderFn
+      });
+
+      const replies = await processor.handleMessage({
+        chat_id: "chat-readonly-quote-no-query",
+        text: "cancelar"
+      });
+
+      expect(replies[0].toLowerCase()).toContain("ayuda");
+      expect(replies[0]).not.toContain("piezas/porciones");
+      expect(routeIntentFn).toHaveBeenCalledWith("cancelar");
+      expect(executeQuoteOrderFn).not.toHaveBeenCalled();
+    } finally {
+      if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+      else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+      if (prevReadOnlyQuote == null) delete process.env.OPENCLAW_READONLY_QUOTE_ENABLE;
+      else process.env.OPENCLAW_READONLY_QUOTE_ENABLE = prevReadOnlyQuote;
+    }
+  });
+
   it("rechaza mensaje cuando el rate limit está activo", async () => {
     let parseCalls = 0;
     const traces: Array<{ event: string; detail?: string }> = [];

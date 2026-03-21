@@ -4333,7 +4333,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
 
         if (routedReadOnly.intent === "quote.order" && openclawReadOnlyQuoteEnabled) {
           const extracted = trimString(routedReadOnly.query);
-          quoteQuery = extracted ?? msg.text.trim();
+          quoteQuery = extracted ?? detectQuoteOrderQuery(msg.text);
         }
       }
     }
