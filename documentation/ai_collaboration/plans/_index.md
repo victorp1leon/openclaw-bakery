@@ -9,6 +9,7 @@ Last Updated: 2026-03-21
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `runtime/implementation/phase3-shopping-list-operational-hardening-v2.md` | Implementation | Complete | 2026-03-21 |
 | `runtime/implementation/phase3-quote-readonly-cancel-guard-v1.md` | Implementation | Complete | 2026-03-21 |
 | `platform/implementation/smoke-readonly-trace-observability-v1.md` | Implementation | Complete | 2026-03-20 |
 | `runtime/implementation/phase3-schedule-day-view-grill-closure-v2.md` | Implementation | Complete | 2026-03-19 |

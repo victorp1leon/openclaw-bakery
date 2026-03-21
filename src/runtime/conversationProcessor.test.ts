@@ -1052,6 +1052,71 @@ describe("conversation processor security flow", () => {
     });
   });
 
+  it("muestra bloque de intervención manual en lista de insumos cuando aplica", async () => {
+    const executeShoppingListFn = vi.fn(async () => ({
+      scope: { type: "day", dateKey: "2026-03-07", label: "hoy" } as const,
+      timezone: "America/Mexico_City",
+      totalOrders: 1,
+      orders: [
+        {
+          folio: "op-shop-3",
+          operation_id: "op-shop-3",
+          fecha_hora_entrega: "2026-03-07 14:00",
+          nombre_cliente: "Ana",
+          producto: "cupcakes",
+          cantidad: 12
+        }
+      ],
+      products: [
+        {
+          product: "cupcakes",
+          quantity: 12,
+          orders: 1
+        }
+      ],
+      supplies: [
+        {
+          item: "harina",
+          unit: "g",
+          amount: 540,
+          sourceProducts: ["cupcakes"]
+        }
+      ],
+      manualIntervention: [
+        {
+          type: "invalid_quantity" as const,
+          reference: "op-qty",
+          detail: "Pedido omitido del calculo de insumos por cantidad invalida (vacia)."
+        },
+        {
+          type: "missing_recipe" as const,
+          reference: "mesa de postres",
+          product: "mesa de postres",
+          detail: "Producto sin receta mapeada (x2)."
+        }
+      ],
+      assumptions: ["pedido op-qty omitido por cantidad invalida (vacia)"],
+      detail: "shopping-list-generate executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-shopping-manual"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn: async () => "pedido",
+      executeShoppingListFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-shopping-manual",
+      text: "dame lista de insumos para hoy"
+    });
+
+    expect(replies[0]).toContain("Intervención manual requerida");
+    expect(replies[0]).toContain("op-qty: cantidad invalida");
+    expect(replies[0]).toContain("mesa de postres");
+    expect(replies[0]).toContain("Supuestos:");
+  });
+
   it("pide alcance faltante para lista de insumos y luego responde", async () => {
     const executeShoppingListFn = vi.fn(async ({ scope }) => ({
       scope,

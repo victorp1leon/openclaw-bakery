@@ -113,7 +113,7 @@ describe("shopping-list-generate tool", () => {
     expect(result.orders[0]?.folio).toBe("op-accent");
   });
 
-  it("aggregates products and supplies with fallback assumptions", async () => {
+  it("aggregates products and supplies and flags manual intervention for products without recipe", async () => {
     const rows = [
       ...buildRows().slice(0, 1),
       ["2026-03-07", "op-cup", "2026-03-07 14:00", "Ana", "", "cupcakes clasicos", "", "12", "", "", "recoger_en_tienda", "", "pagado", "480", "MXN", "", "chat-1", "op-cup", "2026-03-07T14:00:00"],
@@ -133,8 +133,37 @@ describe("shopping-list-generate tool", () => {
 
     expect(result.products.some((item) => item.product === "cupcakes clasicos" && item.quantity === 12)).toBe(true);
     expect(result.supplies.some((item) => item.item === "harina" && item.amount > 0)).toBe(true);
-    expect(result.supplies.some((item) => item.item === "empaque_generico" && item.amount === 2)).toBe(true);
+    expect(result.supplies.some((item) => item.item === "empaque_generico")).toBe(false);
     expect(result.assumptions.some((item) => item.includes("sin receta mapeada"))).toBe(true);
+    expect(result.manualIntervention?.some((item) => item.type === "missing_recipe" && item.reference === "mesa de postres")).toBe(true);
+  });
+
+  it("excludes orders with invalid quantity from shopping calculation", async () => {
+    const rows = [
+      ...buildRows().slice(0, 1),
+      ["2026-03-07", "op-valid", "2026-03-07 14:00", "Ana", "", "cupcakes clasicos", "", "12", "", "", "recoger_en_tienda", "", "pagado", "480", "MXN", "", "chat-1", "op-valid", "2026-03-07T14:00:00"],
+      ["2026-03-07", "op-empty", "2026-03-07 18:00", "Leo", "", "pastel red velvet", "", "", "", "", "recoger_en_tienda", "", "pagado", "1000", "MXN", "", "chat-1", "op-empty", "2026-03-07T18:00:00"],
+      ["2026-03-07", "op-decimal", "2026-03-07 19:00", "Mia", "", "pastel red velvet", "", "1.5", "", "", "recoger_en_tienda", "", "pagado", "1200", "MXN", "", "chat-1", "op-decimal", "2026-03-07T19:00:00"],
+      ["2026-03-07", "op-zero", "2026-03-07 20:00", "Noe", "", "pastel red velvet", "", "0", "", "", "recoger_en_tienda", "", "pagado", "1200", "MXN", "", "chat-1", "op-zero", "2026-03-07T20:00:00"]
+    ];
+    const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: rows }));
+    const tool = createShoppingListGenerateTool({
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:U",
+      gwsRunner
+    });
+
+    const result = await tool({
+      chat_id: "chat-1",
+      scope: { type: "day", dateKey: "2026-03-07", label: "hoy" }
+    });
+
+    expect(result.totalOrders).toBe(1);
+    expect(result.orders.map((order) => order.folio)).toEqual(["op-valid"]);
+    expect(result.manualIntervention?.filter((item) => item.type === "invalid_quantity").length).toBe(3);
+    expect(result.assumptions.some((item) => item.includes("op-empty") && item.includes("cantidad invalida"))).toBe(true);
+    expect(result.assumptions.some((item) => item.includes("op-decimal") && item.includes("cantidad invalida"))).toBe(true);
+    expect(result.assumptions.some((item) => item.includes("op-zero") && item.includes("cantidad invalida"))).toBe(true);
   });
 
   it("retries on transient gws timeout and then succeeds", async () => {
@@ -214,7 +243,7 @@ describe("shopping-list-generate tool", () => {
     expect(gwsRunner).toHaveBeenCalledTimes(2);
   });
 
-  it("fails when recipe catalog is empty in gws mode", async () => {
+  it("falls back to inline recipes when recipe catalog is empty in gws mode", async () => {
     const gwsRunner = vi.fn().mockImplementation(async (args: { commandArgs: string[] }) => {
       const paramsIndex = args.commandArgs.indexOf("--params");
       const params = JSON.parse(args.commandArgs[paramsIndex + 1]) as { range: string };
@@ -232,8 +261,101 @@ describe("shopping-list-generate tool", () => {
       gwsRunner
     });
 
-    await expect(
-      tool({ chat_id: "chat-1", scope: { type: "day", dateKey: "2026-03-07", label: "hoy" } })
-    ).rejects.toThrow("shopping_list_recipes_catalog_empty");
+    const result = await tool({
+      chat_id: "chat-1",
+      scope: { type: "day", dateKey: "2026-03-07", label: "hoy" }
+    });
+
+    expect(result.totalOrders).toBe(1);
+    expect(result.detail).toContain("recipe_source=inline_fallback");
+    expect(result.assumptions).toContain("Catalogo de recetas vacio o invalido, use recetas base por defecto. Revisa CatalogoRecetas.");
+  });
+
+  it("falls back to inline recipes when gws recipe read fails", async () => {
+    const gwsRunner = vi.fn().mockImplementation(async (args: { commandArgs: string[] }) => {
+      const paramsIndex = args.commandArgs.indexOf("--params");
+      const params = JSON.parse(args.commandArgs[paramsIndex + 1]) as { range: string };
+      if (params.range === "Pedidos!A:U") {
+        return okJson({ values: buildRows() });
+      }
+
+      return {
+        exitCode: 1,
+        signal: null,
+        stdout: "",
+        stderr: "recipes read failed",
+        timedOut: false
+      };
+    });
+
+    const tool = createShoppingListGenerateTool({
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:U",
+      recipeSource: "gws",
+      recipesGwsRange: "CatalogoRecetas!A:F",
+      gwsRunner
+    });
+
+    const result = await tool({
+      chat_id: "chat-1",
+      scope: { type: "day", dateKey: "2026-03-07", label: "hoy" }
+    });
+
+    expect(result.totalOrders).toBe(1);
+    expect(result.detail).toContain("recipe_source=inline_fallback");
+    expect(result.assumptions).toContain("Catalogo de recetas vacio o invalido, use recetas base por defecto. Revisa CatalogoRecetas.");
+  });
+
+  it("uses top 10 orders by default", async () => {
+    const rows = [
+      buildRows()[0],
+      ...Array.from({ length: 12 }, (_, idx) => {
+        const day = String(idx + 1).padStart(2, "0");
+        const folio = `op-${day}`;
+        return [
+          "2026-03-01",
+          folio,
+          `2026-03-${day} 09:00`,
+          "Cliente",
+          "",
+          "cupcakes clasicos",
+          "",
+          "1",
+          "",
+          "",
+          "recoger_en_tienda",
+          "",
+          "pagado",
+          "100",
+          "MXN",
+          "",
+          "chat-1",
+          folio,
+          `2026-03-${day}T09:00:00`
+        ];
+      })
+    ];
+    const gwsRunner = vi.fn().mockResolvedValue(okJson({ values: rows }));
+    const tool = createShoppingListGenerateTool({
+      gwsSpreadsheetId: "sheet-1",
+      gwsRange: "Pedidos!A:U",
+      gwsRunner
+    });
+
+    const result = await tool({
+      chat_id: "chat-1",
+      scope: { type: "week", anchorDateKey: "2026-03-02", label: "esta semana" }
+    });
+
+    expect(result.totalOrders).toBe(7);
+
+    const fullRangeResult = await tool({
+      chat_id: "chat-1",
+      scope: { type: "lookup", query: "cliente", label: "\"cliente\"" }
+    });
+
+    expect(fullRangeResult.totalOrders).toBe(10);
+    expect(fullRangeResult.orders[0]?.folio).toBe("op-01");
+    expect(fullRangeResult.orders[9]?.folio).toBe("op-10");
   });
 });

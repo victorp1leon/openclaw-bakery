@@ -58,6 +58,8 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - If user asks status intent without reference (e.g. `estado del pedido`), runtime must ask for clarification (`folio|operation_id|cliente|producto`) and continue once resolved.
 - `order.status` replies must include `Ref` (`trace_ref`) in success/no-match, and controlled failure with `Ref` when provider fails.
 - For shopping list queries (e.g. `lista de insumos para hoy`, `insumos del pedido op-123`), route deterministically to `shopping-list-generate` without entering confirm flow.
+- `shopping.list.generate` response should surface `intervencion manual requerida` when items are excluded (e.g. cantidad invalida o producto sin receta mapeada).
+- `shopping.list.generate` should prioritize nearest deliveries first and keep top 10 orders by default.
 - For day schedule queries (e.g. `agenda de hoy`, `agenda del 2026-03-20`), route deterministically to `schedule-day-view` without entering confirm flow.
 - When `schedule.day_view` excludes rows due to critical data quality issues (e.g. missing ISO datetime), runtime must still return a partial agenda plus visible `inconsistencias`.
 - For `quote.order`, after returning the quote, require an explicit user decision (`confirmar/cancelar`) to convert quote into `pedido` draft.

@@ -1,7 +1,7 @@
 # Spec - shopping-list-generate (Phase 3 operations)
 
 Status: MVP
-Last Updated: 2026-03-13
+Last Updated: 2026-03-21
 
 ## Objective
 Build a read-only shopping/supplies list suggestion for one or more orders using Google Sheets `Pedidos` rows.
@@ -43,10 +43,13 @@ It must not mutate orders, inventory, or confirmation state.
 - `order_ref` matching is exact over `folio` or `operation_id`.
 - `lookup` matching is accent-insensitive/case-insensitive over `folio`, `operation_id`, `nombre_cliente`, and `producto`.
 - Supplies list is suggestion-only and must include explicit assumptions when heuristics/default recipes are used.
+- Orders with invalid `cantidad` (empty, non numeric, decimal, `<= 0`) are excluded from shopping aggregation and reported as manual intervention.
+- Products without mapped recipe are excluded from `supplies` and reported as manual intervention.
+- Default maximum included orders is top 10 by nearest delivery (`fecha_hora_entrega` ascending).
 - When recipe source is `gws`, recipe rows are read from `CatalogoRecetas` with schema:
   - `recipe_id`, `aliases_csv`, `insumo`, `unidad`, `cantidad_por_unidad`, `activo`
 - `recipe_id + aliases_csv` identify product matching aliases; each row contributes one supply line.
-- If `gws` recipe source is enabled and the catalog has no valid active recipe rows, fail deterministically.
+- If `gws` recipe source is enabled and catalog read fails or has no valid active rows, fallback to `inline` recipes and report assumption warning.
 - Never expose credentials/tokens in user-facing messages.
 
 ## Error Handling Classification
@@ -58,7 +61,6 @@ It must not mutate orders, inventory, or confirmation state.
   - missing spreadsheet id
   - invalid scope payload
   - missing recipes spreadsheet/range when recipe source is `gws`
-  - empty/invalid recipes catalog when recipe source is `gws`
   - command unavailable (`ENOENT`)
   - malformed non-JSON CLI payload
 

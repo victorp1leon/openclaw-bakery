@@ -46,6 +46,13 @@ export type ShoppingListSupplyItem = {
   sourceProducts: string[];
 };
 
+export type ShoppingListManualIntervention = {
+  type: "missing_recipe" | "invalid_quantity";
+  reference: string;
+  product?: string;
+  detail: string;
+};
+
 export type ShoppingListRecipeSource = "inline" | "gws";
 
 export type ShoppingListResult = {
@@ -55,6 +62,7 @@ export type ShoppingListResult = {
   orders: ShoppingListOrderItem[];
   products: ShoppingListProductItem[];
   supplies: ShoppingListSupplyItem[];
+  manualIntervention?: ShoppingListManualIntervention[];
   assumptions: string[];
   detail: string;
 };
@@ -263,10 +271,14 @@ function isHeaderRow(row: string[]): boolean {
   return normalized.includes("fecha_hora_entrega") && normalized.includes("nombre_cliente");
 }
 
-function mapRows(rows: string[][], timezone: string, assumptions: string[]): ParsedOrderRow[] {
+function mapRows(rows: string[][], timezone: string, assumptions: string[]): {
+  rows: ParsedOrderRow[];
+  manualIntervention: ShoppingListManualIntervention[];
+} {
   const dataRows = rows.length > 0 && isHeaderRow(rows[0]) ? rows.slice(1) : rows;
+  const manualIntervention: ShoppingListManualIntervention[] = [];
 
-  return dataRows
+  const parsedRows = dataRows
     .map((row) => {
       const fecha_hora_entrega = row[2] ?? "";
       const fecha_hora_entrega_iso = row[18] || undefined;
@@ -275,10 +287,20 @@ function mapRows(rows: string[][], timezone: string, assumptions: string[]): Par
       const operation_id = row[17] || undefined;
       const nombre_cliente = row[3] ?? "";
       const producto = row[5] ?? "";
+      const rawQuantity = (row[7] ?? "").trim();
       const rawQty = toNumberMaybe(row[7]);
-      const cantidad = rawQty != null && rawQty > 0 ? Math.trunc(rawQty) : 1;
-      if (rawQty == null) {
-        assumptions.push(`pedido ${folio || operation_id || producto || "sin_referencia"} sin cantidad; se asumió 1 unidad`);
+      const isValidQty = rawQty != null && Number.isInteger(rawQty) && rawQty > 0;
+      const orderRef = folio || operation_id || producto || "sin_referencia";
+      if (!isValidQty) {
+        const quantityLabel = rawQuantity.length > 0 ? rawQuantity : "vacia";
+        assumptions.push(`pedido ${orderRef} omitido por cantidad invalida (${quantityLabel})`);
+        manualIntervention.push({
+          type: "invalid_quantity",
+          reference: orderRef,
+          product: producto || undefined,
+          detail: `Pedido omitido del calculo de insumos por cantidad invalida (${quantityLabel}).`
+        });
+        return undefined;
       }
       const searchKey = normalizeForMatch(`${folio} ${operation_id ?? ""} ${nombre_cliente} ${producto}`);
 
@@ -289,13 +311,18 @@ function mapRows(rows: string[][], timezone: string, assumptions: string[]): Par
         fecha_hora_entrega_iso,
         nombre_cliente,
         producto,
-        cantidad,
+        cantidad: rawQty,
         _dateKey: extractDateKey(dateSource, timezone),
         _matchKey: searchKey,
         _productKey: normalizePhrase(producto)
       };
     })
-    .filter((row) => row.fecha_hora_entrega && row.nombre_cliente && row.producto);
+    .filter((row): row is ParsedOrderRow => Boolean(row && row.fecha_hora_entrega && row.nombre_cliente && row.producto));
+
+  return {
+    rows: parsedRows,
+    manualIntervention
+  };
 }
 
 function isRecipeHeaderRow(row: string[]): boolean {
@@ -465,7 +492,12 @@ function roundAmount(amount: number, unit: string): number {
   return Math.round(amount * 100) / 100;
 }
 
-function buildAggregation(args: { rows: ParsedOrderRow[]; assumptions: string[]; recipeProfiles: RecipeProfile[] }): {
+function buildAggregation(args: {
+  rows: ParsedOrderRow[];
+  assumptions: string[];
+  recipeProfiles: RecipeProfile[];
+  manualIntervention: ShoppingListManualIntervention[];
+}): {
   products: ShoppingListProductItem[];
   supplies: ShoppingListSupplyItem[];
 } {
@@ -490,19 +522,13 @@ function buildAggregation(args: { rows: ParsedOrderRow[]; assumptions: string[];
   for (const product of productsMap.values()) {
     const recipe = findRecipeProfile(product.product, args.recipeProfiles);
     if (!recipe) {
-      args.assumptions.push(`sin receta mapeada para "${product.product}"; se agregó empaque genérico`);
-      const fallbackKey = "empaque_generico|pza";
-      if (!suppliesMap.has(fallbackKey)) {
-        suppliesMap.set(fallbackKey, {
-          item: "empaque_generico",
-          unit: "pza",
-          amount: 0,
-          sourceProducts: new Set<string>()
-        });
-      }
-      const supply = suppliesMap.get(fallbackKey)!;
-      supply.amount += product.quantity;
-      supply.sourceProducts.add(product.product);
+      args.assumptions.push(`sin receta mapeada para "${product.product}"; se excluyo del calculo de insumos`);
+      args.manualIntervention.push({
+        type: "missing_recipe",
+        reference: product.product,
+        product: product.product,
+        detail: `Producto sin receta mapeada (x${product.quantity}).`
+      });
       continue;
     }
 
@@ -553,7 +579,7 @@ export function createShoppingListGenerateTool(config: ShoppingListToolConfig = 
     ? Math.trunc(config.retryBackoffMs!)
     : 150;
   const timezone = config.timezone?.trim() || "America/Mexico_City";
-  const limit = Number.isFinite(config.limit) && (config.limit ?? -1) > 0 ? Math.trunc(config.limit!) : 100;
+  const limit = Number.isFinite(config.limit) && (config.limit ?? -1) > 0 ? Math.trunc(config.limit!) : 10;
   const recipeSource = config.recipeSource ?? "inline";
   const inlineRecipeProfiles = config.recipeProfiles ?? DEFAULT_RECIPE_PROFILES;
   const recipesGwsCommand = config.recipesGwsCommand?.trim() || gwsCommand;
@@ -612,7 +638,9 @@ export function createShoppingListGenerateTool(config: ShoppingListToolConfig = 
     });
 
     const assumptions: string[] = [];
+    const manualIntervention: ShoppingListManualIntervention[] = [];
     let recipeProfiles: RecipeProfile[] = inlineRecipeProfiles;
+    let effectiveRecipeSource: ShoppingListRecipeSource | "inline_fallback" = recipeSource;
     if (recipeSource === "gws") {
       if (!recipesGwsSpreadsheetId) {
         throw new Error("shopping_list_recipes_gws_spreadsheet_id_missing");
@@ -621,32 +649,45 @@ export function createShoppingListGenerateTool(config: ShoppingListToolConfig = 
         throw new Error("shopping_list_recipes_gws_range_missing");
       }
 
-      const recipesReadResult = await readGwsValuesWithRetries({
-        command: recipesGwsCommand,
-        commandArgs: recipesGwsCommandArgs,
-        spreadsheetId: recipesGwsSpreadsheetId,
-        range: recipesNormalizedRange,
-        timeoutMs: recipesTimeoutMs,
-        maxRetries: recipesMaxRetries,
-        retryBackoffMs: recipesRetryBackoffMs,
-        runner: gwsRunner,
-        errorPrefix: "shopping_list_recipes_gws",
-        invalidPayloadError: "shopping_list_recipes_gws_invalid_payload",
-        commandUnavailableError: "shopping_list_recipes_gws_command_unavailable",
-        failedError: "shopping_list_recipes_gws_failed"
-      });
+      try {
+        const recipesReadResult = await readGwsValuesWithRetries({
+          command: recipesGwsCommand,
+          commandArgs: recipesGwsCommandArgs,
+          spreadsheetId: recipesGwsSpreadsheetId,
+          range: recipesNormalizedRange,
+          timeoutMs: recipesTimeoutMs,
+          maxRetries: recipesMaxRetries,
+          retryBackoffMs: recipesRetryBackoffMs,
+          runner: gwsRunner,
+          errorPrefix: "shopping_list_recipes_gws",
+          invalidPayloadError: "shopping_list_recipes_gws_invalid_payload",
+          commandUnavailableError: "shopping_list_recipes_gws_command_unavailable",
+          failedError: "shopping_list_recipes_gws_failed"
+        });
 
-      const parsedRecipes = parseRecipeProfiles(recipesReadResult.rows);
-      assumptions.push(...parsedRecipes.assumptions);
-      if (parsedRecipes.profiles.length === 0) {
-        throw new Error("shopping_list_recipes_catalog_empty");
+        const parsedRecipes = parseRecipeProfiles(recipesReadResult.rows);
+        assumptions.push(...parsedRecipes.assumptions);
+        if (parsedRecipes.profiles.length === 0) {
+          throw new Error("shopping_list_recipes_catalog_empty");
+        }
+        recipeProfiles = parsedRecipes.profiles;
+      } catch (err) {
+        const safeDetail = err instanceof Error ? err.message : String(err);
+        const canFallback =
+          safeDetail === "shopping_list_recipes_catalog_empty" ||
+          safeDetail.startsWith("shopping_list_recipes_gws_");
+        if (!canFallback) {
+          throw err;
+        }
+        effectiveRecipeSource = "inline_fallback";
+        assumptions.push("Catalogo de recetas vacio o invalido, use recetas base por defecto. Revisa CatalogoRecetas.");
       }
-      recipeProfiles = parsedRecipes.profiles;
     }
 
     const parsedRows = mapRows(readResult.rows, timezone, assumptions);
+    manualIntervention.push(...parsedRows.manualIntervention);
     const maxRows = Number.isFinite(args.limit) && (args.limit ?? 0) > 0 ? Math.trunc(args.limit!) : limit;
-    const filtered = parsedRows
+    const filtered = parsedRows.rows
       .filter((row) => matchesScope(row, args.scope, timezone))
       .sort(sortRows)
       .slice(0, maxRows);
@@ -654,7 +695,8 @@ export function createShoppingListGenerateTool(config: ShoppingListToolConfig = 
     const { products, supplies } = buildAggregation({
       rows: filtered,
       assumptions,
-      recipeProfiles
+      recipeProfiles,
+      manualIntervention
     });
 
     const orders = filtered.map(({ _dateKey: _ignoredDateKey, _matchKey: _ignoredMatchKey, _productKey: _ignoredProductKey, ...row }) => row);
@@ -665,8 +707,9 @@ export function createShoppingListGenerateTool(config: ShoppingListToolConfig = 
       orders,
       products,
       supplies,
+      manualIntervention: [...manualIntervention],
       assumptions: [...new Set(assumptions)],
-      detail: `shopping-list-generate executed (provider=gws, attempt=${readResult.attempt}, scope=${args.scope.type}, recipe_source=${recipeSource})`
+      detail: `shopping-list-generate executed (provider=gws, attempt=${readResult.attempt}, scope=${args.scope.type}, recipe_source=${effectiveRecipeSource})`
     };
   };
 }

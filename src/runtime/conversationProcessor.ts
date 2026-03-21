@@ -1345,8 +1345,31 @@ function formatOrderStatusReply(result: OrderStatusResult): string {
 
 function formatShoppingListReply(result: ShoppingListResult): string {
   const label = result.scope.label;
+  const manualIntervention = result.manualIntervention ?? [];
+  const shownManual = manualIntervention.slice(0, 6);
+  const manualLines = shownManual.map((item, idx) => {
+    if (item.type === "invalid_quantity") {
+      return `${idx + 1}. ${item.reference}: cantidad invalida. ${item.detail}`;
+    }
+    const target = item.product ?? item.reference;
+    return `${idx + 1}. ${target}: ${item.detail}`;
+  });
+  const manualExtra = manualIntervention.length > shownManual.length
+    ? `\n... y ${manualIntervention.length - shownManual.length} casos más`
+    : "";
+  const manualBlock = manualLines.length > 0
+    ? `Intervención manual requerida:\n${manualLines.join("\n")}${manualExtra}`
+    : "";
+  const assumptions =
+    result.assumptions.length > 0
+      ? `Supuestos: ${result.assumptions.join(" ; ")}`
+      : "";
+
   if (result.totalOrders === 0) {
-    return `No encontré pedidos para armar la lista de insumos (${label}).`;
+    const lines = [`No encontré pedidos válidos para armar la lista de insumos (${label}).`];
+    if (manualBlock) lines.push(manualBlock);
+    if (assumptions) lines.push(assumptions);
+    return lines.join("\n");
   }
 
   const maxSupplies = 12;
@@ -1363,16 +1386,16 @@ function formatShoppingListReply(result: ShoppingListResult): string {
     .slice(0, 6)
     .map((item) => `${item.product} x${item.quantity}`)
     .join(" | ");
-  const assumptions =
-    result.assumptions.length > 0
-      ? `\nSupuestos: ${result.assumptions.join(" ; ")}`
-      : "";
-
-  return [
+  const productsLine = `Productos considerados: ${productSummary}${result.products.length > 6 ? " | ..." : ""}`;
+  const lines = [
     `Lista de insumos para ${label} (${result.totalOrders} pedidos):`,
     supplyLines.join("\n") + supplyExtra,
-    `Productos considerados: ${productSummary}${result.products.length > 6 ? " | ..." : ""}${assumptions}`
-  ].join("\n");
+    productsLine
+  ];
+  if (manualBlock) lines.push(manualBlock);
+  if (assumptions) lines.push(assumptions);
+
+  return lines.join("\n");
 }
 
 function formatScheduleDayViewReply(result: ScheduleDayViewResult): string {

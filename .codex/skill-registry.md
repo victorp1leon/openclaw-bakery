@@ -1,6 +1,6 @@
 # Skill Registry
 
-Generated At (UTC): 2026-03-19 23:10:15.679 UTC
+Generated At (UTC): 2026-03-21 00:46:30.414 UTC
 
 ## Skills
 
@@ -36,6 +36,7 @@ Generated At (UTC): 2026-03-19 23:10:15.679 UTC
 | mutation-clarification-flow-standard | `.codex/rules/mutation-clarification-flow-standard.md` |
 | order-dual-write-strict | `.codex/rules/order-dual-write-strict.md` |
 | read-only-clarification-flow-standard | `.codex/rules/read-only-clarification-flow-standard.md` |
+| read-only-partial-intervention-standard | `.codex/rules/read-only-partial-intervention-standard.md` |
 | read-only-trace-ref-standard | `.codex/rules/read-only-trace-ref-standard.md` |
 | secrets-never-commit | `.codex/rules/secrets-never-commit.md` |
 | test-failure-priority-gate | `.codex/rules/test-failure-priority-gate.md` |

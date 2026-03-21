@@ -35,6 +35,7 @@ Genera una sugerencia de lista de compras/insumos en modo solo lectura, agregand
   - total de pedidos incluidos
   - productos agregados
   - insumos sugeridos agregados
+  - intervenciones manuales requeridas (cuando aplique)
   - supuestos utilizados
 - Errores deterministas `shopping_list_*` para scope/config/provider invalidos.
 
@@ -42,8 +43,10 @@ Genera una sugerencia de lista de compras/insumos en modo solo lectura, agregand
 1. Detectar solicitud de lista de compras/insumos.
 2. Resolver alcance (`day|week|order_ref|lookup`), pidiendo dato faltante cuando aplique.
 3. Consultar pedidos en modo read-only.
-4. Construir agregados de productos e insumos (recetas inline o catalogo de recetas).
-5. Responder con lista final y supuestos.
+4. Excluir pedidos con cantidad invalida (vacia, no numerica, decimal o <= 0) y reportar intervención manual.
+5. Construir agregados de productos e insumos (recetas inline o catalogo de recetas).
+6. Si falla `CatalogoRecetas` en modo `gws`, hacer fallback a recetas `inline` y advertirlo.
+7. Responder con lista final, intervención manual y supuestos.
 
 ## Safety Constraints
 - Nunca escribir en `Pedidos`, `Inventario` o `MovimientosInventario`.
@@ -54,3 +57,4 @@ Genera una sugerencia de lista de compras/insumos en modo solo lectura, agregand
 - Confundir esta skill con `inventory.consume`.
 - Ejecutar con scope ambiguo sin pedir aclaracion.
 - Omitir supuestos cuando se usan recetas heuristicas/default.
+- Incluir en insumos productos sin receta mapeada en vez de marcarlos para intervención manual.
