@@ -5,6 +5,7 @@ Last Updated: 2026-03-21
 ## Active Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `platform/implementation/sdd-migration-documentation-reorganization-master-plan-v1.md` | Implementation | In Progress | 2026-03-21 |
 
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
