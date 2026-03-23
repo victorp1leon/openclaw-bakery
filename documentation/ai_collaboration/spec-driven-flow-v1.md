@@ -109,6 +109,19 @@ No crear plan cuando:
 - Escribir handoff corto con estado real, riesgos y siguientes pasos.
 - Si hubo limitaciones de validacion, declararlas explicitamente.
 
+### Short Session Practice (Token-Efficient, No Alternate Flow)
+- La practica recomendada es trabajar en bloques cortos y enfocados con un micro-objetivo unico por sesion.
+- Esta practica no reemplaza etapas del flujo canonico; solo reduce contexto innecesario por bloque de ejecucion.
+- Cada sesion corta debe mantener continuidad documental minima:
+  - actualizar el plan con progreso real
+  - sincronizar `_index.md` cuando cambie estado global
+  - registrar handoff corto y accionable
+
+Protocolo recomendado por bloque:
+1. Entrada breve: revisar `AGENTS.md`, plan activo, ultimo handoff y contexto tecnico minimo aplicable.
+2. Ejecucion enfocada: resolver solo el micro-objetivo; cualquier desvio se registra como `follow-up`.
+3. Salida obligatoria: dejar trazabilidad completa (plan/index/handoff) antes de cerrar la sesion.
+
 ## Non-Goals (v1)
 - Introducir playbooks alternos que compitan con esta fuente de verdad.
 - Introducir automatizacion CI adicional solo por el cambio de flujo.

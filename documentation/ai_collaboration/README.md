@@ -12,6 +12,7 @@ Artefactos para continuidad entre sesiones IA + developer.
 - `plans/_index.md`: indice de planes activos/completados.
 - `plans/**`: planes de implementacion/review + handoffs de sesion.
 - `references/framework/**`: marcos/metodologias reutilizables (externalizables).
+- `references/operations/**`: plantillas/checklists operativos reutilizables.
 
 ## Usage
 1. Revisar `plans/_index.md`.
