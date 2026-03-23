@@ -1,6 +1,6 @@
 # Skill Registry
 
-Generated At (UTC): 2026-03-21 00:46:30.414 UTC
+Generated At (UTC): 2026-03-23 15:15:17.302 UTC
 
 ## Skills
 
@@ -20,6 +20,7 @@ Generated At (UTC): 2026-03-21 00:46:30.414 UTC
 | sheets-orders-expenses-cleanup | Safely preview, apply, and verify cleanup of Google Sheets tabs Pedidos and Gastos (clear data rows and restore canonical headers) for test-data resets. | `.codex/skills/sheets-orders-expenses-cleanup/SKILL.md` |
 | skill-creator | Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Codex's capabilities with specialized knowledge, workflows, or tool integrations. | `.codex/skills/skill-creator/SKILL.md` |
 | skill-registry-sync | Maintain a deterministic local registry of project operational assets (skills, rules, agents, and instructions) to prevent cross-session drift. Use when files are added, removed, or renamed under `.codex/skills`, `.codex/rules`, `.github/agents`, or `.github/instructions`, and before closing a collaboration session that changed these artifacts. | `.codex/skills/skill-registry-sync/SKILL.md` |
+| specs-wave-migration | Migrate Spec-Driven documentation waves from `documentation/specs/migration-manifest.md` into canonical feature packages (`spec/clarify/plan/tasks/analyze` + legacy snapshot), update manifest status (`pending` -> `migrated`), and rebuild `documentation/specs/_index.md` feature registry. Use for Wave A/B/C plan-entry migrations. | `.codex/skills/specs-wave-migration/SKILL.md` |
 | test-smoke-integration | Run and summarize smoke and integration validation flows when the user asks to verify end-to-end behavior. Use for mock/default smoke checks, optional live smoke checks, and reading markdown/json summary artifacts. | `.codex/skills/test-smoke-integration/SKILL.md` |
 | test-unit | Run and summarize unit tests for this project when the user asks for unit validation. Use for focused Vitest runs, full unit runs, and optional markdown summary generation from test results. | `.codex/skills/test-unit/SKILL.md` |
 
