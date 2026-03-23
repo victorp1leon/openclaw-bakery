@@ -3,12 +3,12 @@
 > **Type:** `Implementation`
 > **Status:** `In Progress`
 > **Created:** `2026-03-21`
-> **Last Updated:** `2026-03-21`
+> **Last Updated:** `2026-03-23`
 
 ## Cross-References
 | Documento | Ruta | Uso |
 |---|---|---|
-| Consolidated source notes | `plan-todo.md` | Fuente consolidada de decisiones y alcance |
+| Consolidated source notes | `documentation/specs/migration-manifest.md` | Inventario consolidado de origen legacy y avance por ola |
 | Canonical flow reference | `documentation/ai_collaboration/spec-driven-flow-v1.md` | Base del flujo Spec-Driven adaptado |
 | Plans index | `documentation/ai_collaboration/plans/_index.md` | Registro de estado del plan maestro |
 | AGENTS policy | `AGENTS.md` | Guardrails (`apruebo`, plan/index/handoff) |
@@ -55,7 +55,7 @@ Queremos consolidar en una sola ruta la adopcion de Spec-Driven Development (SDD
 ### Alcance cuantificado
 1. `runtime implementation`: 40 archivos.
 2. `platform implementation`: 38 archivos.
-3. `sessions` (runtime + platform): 93 archivos (se mantienen en origen).
+3. `sessions` (runtime + platform): 94 archivos (se mantienen en origen).
 4. `c4 ComponentSpecs`: 39 contratos (a migrar gradualmente al nuevo arbol canonico).
 
 ### Mapeo de rutas
@@ -75,9 +75,9 @@ Queremos consolidar en una sola ruta la adopcion de Spec-Driven Development (SDD
 ## Approach
 | # | Paso | Estado | Notas |
 |---|---|---|---|
-| 1 | Crear foundation de `documentation/specs` (index, template, convenciones) | Pending | Incluye metadata minima por feature y convencion de slugs |
-| 2 | Crear `migration-manifest.md` inicial con inventario completo de origen legacy | Pending | Fuente de verdad de avance (`pending/migrated/verified`) |
-| 3 | Definir/ajustar comandos locales SDD (`speckit.*`) a rutas `documentation/specs` | Pending | Estrategia 100% local, sin `specify-cli` |
+| 1 | Crear foundation de `documentation/specs` (index, template, convenciones) | Complete | 2026-03-23: creados `_index.md`, `_feature-template.md` y arbol base (`runtime`, `platform`, `contracts/components`) |
+| 2 | Crear `migration-manifest.md` inicial con inventario completo de origen legacy | Complete | 2026-03-23: creado manifiesto inicial con 117 entradas (40 runtime, 38 platform, 39 contracts) |
+| 3 | Definir/ajustar comandos locales SDD (`speckit.*`) a rutas `documentation/specs` | Complete | 2026-03-23: definidos `.codex/commands/speckit.{index,template,manifest,validate}.md` sobre rutas canonicas; unit/smoke `N/A` (cambio documental sin runtime/scripts ejecutables) |
 | 4 | Ola A: migrar features activas/recientes de mayor uso | Pending | Consolidacion por feature + enlaces cruzados |
 | 5 | Ola B: migrar resto de `runtime implementation` | Pending | Mantener trazabilidad a legacy |
 | 6 | Ola C: migrar resto de `platform implementation` | Pending | Mantener trazabilidad a legacy |
