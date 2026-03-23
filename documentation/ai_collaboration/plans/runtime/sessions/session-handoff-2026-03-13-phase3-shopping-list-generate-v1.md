@@ -6,7 +6,7 @@
 
 ## What Was Done
 - Se creó spec C4 de tool:
-  - `documentation/c4/ComponentSpecs/Tools/Specs/shopping-list-generate.spec.md`
+  - `documentation/specs/contracts/components/shopping-list-generate.spec.md`
 - Se implementó tool read-only:
   - `src/tools/order/shoppingListGenerate.ts`
   - filtros por `day|week|order_ref|lookup` sobre `Pedidos` (`gws`)

@@ -11,8 +11,8 @@
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Alineacion de alcance por fases |
 | System description | `documentation/c4/ComponentSpecs/system.description.md` | Contexto de arquitectura de contenedores |
 | Tools component | `documentation/c4/ComponentSpecs/Tools/component.description.md` | Reglas de adapters de integracion |
-| Expense spec | `documentation/c4/ComponentSpecs/Tools/Specs/append-expense.spec.md` | Contrato `expense.add` |
-| Order spec | `documentation/c4/ComponentSpecs/Tools/Specs/append-order.spec.md` | Contrato `order.create` Sheets |
+| Expense spec | `documentation/specs/contracts/components/append-expense.spec.md` | Contrato `expense.add` |
+| Order spec | `documentation/specs/contracts/components/append-order.spec.md` | Contrato `order.create` Sheets |
 | Config source | `src/config/appConfig.ts` | Variables/env y defaults operativos |
 | Connectors source | `src/tools/expense/appendExpense.ts`, `src/tools/order/appendOrder.ts` | Implementacion runtime de Sheets |
 

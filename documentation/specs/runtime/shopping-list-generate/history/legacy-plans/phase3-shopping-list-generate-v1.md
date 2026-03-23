@@ -10,7 +10,7 @@
 |---|---|---|
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Backlog funcional fase 3 (`shopping.list.generate`) |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Estado de cobertura y siguiente accion |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Reglas de enrutamiento conversacional |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Reglas de enrutamiento conversacional |
 | Tool specs | `documentation/c4/ComponentSpecs/Tools/Specs/` | Contrato de adapters read-only |
 
 ## Contexto

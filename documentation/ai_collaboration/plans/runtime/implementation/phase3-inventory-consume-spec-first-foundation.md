@@ -10,8 +10,8 @@
 |---|---|---|
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Backlog funcional fase 3 (`inventory.consume`) |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Estado de cobertura y siguiente accion |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Contrato de confirm flow para mutaciones |
-| Tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/inventory-consume.spec.md` | Contrato funcional y tecnico de `inventory.consume` |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Contrato de confirm flow para mutaciones |
+| Tool spec | `documentation/specs/contracts/components/inventory-consume.spec.md` | Contrato funcional y tecnico de `inventory.consume` |
 | System map | `documentation/ai_collaboration/system-map.md` | Trazabilidad del nuevo flujo de evento |
 
 ## Contexto

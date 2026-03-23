@@ -10,7 +10,7 @@
 |---|---|---|
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Alcance de Fase 4 |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Tracking de cobertura |
-| publish-site spec | `documentation/c4/ComponentSpecs/Tools/Specs/publish-site.spec.md` | Contrato v2 del adapter |
+| publish-site spec | `documentation/specs/contracts/components/publish-site.spec.md` | Contrato v2 del adapter |
 
 ## Contexto
 Con Fases 2 y 3 validadas live, el siguiente bloque critico es `web.publish`, que aun estaba en spec v1 stub. Antes de implementar conectores reales, se necesita contrato v2 verificable para auth, timeout/retries, idempotencia y errores controlados.

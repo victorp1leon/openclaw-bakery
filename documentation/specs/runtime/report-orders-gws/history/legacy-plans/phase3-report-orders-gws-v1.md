@@ -9,8 +9,8 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Backlog de `report.orders` |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Reglas de enrutado conversacional |
-| Tools spec | `documentation/c4/ComponentSpecs/Tools/Specs/report-orders.spec.md` | Contrato de consulta de pedidos |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Reglas de enrutado conversacional |
+| Tools spec | `documentation/specs/contracts/components/report-orders.spec.md` | Contrato de consulta de pedidos |
 | Runtime source | `src/runtime/conversationProcessor.ts` | Integracion del comando de reporte |
 | Tool source | `src/tools/order/reportOrders.ts` | Lectura de Google Sheets via `gws` |
 

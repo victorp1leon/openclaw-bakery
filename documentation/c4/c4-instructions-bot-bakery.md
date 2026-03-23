@@ -197,17 +197,14 @@ Security Constraints:
 - System description: `documentation/c4/ComponentSpecs/system.description.md`
 - Conversation Runtime component docs:
   - `documentation/c4/ComponentSpecs/ConversationRuntime/component.description.md`
-  - `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/*.spec.md`
 - OpenClaw adapter component docs:
   - `documentation/c4/ComponentSpecs/OpenClawRuntime/component.description.md`
 - State/persistence docs:
   - `documentation/c4/ComponentSpecs/StateAndPersistence/component.description.md`
 - Tool adapter docs:
   - `documentation/c4/ComponentSpecs/Tools/component.description.md`
-  - `documentation/c4/ComponentSpecs/Tools/Specs/*.spec.md`
 - Config/health docs:
   - `documentation/c4/ComponentSpecs/ConfigAndHealthcheck/component.description.md`
-  - `documentation/c4/ComponentSpecs/ConfigAndHealthcheck/Specs/*.spec.md`
 - Roadmap and grouped skills:
   - `documentation/bot-bakery.roadmap.md`
 - Security and threat model:
@@ -223,8 +220,8 @@ Security Constraints:
   - `documentation/adr/README.md`
 
 Note:
-- `documentation/c4/ComponentSpecs/*/Specs/*.spec.md` remains as temporary C4 reference.
 - Canonical contract source of truth for implementation is `documentation/specs/contracts/components/*.spec.md`.
+- `documentation/c4/ComponentSpecs/*/Specs/*.spec.md` were retired after migration finalization; C4 should rely on component descriptions + canonical contracts.
 
 ## Output Expectation
 

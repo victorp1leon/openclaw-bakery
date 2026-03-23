@@ -8,8 +8,8 @@
 ## Cross-References
 | Documento | Ruta | Uso |
 |---|---|---|
-| update-order tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/update-order.spec.md` | Contrato tecnico de mutacion |
-| conversation processor spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Reglas de flujo conversacional |
+| update-order tool spec | `documentation/specs/contracts/components/update-order.spec.md` | Contrato tecnico de mutacion |
+| conversation processor spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Reglas de flujo conversacional |
 | order.update skill doc | `skills/order.update/SKILL.md` | Contrato operativo de skill |
 | grill closure decisions | `documentation/ai_collaboration/plans/runtime/sessions/session-handoff-2026-03-11-phase3-order-update-v1.md` | Baseline previo |
 

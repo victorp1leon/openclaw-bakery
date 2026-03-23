@@ -10,7 +10,7 @@
 |---|---|---|
 | Pricing bootstrap plan | `documentation/ai_collaboration/plans/runtime/implementation/phase3-quote-pricing-catalog-sheets-tab-foundation.md` | Baseline de catalogo en Sheets |
 | Config matrix | `documentation/operations/config-matrix.md` | Comandos/variables operativas |
-| Pricing bootstrap spec | `documentation/c4/ComponentSpecs/Tools/Specs/pricing-catalog-bootstrap.spec.md` | Contrato de estructura inicial |
+| Pricing bootstrap spec | `documentation/specs/contracts/components/pricing-catalog-bootstrap.spec.md` | Contrato de estructura inicial |
 
 ## Contexto
 Despues de actualizar manualmente el libro de Google Sheets, se detecto contaminacion en `CatalogoPrecios!A1` y se agregaron nuevas pestañas (`CatalogoReferencias`, `CatalogoOpciones`). Se requiere hardening operativo para validar estructura y evitar regresiones.

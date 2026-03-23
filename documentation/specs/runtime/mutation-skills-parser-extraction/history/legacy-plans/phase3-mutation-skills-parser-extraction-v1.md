@@ -8,7 +8,7 @@
 ## Cross-References
 | Documento | Ruta | Uso |
 |---|---|---|
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Mantener contrato sin cambios funcionales |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Mantener contrato sin cambios funcionales |
 | Plan inventory.consume | `documentation/ai_collaboration/plans/runtime/implementation/phase3-inventory-consume-spec-first-foundation.md` | Base funcional previa |
 | Runtime source | `src/runtime/conversationProcessor.ts` | Punto de extracción de parsers mutables |
 | Skills source | `src/skills/` | Destino del refactor |

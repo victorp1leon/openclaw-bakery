@@ -8,7 +8,7 @@
 ## Cross-References
 | Documento | Ruta | Uso |
 |---|---|---|
-| Tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/quote-order.spec.md` | Contrato de salida `quote.order` |
+| Tool spec | `documentation/specs/contracts/components/quote-order.spec.md` | Contrato de salida `quote.order` |
 | Quote implementation v1 | `documentation/ai_collaboration/plans/runtime/implementation/phase3-quote-order-gws-catalog-v1.md` | Base funcional previa |
 | Runtime | `src/runtime/conversationProcessor.ts` | Flujo guiado de cotizacion |
 | Tool | `src/tools/order/quoteOrder.ts` | Lectura de `CatalogoOpciones` y sugerencias |

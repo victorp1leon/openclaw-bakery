@@ -10,8 +10,8 @@
 |---|---|---|
 | Grill interview outcomes | `conversation (2026-03-17)` | Decisiones de riesgo cerradas antes de cambiar codigo |
 | Previous pilot plan | `documentation/ai_collaboration/plans/runtime/implementation/phase3-schedule-day-view-spec-driven-pilot-v1.md` | Baseline funcional previo |
-| Tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/schedule-day-view.spec.md` | Contrato actualizado de hardening |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Reglas de routing y mensajes controlados |
+| Tool spec | `documentation/specs/contracts/components/schedule-day-view.spec.md` | Contrato actualizado de hardening |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Reglas de routing y mensajes controlados |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Estado y cobertura de capacidad |
 
 ## Contexto

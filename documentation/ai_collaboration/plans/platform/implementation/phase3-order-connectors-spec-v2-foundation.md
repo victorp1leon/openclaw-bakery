@@ -10,8 +10,8 @@
 |---|---|---|
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Alcance de Fase 3 |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Tracking de cobertura |
-| create-card spec | `documentation/c4/ComponentSpecs/Tools/Specs/create-card.spec.md` | Contrato Trello v2 |
-| append-order spec | `documentation/c4/ComponentSpecs/Tools/Specs/append-order.spec.md` | Contrato Sheets v2 |
+| create-card spec | `documentation/specs/contracts/components/create-card.spec.md` | Contrato Trello v2 |
+| append-order spec | `documentation/specs/contracts/components/append-order.spec.md` | Contrato Sheets v2 |
 
 ## Contexto
 Fase 2 (`expense.add`) ya esta validada live y el siguiente riesgo operativo es Fase 3 (`order.create`) aun en stubs. Antes de implementar conectores reales, se requiere cerrar contratos v2 verificables para Trello y Sheets con foco en seguridad, idempotencia y comportamiento de retry.

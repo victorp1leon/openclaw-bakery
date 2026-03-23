@@ -9,10 +9,10 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | Plan previo (ISO) | `documentation/ai_collaboration/plans/runtime/implementation/phase3-order-delivery-datetime-iso.md` | Base tecnica y decisiones previas |
-| Runtime parser spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/parser.spec.md` | Contrato de extraccion/normalizacion |
-| Conversation processor spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Flujo de faltantes, resumen y confirmacion |
-| Append order spec | `documentation/c4/ComponentSpecs/Tools/Specs/append-order.spec.md` | Escritura final de pedidos |
-| Update order spec | `documentation/c4/ComponentSpecs/Tools/Specs/update-order.spec.md` | Regla equivalente para cambios de entrega |
+| Runtime parser spec | `documentation/specs/contracts/components/parser.spec.md` | Contrato de extraccion/normalizacion |
+| Conversation processor spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Flujo de faltantes, resumen y confirmacion |
+| Append order spec | `documentation/specs/contracts/components/append-order.spec.md` | Escritura final de pedidos |
+| Update order spec | `documentation/specs/contracts/components/update-order.spec.md` | Regla equivalente para cambios de entrega |
 | Runtime source | `src/runtime/conversationProcessor.ts` | Orquestacion de pedido y order.update |
 | Delivery helper source | `src/tools/order/deliveryDateTime.ts` | Canonicalizacion de fecha/hora |
 

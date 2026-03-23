@@ -8,7 +8,7 @@
 ## Cross-References
 | Documento | Ruta | Uso |
 |---|---|---|
-| Shopping list spec | `documentation/c4/ComponentSpecs/Tools/Specs/shopping-list-generate.spec.md` | Contrato del catalogo `CatalogoRecetas` |
+| Shopping list spec | `documentation/specs/contracts/components/shopping-list-generate.spec.md` | Contrato del catalogo `CatalogoRecetas` |
 | Config matrix | `documentation/operations/config-matrix.md` | Variables/env y comandos operativos del bootstrap |
 | Script existente | `scripts/sheets/init-pricing-catalog-tab.ts` | Referencia de patron `preview/apply` para tabs Sheets |
 

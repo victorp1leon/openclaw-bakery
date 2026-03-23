@@ -8,9 +8,9 @@
 ## Cross-References
 | Documento | Ruta | Uso |
 |---|---|---|
-| Quote tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/quote-order.spec.md` | Contrato de cálculo de cotización |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Flujo quote -> pedido y confirmaciones |
-| Read-only router spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/read-only-intent-router.spec.md` | Ruteo `quote.order` con OpenClaw |
+| Quote tool spec | `documentation/specs/contracts/components/quote-order.spec.md` | Contrato de cálculo de cotización |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Flujo quote -> pedido y confirmaciones |
+| Read-only router spec | `documentation/specs/contracts/components/read-only-intent-router.spec.md` | Ruteo `quote.order` con OpenClaw |
 | Plan quote catálogo | `documentation/ai_collaboration/plans/runtime/implementation/phase3-quote-order-gws-catalog-v1.md` | Base de catálogos y tool |
 | Plan quote guided prompts | `documentation/ai_collaboration/plans/runtime/implementation/phase3-quote-guided-catalog-options-prompts-v1.md` | Flujo guiado de personalización |
 | Plan quote->order | `documentation/ai_collaboration/plans/runtime/implementation/phase3-quote-to-order-create-flow-v1.md` | Conversión a pedido tras confirmación |

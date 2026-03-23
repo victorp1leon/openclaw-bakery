@@ -9,8 +9,8 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | Plan base shopping list | `documentation/ai_collaboration/plans/runtime/implementation/phase3-shopping-list-generate-v1.md` | Contexto funcional inicial |
-| Tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/shopping-list-generate.spec.md` | Contrato actualizado de reglas operativas |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Reglas de respuesta conversacional read-only |
+| Tool spec | `documentation/specs/contracts/components/shopping-list-generate.spec.md` | Contrato actualizado de reglas operativas |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Reglas de respuesta conversacional read-only |
 
 ## Contexto
 Durante sesión de `grill-me` se detectaron riesgos operativos en `shopping.list.generate`: supuestos silenciosos de cantidad (`1`), productos sin receta mezclados en compras y falla dura cuando `CatalogoRecetas` (`gws`) está vacío o con errores. Se acordó endurecer el comportamiento para priorizar confiabilidad operativa y continuidad.

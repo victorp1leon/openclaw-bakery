@@ -9,9 +9,9 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | Grill decisions (expense/order) | `conversation (2026-03-17)` | Cierre de reglas operativas de esta iteracion |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Contrato de mensajes/confirm flow/duplicados |
-| Expense tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/append-expense.spec.md` | Timeout/retries y conectividad |
-| Order tools specs | `documentation/c4/ComponentSpecs/Tools/Specs/create-card.spec.md`, `documentation/c4/ComponentSpecs/Tools/Specs/append-order.spec.md` | Timeout/retries y contrato de order.create |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Contrato de mensajes/confirm flow/duplicados |
+| Expense tool spec | `documentation/specs/contracts/components/append-expense.spec.md` | Timeout/retries y conectividad |
+| Order tools specs | `documentation/specs/contracts/components/create-card.spec.md`, `documentation/specs/contracts/components/append-order.spec.md` | Timeout/retries y contrato de order.create |
 
 ## Contexto
 Se definieron reglas de endurecimiento para `expense.add` y `order.create` via ronda `grill-me`: rechazo por ambiguedad, confirmacion obligatoria, duplicados deterministas y resiliencia controlada. El codigo ya cubre parte de estas reglas, pero faltan ajustes de defaults operativos (timeout), mensaje explicito de duplicado para pedido y prueba de parseo heuristico en respuestas de faltantes numericos.

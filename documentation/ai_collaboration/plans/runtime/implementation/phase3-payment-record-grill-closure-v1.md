@@ -8,10 +8,10 @@
 ## Cross-References
 | Documento | Ruta | Uso |
 |---|---|---|
-| record-payment tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/record-payment.spec.md` | Contrato tecnico de mutacion |
-| conversation processor spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Reglas de flujo conversacional |
+| record-payment tool spec | `documentation/specs/contracts/components/record-payment.spec.md` | Contrato tecnico de mutacion |
+| conversation processor spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Reglas de flujo conversacional |
 | payment.record skill doc | `skills/payment.record/SKILL.md` | Contrato operativo de skill |
-| cancel-order spec | `documentation/c4/ComponentSpecs/Tools/Specs/cancel-order.spec.md` | Fuente de verdad para `estado_pedido=cancelado` |
+| cancel-order spec | `documentation/specs/contracts/components/cancel-order.spec.md` | Fuente de verdad para `estado_pedido=cancelado` |
 
 ## Contexto
 El cierre de `grill-me` para `payment.record` definio mejoras para live: lookup cuando falta referencia, desambiguacion con opciones, bloqueo por cancelacion basado solo en `estado_pedido=cancelado`, mensaje no-op explicito e higiene de `payment.notas`. Para aplicar el cambio de fuente de verdad se requiere migrar legacy con pedidos cancelados que aun no tengan `estado_pedido`.

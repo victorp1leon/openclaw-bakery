@@ -10,7 +10,7 @@
 |---|---|---|
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Backlog funcional `quote.order` |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Seguimiento de cobertura |
-| Pricing bootstrap spec | `documentation/c4/ComponentSpecs/Tools/Specs/pricing-catalog-bootstrap.spec.md` | Estructura de catalogos en Sheets |
+| Pricing bootstrap spec | `documentation/specs/contracts/components/pricing-catalog-bootstrap.spec.md` | Estructura de catalogos en Sheets |
 | Pricing hardening plan | `documentation/ai_collaboration/plans/runtime/implementation/phase3-pricing-catalog-tab-hardening.md` | Estado de calidad de pestañas de catalogo |
 
 ## Contexto
@@ -32,7 +32,7 @@ Ya existe catalogo operativo en Google Sheets (`CatalogoPrecios`, `CatalogoOpcio
 ## Approach
 | # | Paso | Estado | Notas |
 |---|---|---|---|
-| 1 | Definir contrato `quote.order` (spec C4) | Completed | `documentation/c4/ComponentSpecs/Tools/Specs/quote-order.spec.md` |
+| 1 | Definir contrato `quote.order` (spec C4) | Completed | `documentation/specs/contracts/components/quote-order.spec.md` |
 | 2 | Implementar tool `src/tools/order/quoteOrder.ts` | Completed | Lectura `CatalogoPrecios/Opciones/Referencias` + calculo base/extras/envio/urgencia/politicas |
 | 3 | Integrar runtime fallback + formatter | Completed | Deteccion deterministica de frases de cotizacion + respuesta inmediata sin confirm flow |
 | 4 | Wiring en bootstrap | Completed | `src/index.ts` conectado con configuracion `ORDER_SHEETS_GWS_*` |

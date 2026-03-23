@@ -1,5 +1,5 @@
 > Migration Trace: Canonical copy generated from `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/read-only-intent-router.spec.md` on 2026-03-23 (Wave C.1).
-> Legacy C4 source remains as temporary reference during migration.
+> Legacy C4 source path is preserved as historical trace metadata; files were retired in Wave C.2.
 
 # Spec - readOnlyIntentRouter
 

@@ -12,9 +12,9 @@
   - salida: `deliveries`, `preparation`, `suggestedPurchases`
   - fuente: `Pedidos` + timezone default `America/Mexico_City`
 - Se creo spec C4 de tool:
-  - `documentation/c4/ComponentSpecs/Tools/Specs/schedule-day-view.spec.md`
+  - `documentation/specs/contracts/components/schedule-day-view.spec.md`
 - Se actualizo runtime spec para routing determinista sin confirm flow:
-  - `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md`
+  - `documentation/specs/contracts/components/conversation-processor.spec.md`
 - Se alinearon docs de cobertura:
   - `documentation/c4/ComponentSpecs/Tools/component.description.md`
   - `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md`

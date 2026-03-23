@@ -9,7 +9,7 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | Report periods v2 | `documentation/ai_collaboration/plans/runtime/implementation/phase3-report-orders-flexible-periods-v2.md` | Base de filtros dia/semana/mes |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Reglas de routing conversacional |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Reglas de routing conversacional |
 | Tools specs | `documentation/c4/ComponentSpecs/Tools/Specs/` | Contratos `report-orders` y nuevo `lookup-order` |
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Cobertura funcional de consultas de pedido |
 

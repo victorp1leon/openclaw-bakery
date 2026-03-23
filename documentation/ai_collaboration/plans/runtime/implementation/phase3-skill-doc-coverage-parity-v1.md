@@ -9,10 +9,10 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | Runtime processor | `src/runtime/conversationProcessor.ts` | Inventario de intents activos |
-| Quote spec | `documentation/c4/ComponentSpecs/Tools/Specs/quote-order.spec.md` | Contrato de `quote.order` |
-| Shopping list spec | `documentation/c4/ComponentSpecs/Tools/Specs/shopping-list-generate.spec.md` | Contrato de `shopping.list.generate` |
-| Report spec | `documentation/c4/ComponentSpecs/Tools/Specs/report-orders.spec.md` | Contrato de `order.report` |
-| Web publish spec | `documentation/c4/ComponentSpecs/Tools/Specs/publish-site.spec.md` | Contrato de `web.publish` |
+| Quote spec | `documentation/specs/contracts/components/quote-order.spec.md` | Contrato de `quote.order` |
+| Shopping list spec | `documentation/specs/contracts/components/shopping-list-generate.spec.md` | Contrato de `shopping.list.generate` |
+| Report spec | `documentation/specs/contracts/components/report-orders.spec.md` | Contrato de `order.report` |
+| Web publish spec | `documentation/specs/contracts/components/publish-site.spec.md` | Contrato de `web.publish` |
 
 ## Contexto
 Se detecto desalineacion entre intents implementados en runtime y skills funcionales documentadas en `skills/`. Faltaban skills para flujos activos de cotizacion, lista de compras, reportes y web.

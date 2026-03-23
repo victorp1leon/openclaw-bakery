@@ -10,8 +10,8 @@
 |---|---|---|
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Alcance funcional Fase 4 |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Estado actual `web` |
-| Publish spec | `documentation/c4/ComponentSpecs/Tools/Specs/publish-site.spec.md` | Contrato de `web.publish` |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Flujo de confirmacion/ejecucion |
+| Publish spec | `documentation/specs/contracts/components/publish-site.spec.md` | Contrato de `web.publish` |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Flujo de confirmacion/ejecucion |
 
 ## Contexto
 `web.publish` ya tiene adapter real, tests y smoke, pero el runtime conversacional aun no ejecuta el intent `web`.

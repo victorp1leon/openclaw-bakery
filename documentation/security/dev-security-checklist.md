@@ -23,7 +23,7 @@ Objetivo: tener un checklist corto y verificable para evitar regresiones de segu
 - [ ] Si hubo fuga accidental, rotar credenciales y registrar incidente.
 
 ## 4) Checks de cambios de arquitectura/comportamiento
-- [ ] Si cambia un contrato/flujo critico, actualizar spec(s) en `documentation/c4/ComponentSpecs/**/Specs/`.
+- [ ] Si cambia un contrato/flujo critico, actualizar spec(s) en `documentation/specs/contracts/components/`.
 - [ ] Si cambia riesgo o superficie de ataque, actualizar `documentation/security/threat-model-stride.md`.
 - [ ] Si cambia politica de logs, actualizar `documentation/security/sensitive-payload-logging-policy.md`.
 

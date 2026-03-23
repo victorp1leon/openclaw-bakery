@@ -9,7 +9,7 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Alcance funcional web MVP |
-| Tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/publish-site.spec.md` | Contrato del adapter `web.publish` |
+| Tool spec | `documentation/specs/contracts/components/publish-site.spec.md` | Contrato del adapter `web.publish` |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Tracking de cobertura/diseno |
 
 ## Contexto

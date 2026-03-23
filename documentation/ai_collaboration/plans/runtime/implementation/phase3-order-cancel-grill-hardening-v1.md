@@ -9,8 +9,8 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | Grill interview outcomes | `conversation (2026-03-17)` | Decisiones de negocio para `order.cancel` |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Contrato de flujo/errores en runtime |
-| Cancel tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/cancel-order.spec.md` | Reglas de cancelacion y retries |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Contrato de flujo/errores en runtime |
+| Cancel tool spec | `documentation/specs/contracts/components/cancel-order.spec.md` | Reglas de cancelacion y retries |
 | Skill doc | `skills/order.cancel/SKILL.md` | Guia operativa actualizada |
 
 ## Contexto

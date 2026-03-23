@@ -8,7 +8,7 @@
 ## Cross-References
 | Documento | Ruta | Uso |
 |---|---|---|
-| Tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/shopping-list-generate.spec.md` | Contrato del adapter `shopping-list-generate` |
+| Tool spec | `documentation/specs/contracts/components/shopping-list-generate.spec.md` | Contrato del adapter `shopping-list-generate` |
 | Config matrix | `documentation/operations/config-matrix.md` | Nuevas variables de entorno para catalogo de recetas |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Estado de cobertura de `shopping.list.generate` |
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Estado funcional fase 3 |

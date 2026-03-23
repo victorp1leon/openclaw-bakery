@@ -9,8 +9,8 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Backlog funcional (`quote -> order.create`) |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Reglas del orquestador conversacional |
-| Quote tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/quote-order.spec.md` | Contrato de cotizacion read-only |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Reglas del orquestador conversacional |
+| Quote tool spec | `documentation/specs/contracts/components/quote-order.spec.md` | Contrato de cotizacion read-only |
 | Plan previo quote v1 | `documentation/ai_collaboration/plans/runtime/implementation/phase3-quote-order-gws-catalog-v1.md` | Base del flujo de cotizacion actual |
 
 ## Contexto

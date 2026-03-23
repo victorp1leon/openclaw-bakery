@@ -9,8 +9,8 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Schema operativo de pedidos |
-| Tool spec (write) | `documentation/c4/ComponentSpecs/Tools/Specs/append-order.spec.md` | Contrato de append en Sheets |
-| Tool spec (read) | `documentation/c4/ComponentSpecs/Tools/Specs/report-orders.spec.md` | Filtro por fecha de entrega |
+| Tool spec (write) | `documentation/specs/contracts/components/append-order.spec.md` | Contrato de append en Sheets |
+| Tool spec (read) | `documentation/specs/contracts/components/report-orders.spec.md` | Filtro por fecha de entrega |
 | Adapter source | `src/tools/order/appendOrder.ts` | Escritura de pedido |
 | Report source | `src/tools/order/reportOrders.ts` | Lectura y filtrado |
 

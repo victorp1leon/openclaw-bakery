@@ -8,8 +8,8 @@
 ## Cross-References
 | Documento | Ruta | Uso |
 |---|---|---|
-| Tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/report-orders.spec.md` | Contrato de `report.orders` |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Routing/read-only + mensajes controlados |
+| Tool spec | `documentation/specs/contracts/components/report-orders.spec.md` | Contrato de `report.orders` |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Routing/read-only + mensajes controlados |
 | Skill doc | `skills/order.report/SKILL.md` | Contrato operativo de la habilidad |
 | Coverage matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Estado DDD y evidencia |
 

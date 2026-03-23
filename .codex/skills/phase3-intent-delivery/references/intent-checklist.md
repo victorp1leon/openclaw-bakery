@@ -7,8 +7,8 @@
 - [ ] Acceptance criteria and rollback strategy documented
 
 ## 2) Spec-First Docs
-- [ ] Tool spec created/updated in `documentation/c4/ComponentSpecs/Tools/Specs/`
-- [ ] Runtime spec updated in `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md`
+- [ ] Tool contract created/updated in `documentation/specs/contracts/components/` (relevant `*.spec.md`)
+- [ ] Runtime contract updated in `documentation/specs/contracts/components/conversation-processor.spec.md`
 - [ ] Coverage/roadmap docs updated:
   - [ ] `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md`
   - [ ] `documentation/bot-bakery.roadmap.md`

@@ -15,7 +15,7 @@
 - Se documento operacion/config para bootstrap:
   - variables `PRICING_CATALOG_*` y comandos en `documentation/operations/config-matrix.md`.
 - Se agrego spec C4 del bootstrap:
-  - `documentation/c4/ComponentSpecs/Tools/Specs/pricing-catalog-bootstrap.spec.md`.
+  - `documentation/specs/contracts/components/pricing-catalog-bootstrap.spec.md`.
 
 ## Current State
 - La pestaña `CatalogoPrecios` ya fue creada y sembrada en Google Sheets (live apply ejecutado).

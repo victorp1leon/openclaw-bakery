@@ -11,7 +11,7 @@
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Backlog funcional de `quote.order` |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Estado de cobertura actual y siguiente accion |
 | Config matrix | `documentation/operations/config-matrix.md` | Variables operativas para comandos/scripts |
-| Tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/pricing-catalog-bootstrap.spec.md` | Contrato del bootstrap de pestaña de precios |
+| Tool spec | `documentation/specs/contracts/components/pricing-catalog-bootstrap.spec.md` | Contrato del bootstrap de pestaña de precios |
 | Runtime system map | `documentation/ai_collaboration/system-map.md` | Contexto transversal de integraciones |
 
 ## Contexto

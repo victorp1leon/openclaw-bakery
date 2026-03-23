@@ -9,8 +9,8 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Cobertura funcional esperada de `report.orders` |
-| Tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/report-orders.spec.md` | Contrato del adapter de reportes |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Routing conversacional de consultas |
+| Tool spec | `documentation/specs/contracts/components/report-orders.spec.md` | Contrato del adapter de reportes |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Routing conversacional de consultas |
 | Prior implementation | `documentation/ai_collaboration/plans/runtime/implementation/phase3-report-orders-gws-v1.md` | Base v1 (`today/tomorrow/week`) |
 
 ## Contexto

@@ -9,8 +9,8 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | Fase 3 spec foundation | `documentation/ai_collaboration/plans/platform/implementation/phase3-order-connectors-spec-v2-foundation.md` | Base contractual v2 |
-| Trello adapter spec | `documentation/c4/ComponentSpecs/Tools/Specs/create-card.spec.md` | Contrato `create-card` |
-| Sheets adapter spec | `documentation/c4/ComponentSpecs/Tools/Specs/append-order.spec.md` | Contrato `append-order` |
+| Trello adapter spec | `documentation/specs/contracts/components/create-card.spec.md` | Contrato `create-card` |
+| Sheets adapter spec | `documentation/specs/contracts/components/append-order.spec.md` | Contrato `append-order` |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Tracking de cobertura |
 
 ## Contexto

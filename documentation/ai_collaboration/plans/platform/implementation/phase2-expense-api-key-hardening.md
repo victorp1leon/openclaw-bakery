@@ -10,7 +10,7 @@
 |---|---|---|
 | Phase 2 E2E | `documentation/ai_collaboration/plans/platform/implementation/phase2-expense-e2e-implementation.md` | Base implementada |
 | Smoke validation | `documentation/ai_collaboration/plans/platform/implementation/phase2-expense-smoke-validation.md` | Estado operativo actual |
-| Expense tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/append-expense.spec.md` | Contrato del conector |
+| Expense tool spec | `documentation/specs/contracts/components/append-expense.spec.md` | Contrato del conector |
 
 ## Contexto
 El endpoint Apps Script no debe quedar expuesto sin control de autenticacion. Se endurecio el conector `expense.add` para requerir/enviar API key en modo live y se actualizaron readiness checks, tests y documentacion.

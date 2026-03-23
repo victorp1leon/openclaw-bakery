@@ -16,9 +16,9 @@ description: "Deliver new roadmap intents (phase 3+) with a fixed gate sequence:
 - Define acceptance criteria and rollback plan before coding.
 
 2. Apply spec-first updates.
-- Update/add relevant C4 specs before implementation:
-  - `documentation/c4/ComponentSpecs/Tools/Specs/*.spec.md`
-  - `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md`
+- Update/add relevant canonical component contracts before implementation:
+  - `documentation/specs/contracts/components/*.spec.md` (tool/runtime contracts touched by the intent)
+  - `documentation/specs/contracts/components/conversation-processor.spec.md`
 - Align roadmap/coverage docs:
   - `documentation/bot-bakery.roadmap.md`
   - `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md`

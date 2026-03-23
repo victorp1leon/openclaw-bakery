@@ -10,8 +10,8 @@
 |---|---|---|
 | Report periods v2 | `documentation/ai_collaboration/plans/runtime/implementation/phase3-report-orders-flexible-periods-v2.md` | Base actual de filtros por periodo |
 | Lookup + report smokes | `documentation/ai_collaboration/plans/runtime/implementation/phase3-order-lookup-skill-and-report-smokes.md` | Estado previo de `order.lookup` y `smoke:report` |
-| Tool spec report | `documentation/c4/ComponentSpecs/Tools/Specs/report-orders.spec.md` | Contrato de `report-orders` |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Routing de consultas |
+| Tool spec report | `documentation/specs/contracts/components/report-orders.spec.md` | Contrato de `report-orders` |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Routing de consultas |
 
 ## Contexto
 Se requiere completar el siguiente bloque de trabajo: agregar smoke test dedicado para `order.lookup`, correr regresion completa y extender `report.orders` para soportar filtro anual (al menos `este año`) manteniendo seguridad y comportamiento deterministico.

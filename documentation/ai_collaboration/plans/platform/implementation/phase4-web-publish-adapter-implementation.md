@@ -9,7 +9,7 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Alcance funcional Fase 4 |
-| Tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/publish-site.spec.md` | Contrato de `web.publish` |
+| Tool spec | `documentation/specs/contracts/components/publish-site.spec.md` | Contrato de `web.publish` |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Estado de cobertura |
 | Config matrix | `documentation/operations/config-matrix.md` | Variables/env operativas |
 

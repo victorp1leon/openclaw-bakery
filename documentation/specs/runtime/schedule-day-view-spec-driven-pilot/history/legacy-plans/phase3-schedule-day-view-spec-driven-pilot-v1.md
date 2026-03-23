@@ -11,8 +11,8 @@
 | Canonical flow v1 | `documentation/ai_collaboration/spec-driven-flow-v1.md` | Flujo Discover -> Close para este piloto |
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Backlog funcional fase 3 (`schedule.day_view`) |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Estado de cobertura y siguiente accion |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Contrato de routing read-only sin confirm flow |
-| Tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/schedule-day-view.spec.md` | Contrato funcional/tecnico de `schedule.day_view` |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Contrato de routing read-only sin confirm flow |
+| Tool spec | `documentation/specs/contracts/components/schedule-day-view.spec.md` | Contrato funcional/tecnico de `schedule.day_view` |
 | System map | `documentation/ai_collaboration/system-map.md` | Contexto transversal de rutas implementadas |
 
 ## Contexto

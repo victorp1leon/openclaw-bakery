@@ -8,8 +8,8 @@
 ## Cross-References
 | Documento | Ruta | Uso |
 |---|---|---|
-| Schedule tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/schedule-day-view.spec.md` | Contrato funcional de agenda diaria |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | UX de respuesta parcial + inconsistencias |
+| Schedule tool spec | `documentation/specs/contracts/components/schedule-day-view.spec.md` | Contrato funcional de agenda diaria |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | UX de respuesta parcial + inconsistencias |
 | Plan schedule hardening previo | `documentation/ai_collaboration/plans/runtime/implementation/phase3-schedule-day-view-risk-hardening-v1.md` | Base de reglas v1 |
 | Script cancel backfill | `scripts/sheets/backfill-canceled-order-status.ts` | Referencia de patrón preview/apply para Sheets |
 

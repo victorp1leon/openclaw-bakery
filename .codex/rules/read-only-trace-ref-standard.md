@@ -10,7 +10,7 @@
 - Aplica en:
   - `src/tools/**` (resultado del tool)
   - `src/runtime/conversationProcessor.ts` (formato de respuesta y fallos)
-  - specs `documentation/c4/ComponentSpecs/**` relacionadas
+  - contratos canonicos `documentation/specs/contracts/components/**` relacionados
 
 ## Implementation Checklist
 1. Tool contract incluye `trace_ref` en su resultado estructurado.

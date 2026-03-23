@@ -15,7 +15,7 @@
   - `documentation/c4/ComponentSpecs/system.description.md`
 - Updated wording to avoid route contradictions:
   - `documentation/specs/**` is now explicit canonical source for feature specs/contracts.
-  - `documentation/c4/ComponentSpecs/*/Specs/*.spec.md` is declared temporary architectural reference.
+  - `documentation/specs/contracts/components/*.spec.md` is declared temporary architectural reference.
 - Updated master plan Step 9 to `Complete`.
 
 ## Validation Evidence

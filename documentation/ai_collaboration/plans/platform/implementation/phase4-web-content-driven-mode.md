@@ -11,7 +11,7 @@
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Alcance funcional web |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Estado de implementación |
 | Config matrix | `documentation/operations/config-matrix.md` | Variables operativas |
-| Publish spec | `documentation/c4/ComponentSpecs/Tools/Specs/publish-site.spec.md` | Contrato del adapter |
+| Publish spec | `documentation/specs/contracts/components/publish-site.spec.md` | Contrato del adapter |
 
 ## Contexto
 El objetivo es operar el sitio en modo repositorio+CI/terminal, reduciendo riesgo operativo por comandos de chat.

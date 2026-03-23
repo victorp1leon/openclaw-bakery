@@ -10,7 +10,7 @@
 |---|---|---|
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Alcance de Fase 2 |
 | DDD coverage matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Seguimiento de avance |
-| Expense tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/append-expense.spec.md` | Contrato del adapter |
+| Expense tool spec | `documentation/specs/contracts/components/append-expense.spec.md` | Contrato del adapter |
 | Implementation instructions | `documentation/ai_implementation/implementation-instructions.md` | Flujo spec-first |
 
 ## Contexto

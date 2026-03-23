@@ -5,7 +5,7 @@
 > **Owner:** `Codex + Dev`
 
 ## What Was Done
-- Se creo `documentation/c4/ComponentSpecs/Tools/Specs/inventory-consume.spec.md`.
+- Se creo `documentation/specs/contracts/components/inventory-consume.spec.md`.
 - Se actualizo `conversation-processor.spec.md` con regla y caso minimo para `inventory.consume` bajo `confirmar/cancelar`.
 - Se actualizaron `system-map`, `bot-bakery.roadmap.md` y `ddd-roadmap-coverage-matrix.md` para reflejar estado spec-first.
 - Se abrio plan de implementacion en estado `In Progress`.

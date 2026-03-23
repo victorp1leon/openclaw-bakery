@@ -10,9 +10,9 @@
 |---|---|---|
 | System Map | `documentation/ai_collaboration/system-map.md` | Contexto de arquitectura y flujos runtime/tools |
 | Spec-first instructions | `documentation/ai_implementation/implementation-instructions.md` | Gate de diseno y validacion por feature |
-| Intent router spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/intent-router.spec.md` | Contrato actual de clasificacion de intencion |
-| Conversation processor spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Reglas de orquestacion y politicas de seguridad |
-| OpenClaw runtime spec | `documentation/c4/ComponentSpecs/OpenClawRuntime/Specs/openclaw-runtime.spec.md` | Contrato de invocacion/failover del adapter OpenClaw |
+| Intent router spec | `documentation/specs/contracts/components/intent-router.spec.md` | Contrato actual de clasificacion de intencion |
+| Conversation processor spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Reglas de orquestacion y politicas de seguridad |
+| OpenClaw runtime spec | `documentation/specs/contracts/components/openclaw-runtime.spec.md` | Contrato de invocacion/failover del adapter OpenClaw |
 | Config matrix | `documentation/operations/config-matrix.md` | Registro de flags/env vars y efectos operativos |
 
 ## Contexto

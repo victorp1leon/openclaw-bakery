@@ -20,7 +20,7 @@
   - `src/tools/order/quoteOrder.test.ts`
   - nuevos casos en `src/runtime/conversationProcessor.test.ts`.
 - Se cerro doc spec-first:
-  - nueva spec `documentation/c4/ComponentSpecs/Tools/Specs/quote-order.spec.md`
+  - nueva spec `documentation/specs/contracts/components/quote-order.spec.md`
   - actualizacion DDD matrix e indice de planes.
 
 ## Current State

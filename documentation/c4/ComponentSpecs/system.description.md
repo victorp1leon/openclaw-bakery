@@ -19,7 +19,7 @@ Last Updated: 2026-03-23
 - Feature registry (canonical): `documentation/specs/_index.md`
 - Contracts registry (canonical): `documentation/specs/contracts/components/README.md`
 - Component contracts (canonical): `documentation/specs/contracts/components/*.spec.md`
-- C4 `ComponentSpecs/*/Specs/*.spec.md` remains as temporary architectural reference during transition.
+- C4 `ComponentSpecs/*/component.description.md` remains as architectural reference (contract files were retired after migration finalization).
 
 ## Main Containers / Building Blocks
 1. `Channel Adapters`

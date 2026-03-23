@@ -20,8 +20,8 @@ description: Deliver read-only intents end-to-end with consistent patterns for d
   - Failure replies include user-visible `Ref: <trace_ref>` without raw internals.
 
 2. Apply spec-first updates.
-- Update/add tool spec in `documentation/c4/ComponentSpecs/Tools/Specs/*.spec.md`.
-- Update runtime contract in `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md`.
+- Update/add tool contract in `documentation/specs/contracts/components/*.spec.md`.
+- Update runtime contract in `documentation/specs/contracts/components/conversation-processor.spec.md`.
 - Align `roadmap`, `ddd-roadmap-coverage-matrix`, and `system-map` if coverage/state changes.
 
 3. Implement tool logic.

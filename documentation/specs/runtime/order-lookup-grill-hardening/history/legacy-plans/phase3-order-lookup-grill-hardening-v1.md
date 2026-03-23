@@ -8,8 +8,8 @@
 ## Cross-References
 | Documento | Ruta | Uso |
 |---|---|---|
-| Tool spec | `documentation/c4/ComponentSpecs/Tools/Specs/lookup-order.spec.md` | Contrato funcional de `order.lookup` |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Politica de mensajes controlados y trazabilidad |
+| Tool spec | `documentation/specs/contracts/components/lookup-order.spec.md` | Contrato funcional de `order.lookup` |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Politica de mensajes controlados y trazabilidad |
 | Skill doc | `skills/order.lookup/SKILL.md` | Contrato operativo de la habilidad |
 | Coverage matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Estado de cobertura DDD de `order.lookup` |
 

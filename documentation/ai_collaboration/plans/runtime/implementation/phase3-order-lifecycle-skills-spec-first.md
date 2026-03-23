@@ -10,9 +10,9 @@
 |---|---|---|
 | Roadmap | `documentation/bot-bakery.roadmap.md` | Backlog funcional de Fase 3 |
 | DDD matrix | `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md` | Estado actual y backlog inmediato |
-| Runtime spec | `documentation/c4/ComponentSpecs/ConversationRuntime/Specs/conversation-processor.spec.md` | Reglas de routing/confirm flow |
-| Order create spec | `documentation/c4/ComponentSpecs/Tools/Specs/append-order.spec.md` | Contrato base de estructura de pedido |
-| Lookup spec | `documentation/c4/ComponentSpecs/Tools/Specs/lookup-order.spec.md` | Referencia read-only para consultas |
+| Runtime spec | `documentation/specs/contracts/components/conversation-processor.spec.md` | Reglas de routing/confirm flow |
+| Order create spec | `documentation/specs/contracts/components/append-order.spec.md` | Contrato base de estructura de pedido |
+| Lookup spec | `documentation/specs/contracts/components/lookup-order.spec.md` | Referencia read-only para consultas |
 
 ## Contexto
 Ya se cubrio `order.create`, `order.lookup` y reportes por periodo (`day/week/month/year`). El siguiente bloque prioritario del roadmap es ciclo de vida de pedidos (`order.update`, `order.cancel`, `order.status`) y registro de pagos (`payment.record`) bajo enfoque spec-first para minimizar regresiones en runtime conversacional.
