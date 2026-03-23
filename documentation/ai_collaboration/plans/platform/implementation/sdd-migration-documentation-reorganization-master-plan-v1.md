@@ -82,8 +82,8 @@ Queremos consolidar en una sola ruta la adopcion de Spec-Driven Development (SDD
 | 5 | Ola B: migrar resto de `runtime implementation` | Complete | 2026-03-23: migradas 27 features runtime de Wave B a paquetes canonicos; manifiesto actualizado (`B pending=0`, `B migrated=27`), unit/smoke `N/A` (solo cambios documentales) |
 | 6 | Ola C: migrar resto de `platform implementation` | Complete | 2026-03-23: migradas 33 features platform de Wave C a paquetes canonicos; manifiesto actualizado (`C pending=0`, `C migrated=33`), unit/smoke `N/A` (solo cambios documentales) |
 | 7 | Ola C.1: migrar `c4/ComponentSpecs` hacia `documentation/specs/contracts/components` | Complete | 2026-03-23: migrados 39 contratos C4 (copy+trace) a `documentation/specs/contracts/components`; manifiesto actualizado (`C.1 pending=0`, `C.1 migrated=39`), unit/smoke `N/A` (solo cambios documentales) |
-| 8 | Ola D: cierre 100%, verificacion final y limpieza de referencias legacy | Pending | Sin mover sesiones; C4 queda como referencia temporal |
-| 9 | Alinear documentacion operativa (`ai_collaboration`) y C4 con nuevos enlaces canonicos | Pending | Evitar contradicciones de ruta |
+| 8 | Ola D: cierre 100%, verificacion final y limpieza de referencias legacy | Complete | 2026-03-23: verificacion global completada (`117` entradas, `0` faltantes de source/target); manifiesto actualizado a `verified` (`pending=0`, `migrated=0`, `verified=117`); cleanup aplicado sin mover sesiones, manteniendo C4 como referencia temporal |
+| 9 | Alinear documentacion operativa (`ai_collaboration`) y C4 con nuevos enlaces canonicos | Complete | 2026-03-23: alineados hubs operativos y C4 (`system-map`, `codex-collaboration-playbook`, `spec-driven-flow-v1`, `c4/README`, `c4-instructions`, `ComponentSpecs/system.description`) para declarar `documentation/specs/**` como ruta canonica y C4 como referencia temporal sin contradicciones |
 | 10 | Ejecutar validacion integral de consistencia de estructura y links | Pending | Criterios de aceptacion de este plan |
 | 11 | Cierre administrativo: actualizar index + handoff final del plan maestro | Pending | Estado `Complete` solo con validacion real |
 

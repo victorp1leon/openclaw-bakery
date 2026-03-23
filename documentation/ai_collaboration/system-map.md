@@ -1,7 +1,7 @@
 # OpenClaw Bakery - System Map (AI Collaboration)
 
 Status: Active
-Last Updated: 2026-03-17
+Last Updated: 2026-03-23
 
 ## Architecture Snapshot
 ```text
@@ -64,6 +64,8 @@ Last Updated: 2026-03-17
 
 ## Source Documents
 - `documentation/bot-bakery.overview.md`
-- `documentation/c4/ComponentSpecs/system.description.md`
+- `documentation/specs/_index.md` (registro canonico de features y estado)
+- `documentation/specs/contracts/components/README.md` (estado de contratos canonicos)
+- `documentation/c4/ComponentSpecs/system.description.md` (referencia de arquitectura C4)
 - `documentation/bot-bakery.roadmap.md`
 - `documentation/adr/README.md`

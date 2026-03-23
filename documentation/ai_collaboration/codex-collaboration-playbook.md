@@ -1,7 +1,7 @@
 # Codex AI Collaboration Playbook (OpenClaw Bakery)
 
 Status: Active
-Last Updated: 2026-03-17
+Last Updated: 2026-03-23
 
 ## Objetivo
 Definir un sistema estable de colaboracion entre desarrollador y Codex para reducir contexto repetido, mantener continuidad entre sesiones y mejorar calidad de implementacion.
@@ -20,7 +20,7 @@ Definir un sistema estable de colaboracion entre desarrollador y Codex para redu
 |---|---|---|---|
 | Reglas base | Flujo y convenciones de trabajo | `AGENTS.md` en raiz | Muy bajo |
 | Mapa del sistema | Vista transversal del proyecto | `documentation/ai_collaboration/system-map.md` | Bajo |
-| Guias del repo | Arquitectura y specs existentes | `documentation/README.md` + C4/ADR | Bajo |
+| Guias del repo | Arquitectura y specs existentes | `documentation/README.md` + `documentation/specs/_index.md` + C4/ADR | Bajo |
 | Planes de trabajo | Contexto por tarea | `documentation/ai_collaboration/plans/*` | Medio |
 | Session handoff | Estado al cierre de sesion | `documentation/ai_collaboration/plans/**/sessions/*` | Muy bajo |
 

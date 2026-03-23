@@ -1,7 +1,7 @@
 # C4 Instructions - OpenClaw Bakery Bot (System-Level)
 
 Status: MVP
-Last Updated: 2026-02-27
+Last Updated: 2026-03-23
 
 Use this file as the **filled input** for the template:
 - `documentation/c4/templates/c4_instructions_template.md`
@@ -187,6 +187,12 @@ Security Constraints:
 
 ## Source-of-Truth References (Use for names and scope)
 
+- Canonical specs registry:
+  - `documentation/specs/_index.md`
+  - `documentation/specs/migration-manifest.md`
+  - `documentation/specs/contracts/components/README.md`
+- Canonical component contracts (preferred for behavior rules):
+  - `documentation/specs/contracts/components/*.spec.md`
 - Overview: `documentation/bot-bakery.overview.md`
 - System description: `documentation/c4/ComponentSpecs/system.description.md`
 - Conversation Runtime component docs:
@@ -215,6 +221,10 @@ Security Constraints:
 - Governance docs:
   - `documentation/glossary.md`
   - `documentation/adr/README.md`
+
+Note:
+- `documentation/c4/ComponentSpecs/*/Specs/*.spec.md` remains as temporary C4 reference.
+- Canonical contract source of truth for implementation is `documentation/specs/contracts/components/*.spec.md`.
 
 ## Output Expectation
 

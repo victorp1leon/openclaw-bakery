@@ -1,7 +1,7 @@
 # Spec-Driven Collaboration Flow v1 (OpenClaw Bakery)
 
 Status: Proposed
-Last Updated: 2026-03-17
+Last Updated: 2026-03-23
 
 ## Objective
 Definir un flujo canonico unico, estructurado y repetible para colaboracion Developer + Codex, inspirado en Spec-Driven Development, pero adaptado a los guardrails operativos de OpenClaw Bakery.
@@ -55,7 +55,7 @@ Definir un flujo canonico unico, estructurado y repetible para colaboracion Deve
 
 ## Mandatory Artifacts by Stage
 - Discover: referencias consultadas (en plan o respuesta de cierre).
-- Specify: spec/contrato actualizado (C4/spec/roadmap segun impacto).
+- Specify: spec/contrato actualizado en `documentation/specs/**` (C4 como referencia arquitectonica cuando aplique).
 - Plan: archivo en `plans/<domain>/implementation/*.md`.
 - Tasks: seccion de tareas en plan (`Approach`) o artefacto equivalente.
 - Validate: evidencia de comandos/resultados.
@@ -65,7 +65,7 @@ Definir un flujo canonico unico, estructurado y repetible para colaboracion Deve
 | Spec-Kit Stage | OpenClaw Stage | Artifact Canonico |
 |---|---|---|
 | constitution | Discover | `AGENTS.md`, `.codex/rules/*` |
-| specify | Specify | C4 specs / roadmap / docs funcionales |
+| specify | Specify | `documentation/specs/**` + roadmap/docs funcionales (C4 como referencia) |
 | clarify | Clarify | decisiones en plan |
 | plan | Plan | `documentation/ai_collaboration/plans/...` |
 | tasks | Tasks | `Approach` del plan (+ tests en `Validation`) |

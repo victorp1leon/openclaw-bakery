@@ -1,7 +1,7 @@
 # System Description (C4 - Container Level)
 
 Status: MVP
-Last Updated: 2026-03-19
+Last Updated: 2026-03-23
 
 ## System
 `OpenClaw Bakery Bot` (`bot-bakery`) is a Node.js/TypeScript application that provides a conversational assistant for bakery business operations.
@@ -14,6 +14,12 @@ Last Updated: 2026-03-19
 - State: SQLite
 - Testing: Vitest
 - Channels: console, Telegram Bot API (long polling)
+
+## Canonical Spec References
+- Feature registry (canonical): `documentation/specs/_index.md`
+- Contracts registry (canonical): `documentation/specs/contracts/components/README.md`
+- Component contracts (canonical): `documentation/specs/contracts/components/*.spec.md`
+- C4 `ComponentSpecs/*/Specs/*.spec.md` remains as temporary architectural reference during transition.
 
 ## Main Containers / Building Blocks
 1. `Channel Adapters`
