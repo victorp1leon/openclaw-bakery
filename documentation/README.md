@@ -1,20 +1,21 @@
 # Documentation Hub (AI-First, Security-First)
 
 Status: In Progress
-Last Updated: 2026-03-17
+Last Updated: 2026-03-23
 
 Esta carpeta usa un enfoque docs-as-code para un proyecto AI-first con seguridad como prioridad.
 
 ## Start Here
 1. Onboarding: `getting-started/README.md`
 2. Product context: `bot-bakery.overview.md`, `bot-bakery.roadmap.md`
-3. Architecture: `architecture/README.md` (entry), `c4/README.md`, `adr/README.md`
-4. AI system controls: `ai-system/README.md`
-5. Operations: `operations/README.md`
-6. Security: `security/README.md`
-7. Governance and compliance: `governance/README.md`
-8. Release readiness: `release/README.md`
-9. AI collaboration process: `ai_collaboration/README.md`
+3. Spec-first core: `specs/_index.md`, `ai_implementation/implementation-instructions.md`
+4. Architecture: `architecture/README.md` (entry), `c4/README.md`, `adr/README.md`
+5. AI system controls: `ai-system/README.md`
+6. Operations: `operations/README.md`
+7. Security: `security/README.md`
+8. Governance and compliance: `governance/README.md`
+9. Release readiness: `release/README.md`
+10. AI collaboration process: `ai_collaboration/README.md`
 
 ## Documentation Standards Baseline
 - Diataxis for navigation by doc intent.
@@ -26,6 +27,8 @@ Esta carpeta usa un enfoque docs-as-code para un proyecto AI-first con seguridad
 - `getting-started/`: quick onboarding and deploy basics.
 - `architecture/`: gateway to C4 and ADR.
 - `ai-system/`: prompts, evals, model transparency, safety controls.
+- `specs/`: registro canonico y paquetes SDD por feature (runtime/platform/contracts).
+- `ai_implementation/`: instrucciones spec-first y matriz viva de cobertura DDD.
 - `operations/`: config, runbooks, deployment, observability.
 - `security/`: threat model and security policies.
 - `governance/`: AI risk register and compliance mappings.
@@ -34,7 +37,7 @@ Esta carpeta usa un enfoque docs-as-code para un proyecto AI-first con seguridad
 - `ai_collaboration/`: planning, session continuity, and reusable framework references.
 
 ## Current Maturity
-- Core product docs (`bot-bakery.*`, `c4/`, `adr/`, `operations/`, `ai_collaboration/plans/`): active and used in delivery.
+- Core product docs (`bot-bakery.*`, `c4/`, `adr/`, `specs/`, `ai_implementation/`, `operations/`, `ai_collaboration/plans/`): active and used in delivery.
 - Some areas are scaffold-first and intentionally minimal (`api/*`, `ai-system/*`, `release/release-notes/`); treat them as placeholders until content is added.
 
 ## Product Canon vs Reusable Framework

@@ -28,6 +28,7 @@ Flujo canonico unico: `documentation/ai_collaboration/spec-driven-flow-v1.md`
 
 ## Engineering Rules
 - Mantener approach spec-first segun `documentation/ai_implementation/implementation-instructions.md`.
+- En cambios documentales multi-archivo, sincronizar hubs (`README.md`) de dominio y el hub raiz de `documentation/` cuando cambien entry points canonicos o estado operativo; actualizar `Last Updated` en los hubs tocados.
 - No ejecutar integraciones externas sin flujo de confirmacion de negocio.
 - Preferir cambios pequenos y verificables.
 - Si no puedes validar con tests/lint, declarar explicitamente la limitacion.
