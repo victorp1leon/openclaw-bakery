@@ -9,7 +9,7 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | AGENTS baseline | `AGENTS.md` | Reglas operativas de colaboracion |
-| Collaboration playbook | `documentation/ai_collaboration/codex-collaboration-playbook.md` | Flujo research/plan/implement/close |
+| Collaboration playbook | `documentation/ai_collaboration/spec-driven-flow-v1.md` | Flujo research/plan/implement/close |
 | Active runtime plan | `documentation/ai_collaboration/plans/runtime/implementation/phase3-order-lifecycle-skills-spec-first.md` | Prioridades funcionales actuales |
 | Skills codex locales | `.codex/skills/` | Automatizacion de workflows recurrentes |
 

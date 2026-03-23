@@ -8,7 +8,7 @@
 ## Cross-References
 | Documento | Ruta | Uso |
 |---|---|---|
-| Collaboration playbook | `documentation/ai_collaboration/codex-collaboration-playbook.md` | Flujo operativo actual |
+| Collaboration playbook | `documentation/ai_collaboration/spec-driven-flow-v1.md` | Flujo operativo actual |
 | AI collaboration hub | `documentation/ai_collaboration/README.md` | Navegacion del dominio |
 | AGENTS policy | `AGENTS.md` | Guardrails de aprobacion y continuidad |
 | Spec-driven reference | `https://github.com/github/spec-kit` | Inspiracion metodologica |

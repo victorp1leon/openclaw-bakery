@@ -7,7 +7,7 @@
 ## What Was Done
 - Aligned operational documentation hubs to canonical specs routes:
   - `documentation/ai_collaboration/system-map.md`
-  - `documentation/ai_collaboration/codex-collaboration-playbook.md`
+  - `documentation/ai_collaboration/spec-driven-flow-v1.md`
   - `documentation/ai_collaboration/spec-driven-flow-v1.md`
 - Aligned C4 hubs to canonical contracts routes:
   - `documentation/c4/README.md`

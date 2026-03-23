@@ -8,7 +8,7 @@
 - Se externalizaron internamente los docs de framework reusable a `documentation/ai_collaboration/references/framework/`.
 - Se dejaron stubs de compatibilidad en las rutas legacy para no romper enlaces.
 - Se actualizaron hubs y reglas de IA documental para distinguir canon de producto vs framework reusable.
-- Se actualizo referencia en `codex-collaboration-playbook.md` al nuevo path canonico.
+- Se actualizo referencia en `spec-driven-flow-v1.md` al nuevo path canonico.
 
 ## Current State
 - Canon de producto mas limpio en `documentation/`.

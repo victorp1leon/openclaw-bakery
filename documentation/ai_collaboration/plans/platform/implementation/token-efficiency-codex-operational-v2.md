@@ -12,7 +12,7 @@
 | Plan previo completado | `documentation/ai_collaboration/plans/platform/implementation/token-efficiency-codex-rule-v1.md` | Trazabilidad del baseline ya implementado |
 | Regla vigente | `.codex/rules/token-efficiency-codex.md` | Base actual a extender |
 | Tips origen | `.codex/token-optimizacion-tips.md` | Fuente de recomendaciones pendientes |
-| Playbook operativo | `documentation/ai_collaboration/codex-collaboration-playbook.md` | Integracion de practicas en flujo de colaboracion |
+| Playbook operativo | `documentation/ai_collaboration/spec-driven-flow-v1.md` | Integracion de practicas en flujo de colaboracion |
 
 ## Contexto
 Existe una base v1 de optimizacion de tokens ya completada, pero quedan pendientes componentes operativos para estandarizar la ejecucion entre sesiones: checklists, refuerzo en playbook y practica consistente de sesiones enfocadas. El objetivo de esta iteracion es cerrar esos gaps sin afectar runtime ni integraciones externas.

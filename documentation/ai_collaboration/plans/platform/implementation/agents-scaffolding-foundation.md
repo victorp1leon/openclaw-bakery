@@ -11,7 +11,7 @@
 | Adaptation baseline | `documentation/ai_collaboration/plans/platform/implementation/copilot-instructions-adaptation-foundation.md` | Continuidad del trabajo previo |
 | Prior handoff | `documentation/ai_collaboration/plans/platform/sessions/session-handoff-2026-03-09-copilot-instructions-adaptation-foundation.md` | Open issue de adopcion de agentes |
 | AGENTS | `AGENTS.md` | Reglas de colaboracion y quality bar |
-| Collaboration playbook | `documentation/ai_collaboration/codex-collaboration-playbook.md` | Flujo obligatorio research/plan/implement/close |
+| Collaboration playbook | `documentation/ai_collaboration/spec-driven-flow-v1.md` | Flujo obligatorio research/plan/implement/close |
 
 ## Contexto
 Se requiere materializar la adopcion de perfiles de agente internos para reducir drift en sesiones de arquitectura, review y hardening operativo. El objetivo es habilitar scaffolding reusable en el repo, sin cambiar runtime ni integraciones productivas.

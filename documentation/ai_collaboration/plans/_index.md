@@ -10,6 +10,7 @@ Last Updated: 2026-03-23
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `platform/implementation/single-canonical-collaboration-flow-spec-driven-v1.md` | Implementation | Complete | 2026-03-23 |
 | `platform/implementation/token-efficiency-codex-rule-v1.md` | Implementation | Complete | 2026-03-23 |
 | `platform/implementation/sdd-migration-documentation-reorganization-master-plan-v1.md` | Implementation | Complete | 2026-03-23 |
 | `runtime/implementation/phase3-shopping-list-operational-hardening-v2.md` | Implementation | Complete | 2026-03-21 |

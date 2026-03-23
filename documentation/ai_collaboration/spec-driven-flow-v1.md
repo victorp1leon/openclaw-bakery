@@ -1,6 +1,6 @@
 # Spec-Driven Collaboration Flow v1 (OpenClaw Bakery)
 
-Status: Proposed
+Status: Active
 Last Updated: 2026-03-23
 
 ## Objective
@@ -16,7 +16,17 @@ Definir un flujo canonico unico, estructurado y repetible para colaboracion Deve
 2. Un solo flujo canonico para runtime y plataforma.
 3. Confirmacion explicita (`apruebo`) antes de editar/commitear.
 4. Trazabilidad completa: plan, validacion y handoff.
-5. Adopcion gradual (sin romper flujo actual de entrega).
+5. Operacion simple: una sola fuente de verdad para evitar ambiguedad.
+
+## Source of Truth Precedence
+1. `AGENTS.md`: guardrails operativos y gates obligatorios (`apruebo`, plan/index/handoff, seguridad).
+2. Este documento (`spec-driven-flow-v1.md`): flujo canonico unico de colaboracion.
+3. `documentation/ai_collaboration/system-map.md` + `documentation/specs/**`: contexto tecnico y contratos/especificaciones.
+
+## Single-Flow Decision
+- Este documento reemplaza el uso operativo de playbooks paralelos.
+- Cualquier referencia legacy al flujo previo debe interpretarse como redireccion a este flujo.
+- No mantener documentos de flujo duplicados para la operacion diaria.
 
 ## Canonical Flow (v1)
 1. **Discover**
@@ -73,23 +83,36 @@ Definir un flujo canonico unico, estructurado y repetible para colaboracion Deve
 | (quality gates) | Validate | tests/smoke/live evidencia |
 | closeout | Close | `_index.md` + `sessions/*` |
 
-## Adoption Strategy (Safe Transition)
-### Phase A - Alignment (actual)
-- Publicar flujo v1 sin romper flujo existente.
-- Usar esta guia como referencia en sesiones de planeacion.
+## Integrated Operational Guidance (from previous playbook)
+### Collaboration Layers
+| Capa | Contenido | Artefacto |
+|---|---|---|
+| Reglas base | Flujo y convenciones obligatorias | `AGENTS.md` |
+| Mapa del sistema | Vista transversal del sistema | `documentation/ai_collaboration/system-map.md` |
+| Guias tecnicas | Arquitectura y specs | `documentation/specs/_index.md` + C4/ADR |
+| Planes de trabajo | Contexto por tarea | `documentation/ai_collaboration/plans/*` |
+| Session handoff | Continuidad entre sesiones | `documentation/ai_collaboration/plans/**/sessions/*` |
 
-### Phase B - Pilot
-- Aplicar flujo completo en una capacidad nueva de bajo/medio riesgo (ej. `schedule.day_view`).
-- Medir claridad, friccion y tiempo de ciclo.
+### Plan Creation Criteria
+Crear plan cuando:
+- El trabajo requiere mas de una sesion.
+- Hay cambios de arquitectura, contratos o integraciones.
+- Hay refactor con riesgo de regresion.
+- Se realiza review formal con hallazgos.
 
-### Phase C - Standardization
-- Actualizar playbook y reglas para declarar v1 como default.
-- Mantener legacy flow como referencia historica durante ventana de transicion.
+No crear plan cuando:
+- Es un fix pequeno y autocontenido.
+- Es una consulta puntual sin cambios.
+
+### Close Discipline
+- Al cerrar, actualizar estado del plan y `plans/_index.md`.
+- Escribir handoff corto con estado real, riesgos y siguientes pasos.
+- Si hubo limitaciones de validacion, declararlas explicitamente.
 
 ## Non-Goals (v1)
-- Reemplazar herramientas actuales de inmediato.
-- Introducir automatizacion CI adicional en esta etapa.
-- Cambiar contratos productivos por adoptar el flujo.
+- Introducir playbooks alternos que compitan con esta fuente de verdad.
+- Introducir automatizacion CI adicional solo por el cambio de flujo.
+- Cambiar contratos productivos por adoptar este flujo.
 
 ## Success Criteria
 - Existe una guia canonica unica para el flujo.

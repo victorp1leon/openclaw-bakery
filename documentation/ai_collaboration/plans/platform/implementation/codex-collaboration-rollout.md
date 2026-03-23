@@ -8,7 +8,7 @@
 ## Cross-References
 | Documento | Ruta | Uso |
 |---|---|---|
-| Playbook Codex | `documentation/ai_collaboration/codex-collaboration-playbook.md` | Flujo y capas de colaboracion |
+| Playbook Codex | `documentation/ai_collaboration/spec-driven-flow-v1.md` | Flujo y capas de colaboracion |
 | System map | `documentation/ai_collaboration/system-map.md` | Contexto transversal |
 | Implementacion spec-first | `documentation/ai_implementation/implementation-instructions.md` | Reglas tecnicas de delivery |
 | Arquitectura C4 | `documentation/c4/ComponentSpecs/system.description.md` | Estructura del sistema |

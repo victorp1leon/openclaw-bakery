@@ -9,7 +9,7 @@
 | Documento | Ruta | Uso |
 |---|---|---|
 | AGENTS | `AGENTS.md` | Reglas operativas y criterio de plan obligatorio |
-| Collaboration playbook | `documentation/ai_collaboration/codex-collaboration-playbook.md` | Flujo de research/plan/implement/close |
+| Collaboration playbook | `documentation/ai_collaboration/spec-driven-flow-v1.md` | Flujo de research/plan/implement/close |
 | Spec-first instructions | `documentation/ai_implementation/implementation-instructions.md` | Alineacion con delivery spec-first |
 | Copilot instructions repo | `/home/victor/copilot-instructions/README.md` | Fuente de patrones para adaptar |
 

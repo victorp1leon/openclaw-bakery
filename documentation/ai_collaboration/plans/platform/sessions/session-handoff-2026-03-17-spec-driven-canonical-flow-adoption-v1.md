@@ -8,7 +8,7 @@
 - Se definio el flujo canonico propuesto en:
   - `documentation/ai_collaboration/spec-driven-flow-v1.md`
 - Se alineo playbook vigente para transicion segura:
-  - `documentation/ai_collaboration/codex-collaboration-playbook.md`
+  - `documentation/ai_collaboration/spec-driven-flow-v1.md`
 - Se actualizo indice del dominio:
   - `documentation/ai_collaboration/README.md`
 

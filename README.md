@@ -44,6 +44,6 @@ Bot de operaciones para panaderia con runtime conversacional, integraciones (She
 
 ## Collaboration
 - Reglas operativas: `AGENTS.md`
-- Playbook canonico: `documentation/ai_collaboration/codex-collaboration-playbook.md`
+- Playbook canonico: `documentation/ai_collaboration/spec-driven-flow-v1.md`
 - System map: `documentation/ai_collaboration/system-map.md`
 - Planes/handoffs: `documentation/ai_collaboration/plans/`

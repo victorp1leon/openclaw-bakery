@@ -11,7 +11,7 @@
 | Base rules | `AGENTS.md` | Flujo de colaboracion y gates de aprobacion |
 | Local rules | `.codex/rules/README.md` | Guardrails operativos |
 | Collaboration docs | `documentation/ai_collaboration/README.md` | Hub de artefactos de continuidad |
-| Canonical playbook | `documentation/ai_collaboration/codex-collaboration-playbook.md` | Fuente de verdad para flujo de colaboracion |
+| Canonical playbook | `documentation/ai_collaboration/spec-driven-flow-v1.md` | Fuente de verdad para flujo de colaboracion |
 
 ## Contexto
 Se solicito mejorar la higiene estructural del repositorio en cinco puntos: ignores compartidos para credenciales locales de GWS, plantilla de variables de entorno, README de raiz, CI minima y definicion explicita de una sola fuente de verdad para el playbook de colaboracion.

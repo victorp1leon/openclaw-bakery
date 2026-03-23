@@ -16,8 +16,8 @@
   - `npm run security:scan`
   - `npm test`
 - Se definio `single source of truth` para playbook:
-  - canonical: `documentation/ai_collaboration/codex-collaboration-playbook.md`
-  - `AI Collaboration Playbook.md` (raiz) convertido a puntero legacy.
+  - canonical: `documentation/ai_collaboration/spec-driven-flow-v1.md`
+  - `documentation/ai_collaboration/spec-driven-flow-v1.md` (raiz) convertido a puntero legacy.
   - `documentation/ai_collaboration/README.md` actualizado para explicitar canonical vs legacy.
 
 ## Current State

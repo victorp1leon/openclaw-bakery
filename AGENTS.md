@@ -10,10 +10,15 @@ Reglas operativas para colaborar con Codex en este repositorio sin perder contin
 4. Lee docs tecnicas aplicables (`documentation/c4/`, `documentation/adr/`, `documentation/ai_implementation/`).
 
 ## Workflow (Complex Tasks)
-1. **Research:** inspecciona codigo y specs antes de editar.
-2. **Plan:** crea/actualiza plan en `documentation/ai_collaboration/plans/` cuando la tarea no sea trivial.
-3. **Implement:** aplica cambios respetando patrones existentes y actualiza tests si cambia logica.
-4. **Close:** actualiza plan + `_index.md` y escribe handoff corto.
+Flujo canonico unico: `documentation/ai_collaboration/spec-driven-flow-v1.md`
+1. **Discover:** inspecciona contexto, codigo y specs antes de editar.
+2. **Specify:** define/actualiza especificacion funcional cuando el cambio no es trivial.
+3. **Clarify:** resuelve ambiguedades criticas de alcance, seguridad o UX.
+4. **Plan:** crea/actualiza plan en `documentation/ai_collaboration/plans/` cuando corresponda.
+5. **Tasks:** desglosa ejecucion en pasos trazables dentro del plan.
+6. **Implement:** aplica cambios respetando patrones existentes y actualiza tests si cambia logica.
+7. **Validate:** ejecuta validacion proporcional al riesgo y reporta evidencia real.
+8. **Close:** actualiza plan + `_index.md` y escribe handoff corto.
 
 ## When A Plan Is Mandatory
 - Cambios multi-archivo o multi-sesion.
@@ -57,7 +62,7 @@ Reglas operativas para colaborar con Codex en este repositorio sin perder contin
 - Channel adapters: `src/channel/`
 
 ## Collaboration Artifacts
-- Playbook: `documentation/ai_collaboration/codex-collaboration-playbook.md`
+- Canonical Flow: `documentation/ai_collaboration/spec-driven-flow-v1.md`
 - System map: `documentation/ai_collaboration/system-map.md`
 - Plan template: `documentation/ai_collaboration/plans/_plan-template.md`
 - Session handoff template: `documentation/ai_collaboration/plans/_session-handoff-template.md`
