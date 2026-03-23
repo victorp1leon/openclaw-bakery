@@ -5,11 +5,12 @@ Last Updated: 2026-03-23
 ## Active Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
-| _none_ | - | - | - |
+| `platform/implementation/token-efficiency-codex-operational-v2.md` | Implementation | Not Started | 2026-03-23 |
 
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `platform/implementation/token-efficiency-codex-rule-v1.md` | Implementation | Complete | 2026-03-23 |
 | `platform/implementation/sdd-migration-documentation-reorganization-master-plan-v1.md` | Implementation | Complete | 2026-03-23 |
 | `runtime/implementation/phase3-shopping-list-operational-hardening-v2.md` | Implementation | Complete | 2026-03-21 |
 | `runtime/implementation/phase3-quote-readonly-cancel-guard-v1.md` | Implementation | Complete | 2026-03-21 |
