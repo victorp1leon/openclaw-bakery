@@ -27,11 +27,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$wave" ]]; then
-  echo "Usage: bash .codex/skills/specs-wave-migration/scripts/migrate-wave.sh --wave <A|B|C|C.1> [--domain <runtime|platform|all>] [--status <pending|migrated|verified>]" >&2
+  echo "Usage: bash .codex/skills/specs-wave-migration/scripts/migrate-wave.sh --wave <A|B|C|C.1> [--domain <runtime|platform|contracts|all>] [--status <pending|migrated|verified>]" >&2
   exit 1
 fi
 
-if [[ "$domain" != "runtime" && "$domain" != "platform" && "$domain" != "all" ]]; then
+if [[ "$domain" != "runtime" && "$domain" != "platform" && "$domain" != "contracts" && "$domain" != "all" ]]; then
   echo "Invalid --domain value: $domain" >&2
   exit 1
 fi
@@ -60,16 +60,17 @@ trap 'rm -f "$tmp_entries" "$tmp_ids" "$tmp_manifest" "$tmp_rows" "$tmp_index"' 
 awk -F'|' -v want_wave="$wave" -v want_domain="$domain" -v want_status="$from_status" '
 function trim(s) { gsub(/^ +| +$/, "", s); return s }
 function unbt(s) { gsub(/`/, "", s); return s }
-/^\| (R|P)-[0-9]{3} / {
+/^\| ((R|P)-[0-9]{3}|C4-[0-9]{3}) / {
   id = trim($2)
   stype = trim($3)
   d = trim($4)
   src = unbt(trim($5))
   tgt = unbt(trim($6))
+  strategy = trim($7)
   w = trim($8)
   status = trim($9)
   if (w == want_wave && status == want_status && (want_domain == "all" || d == want_domain)) {
-    print id "\t" stype "\t" d "\t" src "\t" tgt
+    print id "\t" stype "\t" d "\t" src "\t" tgt "\t" strategy "\t" w
   }
 }
 ' "$manifest" > "$tmp_entries"
@@ -79,7 +80,25 @@ if [[ ! -s "$tmp_entries" ]]; then
   exit 0
 fi
 
-while IFS=$'\t' read -r id _stype d source target; do
+while IFS=$'\t' read -r id stype d source target strategy _entry_wave; do
+  if [[ "$stype" == "c4_contract" ]]; then
+    if [[ ! -f "$source" ]]; then
+      echo "Missing legacy source for $id: $source" >&2
+      exit 1
+    fi
+
+    mkdir -p "$(dirname "$target")"
+    {
+      echo "> Migration Trace: Canonical copy generated from \`$source\` on $today (Wave $wave)."
+      echo "> Legacy C4 source remains as temporary reference during migration."
+      echo
+      cat "$source"
+    } > "$target"
+
+    echo "$id" >> "$tmp_ids"
+    continue
+  fi
+
   feature_dir="$(dirname "$target")"
   slug="$(basename "$feature_dir")"
   legacy_file="$(basename "$source")"
@@ -218,7 +237,7 @@ BEGIN {
   }
 }
 {
-  if ($0 ~ /^\| (R|P)-[0-9]{3} /) {
+  if ($0 ~ /^\| /) {
     id = trim($2)
     stype = trim($3)
     d = trim($4)
@@ -228,7 +247,11 @@ BEGIN {
     w = trim($8)
     status = trim($9)
     if (id in selected && w == want_wave && status == want_status) {
-      note = "Wave " w " package created in canonical specs with legacy snapshot."
+      if (stype == "c4_contract") {
+        note = "Wave " w " canonical contract copied from C4 with source trace note."
+      } else {
+        note = "Wave " w " package created in canonical specs with legacy snapshot."
+      }
       printf("| %s | %s | %s | `%s` | `%s` | %s | %s | migrated | %s |\n", id, stype, d, src, tgt, strategy, w, note)
       next
     }
@@ -241,7 +264,7 @@ mv "$tmp_manifest" "$manifest"
 awk -F'|' '
 function trim(s) { gsub(/^ +| +$/, "", s); return s }
 function unbt(s) { gsub(/`/, "", s); return s }
-/^\| (R|P)-[0-9]{3} / {
+/^\| / {
   stype = trim($3)
   d = trim($4)
   src = unbt(trim($5))
@@ -284,6 +307,11 @@ BEGIN {
     next
   }
   if (skipping == 1) {
+    if ($0 ~ /^## Component Contracts Registry$/) {
+      print
+      skipping = 0
+      next
+    }
     if ($0 ~ /^## Slug And Metadata Rules$/) {
       print
       skipping = 0

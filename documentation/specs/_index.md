@@ -96,6 +96,11 @@ This index tracks migrated and new SDD-native features by domain.
 | runtime | shopping-list-operational-hardening | migrated | documentation/specs/runtime/shopping-list-operational-hardening/ | documentation/ai_collaboration/plans/runtime/implementation/phase3-shopping-list-operational-hardening-v2.md | Migrated from legacy implementation plan. |
 | runtime | shopping-list-recipes-gws-live | migrated | documentation/specs/runtime/shopping-list-recipes-gws-live/ | documentation/ai_collaboration/plans/runtime/implementation/phase3-shopping-list-recipes-gws-live-v1.md | Migrated from legacy implementation plan. |
 | runtime | skill-doc-coverage-parity | migrated | documentation/specs/runtime/skill-doc-coverage-parity/ | documentation/ai_collaboration/plans/runtime/implementation/phase3-skill-doc-coverage-parity-v1.md | Migrated from legacy implementation plan. |
+## Component Contracts Registry
+| Domain | Scope | Status | Canonical Path | Legacy Sources | Notes |
+|---|---|---|---|---|---|
+| contracts | components (`C4-001` to `C4-039`) | migrated | documentation/specs/contracts/components/ | documentation/c4/ComponentSpecs/** | Wave C.1 completed with `copy+trace`; each canonical contract includes source trace note. |
+
 ## Slug And Metadata Rules
 1. Build `feature-slug` from legacy name by removing `phase*` prefixes and `-vN` suffixes.
 2. Keep functional naming (for example `order-cancel-grill-hardening`).
