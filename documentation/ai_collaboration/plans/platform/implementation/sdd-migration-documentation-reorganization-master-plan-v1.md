@@ -80,7 +80,7 @@ Queremos consolidar en una sola ruta la adopcion de Spec-Driven Development (SDD
 | 3 | Definir/ajustar comandos locales SDD (`speckit.*`) a rutas `documentation/specs` | Complete | 2026-03-23: definidos `.codex/commands/speckit.{index,template,manifest,validate}.md` sobre rutas canonicas; unit/smoke `N/A` (cambio documental sin runtime/scripts ejecutables) |
 | 4 | Ola A: migrar features activas/recientes de mayor uso | Complete | 2026-03-23: migradas 18 features (13 runtime + 5 platform) a paquetes canonicos con snapshot legacy; unit/smoke `N/A` (solo cambios documentales) |
 | 5 | Ola B: migrar resto de `runtime implementation` | Complete | 2026-03-23: migradas 27 features runtime de Wave B a paquetes canonicos; manifiesto actualizado (`B pending=0`, `B migrated=27`), unit/smoke `N/A` (solo cambios documentales) |
-| 6 | Ola C: migrar resto de `platform implementation` | Pending | Mantener trazabilidad a legacy |
+| 6 | Ola C: migrar resto de `platform implementation` | Complete | 2026-03-23: migradas 33 features platform de Wave C a paquetes canonicos; manifiesto actualizado (`C pending=0`, `C migrated=33`), unit/smoke `N/A` (solo cambios documentales) |
 | 7 | Ola C.1: migrar `c4/ComponentSpecs` hacia `documentation/specs/contracts/components` | Pending | Preservar equivalencia de contratos y trazabilidad |
 | 8 | Ola D: cierre 100%, verificacion final y limpieza de referencias legacy | Pending | Sin mover sesiones; C4 queda como referencia temporal |
 | 9 | Alinear documentacion operativa (`ai_collaboration`) y C4 con nuevos enlaces canonicos | Pending | Evitar contradicciones de ruta |
