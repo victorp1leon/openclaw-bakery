@@ -14,8 +14,8 @@
   - `documentation/specs/_index.md`
 - Fixed legacy missing references by adding compatibility bridge files:
   - `documentation/documentation-driven-development.md`
-  - `documentation/ai-first-project-developed-structure.md`
-  - `documentation/ai-first-project-developed.md`
+  - `documentation/ai_collaboration/references/framework/ai-first-project-developed-structure.md`
+  - `documentation/ai_collaboration/references/framework/ai-first-project-developed.md`
   - `.codex/audit-prompt.md`
 - Updated master plan Step 10 to `Complete`.
 

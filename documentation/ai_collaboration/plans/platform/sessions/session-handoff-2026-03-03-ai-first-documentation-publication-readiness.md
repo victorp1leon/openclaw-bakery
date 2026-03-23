@@ -9,7 +9,7 @@
 - Se implemento scaffold de dominios nuevos: `getting-started`, `architecture`, `ai-system`, `governance`, `api`, `release`.
 - Se agregaron artefactos base de readiness: AI risk register, AI release gates y vulnerability disclosure policy.
 - Se actualizaron hubs de navegacion: `documentation/README.md`, `documentation/documentation-information-architecture.md`, `operations/README.md`, `security/README.md`.
-- Se normalizo `documentation/ai-first-project-developed-structure.md` y se creo `documentation/ai-first-project-developed.md`.
+- Se normalizo `documentation/ai_collaboration/references/framework/ai-first-project-developed-structure.md` y se creo `documentation/ai_collaboration/references/framework/ai-first-project-developed.md`.
 
 ## Current State
 - La estructura documental ya refleja un modelo AI-first con seguridad primero.

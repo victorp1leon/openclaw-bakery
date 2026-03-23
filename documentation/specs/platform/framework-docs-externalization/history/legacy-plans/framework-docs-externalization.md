@@ -19,8 +19,8 @@ Algunos documentos eran de tipo framework/metodologia reusable y no canon de pro
 ### In Scope
 - Externalizar internamente (preparado para repo externo) estos docs:
   - `documentation/documentation-driven-development.md`
-  - `documentation/ai-first-project-developed-structure.md`
-  - `documentation/ai-first-project-developed.md`
+  - `documentation/ai_collaboration/references/framework/ai-first-project-developed-structure.md`
+  - `documentation/ai_collaboration/references/framework/ai-first-project-developed.md`
 - Crear stubs de compatibilidad en las rutas originales.
 - Actualizar hubs/IA para reflejar ubicacion canonica nueva.
 
