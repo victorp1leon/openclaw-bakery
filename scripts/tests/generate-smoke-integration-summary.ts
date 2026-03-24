@@ -511,6 +511,11 @@ function main(): void {
       env: smokeLive ? undefined : { SMOKE_REPORT_LIVE: "0" }
     },
     {
+      scenario: "smoke:reminders",
+      npmScript: "smoke:reminders",
+      env: smokeLive ? undefined : { SMOKE_REMINDERS_LIVE: "0" }
+    },
+    {
       scenario: "smoke:lookup",
       npmScript: "smoke:lookup",
       env: smokeLive ? undefined : { SMOKE_LOOKUP_LIVE: "0" }

@@ -10,6 +10,7 @@ Last Updated: 2026-03-24
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `runtime/implementation/phase3-report-reminders-spec-driven-v1.md` | Implementation | Complete | 2026-03-24 |
 | `runtime/implementation/phase3-schedule-week-view-spec-driven-v1.md` | Implementation | Complete | 2026-03-24 |
 | `platform/implementation/code-review-graph-ab-evaluation-framework-v1.md` | Implementation | Complete | 2026-03-24 |
 | `platform/implementation/code-review-graph-workflow-gate-adoption-v1.md` | Implementation | Complete | 2026-03-24 |

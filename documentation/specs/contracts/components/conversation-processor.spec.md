@@ -48,12 +48,15 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - Runtime must accept natural delivery expressions (`hoy`, `mañana`, `pasado mañana`, `para el viernes`, `este/proximo viernes`) only if they can be converted to canonical datetime.
 - If delivery date is present without explicit time, runtime must request hour clarification before showing summary.
 - For order reporting queries (e.g. `pedidos hoy`, `pedidos del 28 de abril`, `pedidos esta semana`, `pedidos del mes de mayo`, `pedidos de este año`), route deterministically to `report-orders` without entering confirm flow.
-- When `OPENCLAW_READONLY_ROUTING_ENABLE=1`, evaluate read-only OpenClaw routing before deterministic read-only detectors (`admin.health`, `admin.config.view`, `report/orders`, `lookup`, `status`, `schedule`, `shopping`, `quote`).
+- When `OPENCLAW_READONLY_ROUTING_ENABLE=1`, evaluate read-only OpenClaw routing before deterministic read-only detectors (`admin.health`, `admin.config.view`, `report/orders`, `report/reminders`, `lookup`, `status`, `schedule`, `shopping`, `quote`).
 - If read-only OpenClaw routing is active and strict mode is enabled (`OPENCLAW_STRICT=1`), do not use deterministic read-only fallback when OpenClaw returns `unknown`/invalid payload; return controlled clarification instead.
 - If read-only OpenClaw routing is active and strict mode is disabled (`OPENCLAW_STRICT=0`), deterministic read-only fallback remains allowed when OpenClaw returns `unknown`.
 - `OPENCLAW_READONLY_QUOTE_ENABLE=0` disables OpenClaw read-only routing for `quote.order` only; quote flow remains available through deterministic routing.
 - If user asks report intent without period (e.g. `reporte de pedidos`), runtime must ask for clarification (`hoy|semana|mes|año`) and continue once resolved.
 - `report.orders` replies must include `Ref` (`trace_ref`) in success/no-match, and controlled failure with `Ref` when provider fails.
+- For order reminders queries (e.g. `recordatorios de pedidos para hoy`, `recordatorios de esta semana`, `reminders de este mes`), route deterministically to `report-reminders` without entering confirm flow.
+- If user asks reminders intent without period (e.g. `recordatorios de pedidos`), runtime must ask for clarification (`hoy|semana|mes|año`) and continue once resolved.
+- `report.reminders` replies must include `Ref` (`trace_ref`) in success/no-match, and controlled failure with `Ref` when provider fails.
 - For order lookup queries (e.g. `consulta pedido de ana`, `buscar pedido op-123`), route deterministically to `lookup-order` without entering confirm flow.
 - `order.lookup` replies must include `Ref` (`trace_ref`) in both success and no-match responses.
 - If `order.lookup` fails at execution time, runtime must return a controlled message with support reference (`Ref: order-lookup:<operation_id>`).
@@ -140,6 +143,7 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - `persists_failed_status_on_expense_tool_error`
 - `cancels_pending_operation`
 - `returns_orders_report_for_supported_period_queries`
+- `returns_report_reminders_for_supported_period_queries`
 - `returns_order_lookup_for_supported_queries`
 - `returns_order_status_for_supported_queries`
 - `returns_admin_health_for_supported_queries`

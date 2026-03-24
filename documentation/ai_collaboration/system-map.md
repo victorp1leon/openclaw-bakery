@@ -64,6 +64,7 @@ Last Updated: 2026-03-24
 14. `admin.health`: consulta admin de salud operativa (`estado del bot`, `admin health`) -> routing read-only (`OpenClaw` o fallback deterministico) -> `runHealthcheck` via tool `adminHealth` -> respuesta sanitizada con estado/checks y `Ref/trace_ref` (sin confirmacion ni mutacion).
 15. `admin.config.view`: consulta admin de configuracion (`configuracion del bot`, `admin config`) -> routing read-only (`OpenClaw` o fallback deterministico) -> snapshot sanitizado via tool `adminConfigView` (flags/booleans/counts, sin secretos) -> respuesta con `Ref/trace_ref` (sin confirmacion ni mutacion).
 16. `schedule.week_view`: consulta de agenda semanal (`agenda de esta semana`, `agenda semanal de 2026-03-23`) -> resolucion de semana lunes-domingo en timezone runtime -> agregacion read-only de 7 ejecuciones `schedule.day_view` -> respuesta consolidada (`days/reminders`, `preparation`, `suggestedPurchases`) con `inconsistencies` por `dateKey` y `Ref/trace_ref` (sin confirmacion ni mutacion).
+17. `report.reminders`: consulta de recordatorios de pedidos (`recordatorios de hoy/esta semana/este mes`) -> lectura read-only de `report.orders` + clasificacion de urgencia (`overdue|due_soon|upcoming`) con `minutes_to_delivery` -> respuesta priorizada con `inconsistencies` visibles y `Ref/trace_ref` (sin confirmacion ni mutacion).
 
 ## Source Documents
 - `documentation/bot-bakery.overview.md`

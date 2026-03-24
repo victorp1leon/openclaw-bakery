@@ -14,6 +14,7 @@
     "smoke:expense": "npx ts-node --transpile-only scripts/smoke/expense-smoke.ts",
     "smoke:order": "npx ts-node --transpile-only scripts/smoke/order-smoke.ts",
     "smoke:report": "npx ts-node --transpile-only scripts/smoke/report-smoke.ts",
+    "smoke:reminders": "npx ts-node --transpile-only scripts/smoke/report-reminders-smoke.ts",
     "smoke:lookup": "npx ts-node --transpile-only scripts/smoke/lookup-smoke.ts",
     "smoke:status": "npx ts-node --transpile-only scripts/smoke/status-smoke.ts",
     "smoke:admin-health": "npx ts-node --transpile-only scripts/smoke/admin-health-smoke.ts",

@@ -27,6 +27,7 @@ let createConversationProcessor: (args: {
       | "admin.health"
       | "admin.config.view"
       | "report.orders"
+      | "report.reminders"
       | "order.lookup"
       | "order.status"
       | "schedule.day_view"
@@ -159,6 +160,48 @@ let createConversationProcessor: (args: {
       moneda?: string;
       operation_id?: string;
       estado_pedido?: string;
+    }>;
+    inconsistencies: Array<{
+      reference: string;
+      reason: "delivery_date_missing_or_invalid";
+      detail: string;
+    }>;
+    trace_ref: string;
+    detail: string;
+  }>;
+  executeReportRemindersFn?: (args: {
+    chat_id: string;
+    period:
+      | { type: "day"; dateKey: string; label: string }
+      | { type: "week"; anchorDateKey: string; label: string }
+      | { type: "month"; year: number; month: number; label: string }
+      | { type: "year"; year: number; label: string }
+      | "today"
+      | "tomorrow"
+      | "week";
+  }) => Promise<{
+    period:
+      | { type: "day"; dateKey: string; label: string }
+      | { type: "week"; anchorDateKey: string; label: string }
+      | { type: "month"; year: number; month: number; label: string }
+      | { type: "year"; year: number; label: string };
+    timezone: string;
+    generated_at: string;
+    total: number;
+    reminders: Array<{
+      folio: string;
+      fecha_hora_entrega: string;
+      nombre_cliente: string;
+      producto: string;
+      cantidad?: number;
+      tipo_envio?: string;
+      estado_pago?: string;
+      total?: number;
+      moneda?: string;
+      operation_id?: string;
+      estado_pedido?: string;
+      reminder_status: "overdue" | "due_soon" | "upcoming";
+      minutes_to_delivery: number;
     }>;
     inconsistencies: Array<{
       reference: string;
@@ -1076,6 +1119,108 @@ describe("conversation processor security flow", () => {
 
     expect(replies[0]).toContain("No pude consultar pedidos en este momento.");
     expect(replies[0]).toContain("Ref: report-orders:op-report-fail-1");
+  });
+
+  it("resuelve recordatorios por periodo sin pasar por intent router", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+    const executeReportRemindersFn = vi.fn(async () => ({
+      period: { type: "day", dateKey: "2026-03-07", label: "hoy" } as const,
+      timezone: "America/Mexico_City",
+      generated_at: "2026-03-07T12:00:00.000Z",
+      total: 1,
+      reminders: [
+        {
+          folio: "op-reminder-1",
+          fecha_hora_entrega: "2026-03-07 14:00",
+          nombre_cliente: "Ana",
+          producto: "cupcakes",
+          cantidad: 12,
+          reminder_status: "due_soon" as const,
+          minutes_to_delivery: 120
+        }
+      ],
+      inconsistencies: [],
+      trace_ref: "report-reminders:day-2026-03-07:a1",
+      detail: "report-reminders executed"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-reminders"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn,
+      executeReportRemindersFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-reminders",
+      text: "recordatorios de hoy"
+    });
+
+    expect(replies[0]).toContain("Recordatorios para hoy");
+    expect(replies[0]).toContain("op-reminder-1");
+    expect(replies[0]).toContain("Ref: report-reminders:day-2026-03-07:a1");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+    expect(executeReportRemindersFn).toHaveBeenCalledWith({
+      chat_id: "chat-reminders",
+      period: { type: "day", dateKey: "2026-03-07", label: "hoy" }
+    });
+  });
+
+  it("pide periodo cuando faltan recordatorios y luego responde", async () => {
+    const executeReportRemindersFn = vi.fn(async () => ({
+      period: { type: "week", anchorDateKey: "2026-03-07", label: "esta semana" } as const,
+      timezone: "America/Mexico_City",
+      generated_at: "2026-03-07T12:00:00.000Z",
+      total: 0,
+      reminders: [],
+      inconsistencies: [],
+      trace_ref: "report-reminders:week-2026-03-07:a1",
+      detail: "report-reminders executed"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-reminders-clarify"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn: async () => "pedido",
+      executeReportRemindersFn
+    });
+
+    const ask = await processor.handleMessage({
+      chat_id: "chat-reminders-clarify",
+      text: "recordatorios de pedidos"
+    });
+    expect(ask[0].toLowerCase()).toContain("periodo");
+
+    const reply = await processor.handleMessage({
+      chat_id: "chat-reminders-clarify",
+      text: "esta semana"
+    });
+    expect(reply[0]).toContain("No encontré recordatorios para esta semana");
+    expect(reply[0]).toContain("Ref: report-reminders:week-2026-03-07:a1");
+    expect(executeReportRemindersFn).toHaveBeenCalledWith({
+      chat_id: "chat-reminders-clarify",
+      period: { type: "week", anchorDateKey: "2026-03-07", label: "esta semana" }
+    });
+  });
+
+  it("retorna mensaje controlado con Ref cuando falla report.reminders", async () => {
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-reminders-fail"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      newOperationId: () => "op-reminders-fail-1",
+      routeIntentFn: async () => "pedido",
+      executeReportRemindersFn: async () => {
+        throw new Error("report_reminders_gws_failed");
+      }
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-reminders-fail",
+      text: "recordatorios de hoy"
+    });
+
+    expect(replies[0]).toContain("No pude consultar recordatorios en este momento.");
+    expect(replies[0]).toContain("Ref: report-reminders:op-reminders-fail-1");
   });
 
   it("resuelve agenda diaria sin pasar por intent router", async () => {
@@ -3930,6 +4075,57 @@ describe("conversation processor security flow", () => {
       expect(executeOrderStatusFn).toHaveBeenCalledWith({
         chat_id: "chat-readonly-openclaw",
         query: "ana"
+      });
+    } finally {
+      if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+      else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+    }
+  });
+
+  it("usa ruta read-only OpenClaw para report.reminders cuando el flag está activo", async () => {
+    const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+    process.env.OPENCLAW_READONLY_ROUTING_ENABLE = "1";
+
+    try {
+      const routeReadOnlyIntentFn = vi.fn(async () => ({
+        intent: "report.reminders" as const,
+        source: "openclaw" as const,
+        strict_mode: false,
+        period: "today" as const
+      }));
+      const executeReportRemindersFn = vi.fn(async () => ({
+        period: { type: "day", dateKey: "2026-03-20", label: "hoy" } as const,
+        timezone: "America/Mexico_City",
+        generated_at: "2026-03-20T12:00:00.000Z",
+        total: 1,
+        reminders: [
+          {
+            folio: "op-rem-1",
+            fecha_hora_entrega: "2026-03-20 14:00",
+            nombre_cliente: "Ana",
+            producto: "pastel",
+            reminder_status: "due_soon" as const,
+            minutes_to_delivery: 120
+          }
+        ],
+        inconsistencies: [],
+        trace_ref: "report-reminders:day-2026-03-20:a1",
+        detail: "report-reminders executed"
+      }));
+
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-reminders-openclaw"]),
+        routeReadOnlyIntentFn,
+        executeReportRemindersFn,
+        routeIntentFn: async () => "unknown"
+      });
+
+      const replies = await processor.handleMessage({ chat_id: "chat-reminders-openclaw", text: "recordatorios de hoy" });
+      expect(replies[0]).toContain("Ref: report-reminders:day-2026-03-20:a1");
+      expect(routeReadOnlyIntentFn).toHaveBeenCalledWith({ text: "recordatorios de hoy", enableQuote: true });
+      expect(executeReportRemindersFn).toHaveBeenCalledWith({
+        chat_id: "chat-reminders-openclaw",
+        period: "today"
       });
     } finally {
       if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;

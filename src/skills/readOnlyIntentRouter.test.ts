@@ -72,6 +72,23 @@ describe("routeReadOnlyIntentDetailed", () => {
     expect(routed.period).toBe("today");
   });
 
+  it("mapea report.reminders con period=today", async () => {
+    const runtime = {
+      completeJson: async () => ({
+        intent: "report.reminders",
+        period: { kind: "today" }
+      })
+    };
+
+    const routed = await routeReadOnlyIntentDetailed({
+      text: "recordatorios de hoy",
+      runtime
+    });
+
+    expect(routed.intent).toBe("report.reminders");
+    expect(routed.period).toBe("today");
+  });
+
   it("mapea schedule.day_view con date_key explicito", async () => {
     const runtime = {
       completeJson: async () => ({

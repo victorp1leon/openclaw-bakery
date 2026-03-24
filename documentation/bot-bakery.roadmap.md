@@ -242,12 +242,13 @@ Current coverage (status):
 - `inventory.consume` v1: mutacion por referencia de pedido con confirm flow explicito, decremento en `Inventario`, traza en `MovimientosInventario`, idempotencia por `operation_id` y conversion obligatoria `g<->kg`; habilitado solo por comando explicito y detras del flag `INVENTORY_CONSUME_ENABLE`.
 - `schedule.day_view` v1: agenda diaria read-only por fecha (`hoy|mañana|fecha explicita`) sobre `Pedidos` via `gws`, con salida en bloques `deliveries`, `preparation` y `suggestedPurchases`; usa `fecha_hora_entrega_iso` como fuente obligatoria para agenda, reporta `inconsistencies` visibles, incluye `trace_ref` para soporte y combina `CatalogoRecetas` (live) con fallback `inline` para compras sugeridas, sin confirm flow.
 - `schedule.week_view` v1: agenda semanal read-only (`esta semana|proxima semana|fecha ancla`) agregada sobre `schedule.day_view` para lunes-domingo, con resumen `days/reminders`, consolidado de `preparation` y `suggestedPurchases`, `inconsistencies` por `dateKey` y `trace_ref` en exito/fallo controlado.
+- `report.reminders` v1: recordatorios read-only por periodo (`hoy|semana|mes|año`) sobre lectura de `report.orders`, con priorizacion por urgencia (`overdue|due_soon|upcoming`), campo `minutes_to_delivery`, `inconsistencies` visibles para fechas invalidas y `trace_ref` en exito/fallo controlado.
 - `expense.add`: end-to-end completed (`gws` live validated) with dry-run safe defaults and smoke validation.
 - `web.publish`: adapter + runtime flow integrated, with chat path behind feature flag and content-driven terminal/CI publish path enabled.
 - Static site scaffold generated from repository content (`site/CONTENT.json` -> `site/dist`) via `npm run web:build`.
 - Branding-ready scaffold (`logo` + `tarjeta`) and Facebook gallery import helper available (`npm run web:import:facebook`).
 - UI smoke coverage for conversion-critical flows available via Playwright-core (`npm run smoke:web:ui`), including desktop/mobile checks and WhatsApp CTA validation.
-- Pending: reportes avanzados (`report.reminders`), customers, and costing/profitability.
+- Pending: customers, and costing/profitability.
 
 Execution tracking source of truth:
 - `documentation/ai_implementation/ddd-roadmap-coverage-matrix.md`

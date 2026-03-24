@@ -8,7 +8,7 @@ Last Updated: 2026-03-24
 
 ## Objective
 Route read-only intents using OpenClaw-first classification/extraction for:
-`admin.health`, `admin.config.view`, `report.orders`, `order.lookup`, `order.status`, `schedule.day_view`, `schedule.week_view`, `shopping.list.generate`, `quote.order`.
+`admin.health`, `admin.config.view`, `report.orders`, `report.reminders`, `order.lookup`, `order.status`, `schedule.day_view`, `schedule.week_view`, `shopping.list.generate`, `quote.order`.
 It must classify and extract draft query/scope data only and must not execute tools or mutate state.
 
 ## Inputs
@@ -48,6 +48,7 @@ It must classify and extract draft query/scope data only and must not execute to
 - `routes_admin_config_view_without_extra_fields`
 - `routes_order_lookup_and_extracts_query`
 - `routes_report_orders_with_period`
+- `routes_report_reminders_with_period`
 - `routes_schedule_week_view_with_anchor_date_key`
 - `returns_unknown_when_quote_routing_disabled`
 - `returns_unknown_on_non_json_openclaw_payload`

@@ -5,6 +5,7 @@ export type PendingAction =
   | { intent: "pedido"; payload: any }
   | { intent: "web"; payload: any }
   | { intent: "reporte"; payload: any }
+  | { intent: "report.reminders"; payload: any }
   | { intent: "quote.order"; payload: any }
   | { intent: "shopping.list.generate"; payload: any }
   | { intent: "schedule.day_view"; payload: any }

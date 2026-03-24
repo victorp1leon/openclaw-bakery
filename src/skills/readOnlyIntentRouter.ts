@@ -11,6 +11,7 @@ export type ReadOnlyIntent =
   | "admin.health"
   | "admin.config.view"
   | "report.orders"
+  | "report.reminders"
   | "order.lookup"
   | "order.status"
   | "schedule.day_view"
@@ -40,6 +41,7 @@ const RawIntentSchema = z.object({
     "admin.health",
     "admin.config.view",
     "report.orders",
+    "report.reminders",
     "order.lookup",
     "order.status",
     "schedule.day_view",
@@ -301,7 +303,7 @@ function buildPrompt(text: string, enableQuote: boolean): string {
   return [
     "Clasifica el mensaje del usuario en un intent read-only del bot.",
     "Responde SOLO JSON valido. No agregues texto extra.",
-    "Intents validos: admin.health, admin.config.view, report.orders, order.lookup, order.status, schedule.day_view, schedule.week_view, shopping.list.generate, quote.order, unknown.",
+    "Intents validos: admin.health, admin.config.view, report.orders, report.reminders, order.lookup, order.status, schedule.day_view, schedule.week_view, shopping.list.generate, quote.order, unknown.",
     `Si detectas cotizacion y quote esta deshabilitado, usa ${quoteOption}.`,
     "Schema exacto esperado:",
     "{\"intent\":\"...\",\"needs_clarification\":false,\"query\":\"...\",\"period\":{\"kind\":\"today|tomorrow|week|day|month|year\",\"date_key\":\"YYYY-MM-DD\",\"anchor_date_key\":\"YYYY-MM-DD\",\"year\":2026,\"month\":3},\"day\":{\"date_key\":\"YYYY-MM-DD\"},\"scope\":{\"type\":\"day|week|order_ref|lookup\",\"date_key\":\"YYYY-MM-DD\",\"anchor_date_key\":\"YYYY-MM-DD\",\"reference\":\"op-123\",\"query\":\"ana\"}}",
@@ -310,6 +312,7 @@ function buildPrompt(text: string, enableQuote: boolean): string {
     "- admin.config.view: solo para consultar configuracion operativa sanitizada del bot/sistema (sin secretos).",
     "- order.lookup/order.status/quote.order: usa query cuando haya referencia o busqueda libre.",
     "- report.orders: usa period.",
+    "- report.reminders: usa period para recordatorios de entregas proximas.",
     "- schedule.day_view: usa day.date_key o period.kind=today|tomorrow.",
     "- schedule.week_view: usa period.kind=week y opcional period.anchor_date_key.",
     "- shopping.list.generate: usa scope.",
@@ -381,6 +384,15 @@ export async function routeReadOnlyIntentDetailed(args: {
     if (candidate.intent === "report.orders") {
       return {
         intent: "report.orders",
+        source: "openclaw",
+        strict_mode,
+        period: buildReportPeriod({ raw: candidate })
+      };
+    }
+
+    if (candidate.intent === "report.reminders") {
+      return {
+        intent: "report.reminders",
         source: "openclaw",
         strict_mode,
         period: buildReportPeriod({ raw: candidate })

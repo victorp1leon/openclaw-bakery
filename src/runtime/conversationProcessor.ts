@@ -63,6 +63,10 @@ import {
 import { createOrderStatusTool, type OrderStatusResult } from "../tools/order/orderStatus";
 import { createReportOrdersTool, type OrderReportPeriod, type OrderReportResult } from "../tools/order/reportOrders";
 import {
+  createReportRemindersTool,
+  type OrderReminderResult
+} from "../tools/order/reportReminders";
+import {
   createShoppingListGenerateTool,
   type ShoppingListResult,
   type ShoppingListScope
@@ -139,6 +143,10 @@ type ProcessorDeps = {
     chat_id: string;
     period: OrderReportPeriod;
   }) => Promise<OrderReportResult>;
+  executeReportRemindersFn?: (args: {
+    chat_id: string;
+    period: OrderReportPeriod;
+  }) => Promise<OrderReminderResult>;
   executeOrderLookupFn?: (args: {
     chat_id: string;
     query: string;
@@ -626,6 +634,39 @@ function detectOrderReportPeriodFromClarification(args: {
     now: args.now,
     timezone: args.timezone
   });
+}
+
+function hasReportRemindersHint(normalized: string): boolean {
+  return (
+    /\b(recordatorio|recordatorios|recordar|recuerdame)\b/.test(normalized) ||
+    /\b(entregas?\s+proximas?|proximas?\s+entregas?)\b/.test(normalized)
+  );
+}
+
+function detectReportRemindersPeriod(args: {
+  text: string;
+  now: Date;
+  timezone: string;
+}): OrderReportPeriod | undefined {
+  const normalized = normalizeForMatch(args.text);
+  if (!hasReportRemindersHint(normalized)) return undefined;
+
+  return parseOrderReportPeriodCore({
+    normalized,
+    now: args.now,
+    timezone: args.timezone
+  });
+}
+
+function detectReportRemindersRequestWithoutPeriod(args: {
+  text: string;
+  now: Date;
+  timezone: string;
+}): boolean {
+  const normalized = normalizeForMatch(args.text);
+  if (!hasReportRemindersHint(normalized)) return false;
+  if (hasOrderReportPeriodHint(normalized)) return false;
+  return detectReportRemindersPeriod(args) == null;
 }
 
 function detectOrderLookupQuery(text: string): string | undefined {
@@ -1470,6 +1511,44 @@ function formatOrderReportReply(report: OrderReportResult): string {
   return `Pedidos para ${label} (${report.total}):\n${lines.join("\n")}${extra}${inconsistenciesBlock}\nRef: ${report.trace_ref}`;
 }
 
+function formatReminderStatusLabel(status: OrderReminderResult["reminders"][number]["reminder_status"]): string {
+  if (status === "overdue") return "atrasado";
+  if (status === "due_soon") return "proximo<=2h";
+  return "proximo";
+}
+
+function formatReportRemindersReply(result: OrderReminderResult): string {
+  const label = result.period.label;
+  const maxInconsistencies = 5;
+  const inconsistencies = result.inconsistencies
+    .slice(0, maxInconsistencies)
+    .map((item, idx) => `${idx + 1}. ${item.reference}: fecha de entrega faltante o inválida (${item.detail})`);
+  const inconsistenciesExtra = result.inconsistencies.length > inconsistencies.length
+    ? `\n... y ${result.inconsistencies.length - inconsistencies.length} inconsistencias más`
+    : "";
+  const inconsistenciesBlock = result.inconsistencies.length > 0
+    ? `\nInconsistencias (${result.inconsistencies.length}):\n${inconsistencies.join("\n")}${inconsistenciesExtra}`
+    : "";
+
+  if (result.total === 0) {
+    return `No encontré recordatorios para ${label}.${inconsistenciesBlock}\nRef: ${result.trace_ref}`;
+  }
+
+  const shown = result.reminders;
+  const lines = shown.map((reminder, idx) => {
+    const qty = reminder.cantidad != null ? `x${reminder.cantidad}` : "x?";
+    const eta = reminder.minutes_to_delivery >= 0
+      ? `T-${reminder.minutes_to_delivery}m`
+      : `T+${Math.abs(reminder.minutes_to_delivery)}m`;
+    const status = formatReminderStatusLabel(reminder.reminder_status);
+    const reference = reminder.folio || reminder.operation_id || "-";
+    return `${idx + 1}. ${reminder.fecha_hora_entrega} | ${reference} | ${reminder.nombre_cliente} | ${reminder.producto} ${qty} | ${status} | ${eta}`;
+  });
+
+  const extra = result.total > shown.length ? `\n... y ${result.total - shown.length} recordatorios más` : "";
+  return `Recordatorios para ${label} (${result.total}):\n${lines.join("\n")}${extra}${inconsistenciesBlock}\nRef: ${result.trace_ref}`;
+}
+
 function formatOrderLookupReply(result: OrderLookupResult): string {
   if (result.total === 0) {
     return `No encontré pedidos para "${result.query}". Prueba con folio, operation_id o nombre del cliente.\nRef: ${result.trace_ref}`;
@@ -2108,6 +2187,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeAppendOrderFn = deps.executeAppendOrderFn ?? appendOrderTool;
   const executeWebPublishFn = deps.executeWebPublishFn ?? createPublishSiteTool();
   const executeOrderReportFn = deps.executeOrderReportFn ?? createReportOrdersTool();
+  const executeReportRemindersFn = deps.executeReportRemindersFn ?? createReportRemindersTool();
   const executeOrderLookupFn = deps.executeOrderLookupFn ?? createLookupOrderTool();
   const executeOrderStatusFn = deps.executeOrderStatusFn ?? createOrderStatusTool();
   const executeAdminHealthFn = deps.executeAdminHealthFn ?? createAdminHealthTool();
@@ -3368,6 +3448,51 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       }
 
       if (st.pending.asked) {
+        if (st.pending.action.intent === "report.reminders") {
+          const remindersPeriod = detectOrderReportPeriodFromClarification({
+            text: msg.text,
+            now: new Date(nowMs()),
+            timezone: orderReportTimezone
+          });
+          if (!remindersPeriod) {
+            return [copy.askFor("order_reminders_period")];
+          }
+
+          try {
+            const reminders = await executeReportRemindersFn({
+              chat_id: msg.chat_id,
+              period: remindersPeriod
+            });
+
+            deps.onTrace?.({
+              event: "report_reminders_succeeded",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "report.reminders",
+              intent_source: "fallback",
+              detail: `period=${reminders.period.type}:${reminders.period.label};total=${reminders.total};trace_ref=${reminders.trace_ref};inconsistencies=${reminders.inconsistencies.length}`
+            });
+
+            clearPending(msg.chat_id);
+            return [formatReportRemindersReply(reminders)];
+          } catch (err) {
+            const safeDetail = err instanceof Error ? err.message : String(err);
+            const traceRef = `report-reminders:${newOperationId()}`;
+
+            deps.onTrace?.({
+              event: "report_reminders_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "report.reminders",
+              intent_source: "fallback",
+              detail: `${safeDetail};ref=${traceRef}`
+            });
+
+            clearPending(msg.chat_id);
+            return [`No pude consultar recordatorios en este momento. Ref: ${traceRef}`];
+          }
+        }
+
         if (st.pending.action.intent === "reporte") {
           const reportPeriod = detectOrderReportPeriodFromClarification({
             text: msg.text,
@@ -4646,6 +4771,21 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       now,
       timezone: orderReportTimezone
     });
+    let remindersPeriod = detectReportRemindersPeriod({
+      text: msg.text,
+      now,
+      timezone: orderReportTimezone
+    });
+    let remindersNeedsPeriod = detectReportRemindersRequestWithoutPeriod({
+      text: msg.text,
+      now,
+      timezone: orderReportTimezone
+    });
+    let remindersIntentSource: "openclaw" | "fallback" | "custom" = "fallback";
+    if (remindersPeriod || remindersNeedsPeriod) {
+      reportPeriod = undefined;
+      reportNeedsPeriod = false;
+    }
     let scheduleDayPeriod = detectScheduleDayPeriod({
       text: msg.text,
       now,
@@ -4761,6 +4901,8 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       });
 
       const hasDeterministicReadOnlyHint = Boolean(
+        remindersPeriod ||
+        remindersNeedsPeriod ||
         reportPeriod ||
         reportNeedsPeriod ||
         scheduleDayPeriod ||
@@ -4785,6 +4927,9 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           ];
         }
       } else {
+        remindersPeriod = undefined;
+        remindersNeedsPeriod = false;
+        remindersIntentSource = routedReadOnly.source;
         reportPeriod = undefined;
         reportNeedsPeriod = false;
         scheduleDayPeriod = undefined;
@@ -4814,6 +4959,11 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         if (routedReadOnly.intent === "report.orders") {
           reportPeriod = routedReadOnly.period;
           reportNeedsPeriod = !routedReadOnly.period;
+        }
+
+        if (routedReadOnly.intent === "report.reminders") {
+          remindersPeriod = routedReadOnly.period;
+          remindersNeedsPeriod = !routedReadOnly.period;
         }
 
         if (routedReadOnly.intent === "schedule.day_view") {
@@ -4948,6 +5098,23 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       return [copy.askFor("schedule_week_query")];
     }
 
+    if (remindersNeedsPeriod) {
+      const operation_id = newOperationId();
+      setState(msg.chat_id, {
+        pending: {
+          operation_id,
+          idempotency_key: operation_id,
+          action: {
+            intent: "report.reminders",
+            payload: {}
+          },
+          missing: ["order_reminders_period"],
+          asked: "order_reminders_period"
+        }
+      });
+      return [copy.askFor("order_reminders_period")];
+    }
+
     if (reportNeedsPeriod) {
       const operation_id = newOperationId();
       setState(msg.chat_id, {
@@ -5030,6 +5197,40 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         });
 
         return [`No pude generar la agenda semanal en este momento. Ref: ${traceRef}`];
+      }
+    }
+
+    if (remindersPeriod) {
+      try {
+        const reminders = await executeReportRemindersFn({
+          chat_id: msg.chat_id,
+          period: remindersPeriod
+        });
+
+        deps.onTrace?.({
+          event: "report_reminders_succeeded",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "report.reminders",
+          intent_source: remindersIntentSource,
+          detail: `period=${reminders.period.type}:${reminders.period.label};total=${reminders.total};trace_ref=${reminders.trace_ref};inconsistencies=${reminders.inconsistencies.length}`
+        });
+
+        return [formatReportRemindersReply(reminders)];
+      } catch (err) {
+        const safeDetail = err instanceof Error ? err.message : String(err);
+        const traceRef = `report-reminders:${newOperationId()}`;
+
+        deps.onTrace?.({
+          event: "report_reminders_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "report.reminders",
+          intent_source: remindersIntentSource,
+          detail: `${safeDetail};ref=${traceRef}`
+        });
+
+        return [`No pude consultar recordatorios en este momento. Ref: ${traceRef}`];
       }
     }
 

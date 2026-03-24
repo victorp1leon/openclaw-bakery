@@ -22,6 +22,7 @@ import { createRecordPaymentTool } from "./tools/order/recordPayment";
 import { createQuoteOrderTool } from "./tools/order/quoteOrder";
 import { createOrderStatusTool } from "./tools/order/orderStatus";
 import { createReportOrdersTool } from "./tools/order/reportOrders";
+import { createReportRemindersTool } from "./tools/order/reportReminders";
 import { createScheduleDayViewTool } from "./tools/order/scheduleDayView";
 import { createScheduleWeekViewTool } from "./tools/order/scheduleWeekView";
 import { createShoppingListGenerateTool } from "./tools/order/shoppingListGenerate";
@@ -232,6 +233,17 @@ const executeOrderReport = createReportOrdersTool({
   limit: appConfig.orderTool.report.limit
 });
 
+const executeReportReminders = createReportRemindersTool({
+  gwsCommand: appConfig.orderTool.sheets.gws.command,
+  gwsCommandArgs: appConfig.orderTool.sheets.gws.commandArgs,
+  gwsSpreadsheetId: appConfig.orderTool.sheets.gws.spreadsheetId,
+  gwsRange: appConfig.orderTool.sheets.gws.range,
+  timeoutMs: appConfig.orderTool.sheets.timeoutMs,
+  maxRetries: appConfig.orderTool.sheets.maxRetries,
+  timezone: appConfig.timezone,
+  limit: appConfig.orderTool.report.limit
+});
+
 const executeOrderLookup = createLookupOrderTool({
   gwsCommand: appConfig.orderTool.sheets.gws.command,
   gwsCommandArgs: appConfig.orderTool.sheets.gws.commandArgs,
@@ -383,6 +395,7 @@ const tracedProcessor = createConversationProcessor({
   executeCreateCardFn: executeCreateCard,
   executeAppendOrderFn: executeAppendOrder,
   executeOrderReportFn: executeOrderReport,
+  executeReportRemindersFn: executeReportReminders,
   executeOrderLookupFn: executeOrderLookup,
   executeOrderStatusFn: executeOrderStatus,
   executeAdminHealthFn: executeAdminHealth,
