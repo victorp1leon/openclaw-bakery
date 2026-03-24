@@ -521,6 +521,10 @@ function main(): void {
       env: smokeLive ? undefined : { SMOKE_STATUS_LIVE: "0" }
     },
     {
+      scenario: "smoke:admin-health",
+      npmScript: "smoke:admin-health"
+    },
+    {
       scenario: "smoke:readonly-routing-trace",
       npmScript: "smoke:readonly-routing-trace",
       env: {

@@ -7,6 +7,8 @@ import { parseAllowedChatIds } from "./guards/allowlistGuard";
 import { createRateLimitGuard } from "./guards/rateLimitGuard";
 import { buildTextPreview, REQUIRED_REDACTION_PATHS } from "./logging/loggingPolicy";
 import { createConversationProcessor } from "./runtime/conversationProcessor";
+import { db } from "./state/database";
+import { createAdminHealthTool } from "./tools/admin/adminHealth";
 import { createAppendExpenseTool } from "./tools/expense/appendExpense";
 import { createAppendOrderTool } from "./tools/order/appendOrder";
 import { createCancelOrderTool } from "./tools/order/cancelOrder";
@@ -277,6 +279,13 @@ const executeScheduleDayView = createScheduleDayViewTool({
   timezone: appConfig.timezone
 });
 
+const executeAdminHealth = createAdminHealthTool({
+  config: appConfig,
+  allowlistSize: allowedChatIds.size,
+  dbPath: process.env.BOT_DB_PATH ?? "bot.db",
+  isDbOpen: () => db.open
+});
+
 const executeOrderUpdate = createUpdateOrderTool({
   dryRunDefault: appConfig.orderTool.sheets.dryRun,
   gwsCommand: appConfig.orderTool.sheets.gws.command,
@@ -347,6 +356,7 @@ const tracedProcessor = createConversationProcessor({
   executeOrderReportFn: executeOrderReport,
   executeOrderLookupFn: executeOrderLookup,
   executeOrderStatusFn: executeOrderStatus,
+  executeAdminHealthFn: executeAdminHealth,
   executeShoppingListFn: executeShoppingList,
   executeScheduleDayViewFn: executeScheduleDayView,
   executeQuoteOrderFn: executeQuoteOrder,

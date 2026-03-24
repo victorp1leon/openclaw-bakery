@@ -3,6 +3,23 @@ import { describe, expect, it } from "vitest";
 import { routeReadOnlyIntentDetailed } from "./readOnlyIntentRouter";
 
 describe("routeReadOnlyIntentDetailed", () => {
+  it("enruta admin.health sin campos extra", async () => {
+    const runtime = {
+      completeJson: async () => ({
+        intent: "admin.health"
+      })
+    };
+
+    const routed = await routeReadOnlyIntentDetailed({
+      text: "estado del bot",
+      runtime
+    });
+
+    expect(routed.intent).toBe("admin.health");
+    expect(routed.source).toBe("openclaw");
+    expect(routed.query).toBeUndefined();
+  });
+
   it("enruta order.lookup y extrae query", async () => {
     const runtime = {
       completeJson: async () => ({

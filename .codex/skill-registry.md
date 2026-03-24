@@ -1,6 +1,6 @@
 # Skill Registry
 
-Generated At (UTC): 2026-03-23 18:58:53.744 UTC
+Generated At (UTC): 2026-03-24 00:02:24.510 UTC
 
 ## Skills
 
@@ -41,6 +41,7 @@ Generated At (UTC): 2026-03-23 18:58:53.744 UTC
 | read-only-partial-intervention-standard | `.codex/rules/read-only-partial-intervention-standard.md` |
 | read-only-trace-ref-standard | `.codex/rules/read-only-trace-ref-standard.md` |
 | secrets-never-commit | `.codex/rules/secrets-never-commit.md` |
+| smoke-chat-id-isolation | `.codex/rules/smoke-chat-id-isolation.md` |
 | test-failure-priority-gate | `.codex/rules/test-failure-priority-gate.md` |
 | token-efficiency-codex | `.codex/rules/token-efficiency-codex.md` |
 

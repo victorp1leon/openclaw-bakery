@@ -18,6 +18,7 @@ Estas reglas complementan `AGENTS.md` para acelerar desarrollo y reducir regresi
 - `read-only-partial-intervention-standard.md`: estandar obligatorio para exponer intervencion manual cuando intents read-only excluyen datos por calidad/fallback.
 - `token-efficiency-codex.md`: optimizacion de tokens con enfoque safety-first (alcance explicito, exploracion acotada, sin degradar validacion/trazabilidad).
 - `test-failure-priority-gate.md`: si fallan unit/smoke, el siguiente objetivo obligatorio es arreglar fallas; sin commit ni avance de feature.
+- `smoke-chat-id-isolation.md`: ejecutar smokes con `SMOKE_CHAT_ID` unico para evitar colisiones con estado `pending` residual.
 
 ## Usage
 1. Aplicar estas reglas por defecto en cambios de bot/runtime.

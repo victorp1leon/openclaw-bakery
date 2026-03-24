@@ -4,11 +4,11 @@
 # Spec - readOnlyIntentRouter
 
 Status: MVP
-Last Updated: 2026-03-19
+Last Updated: 2026-03-23
 
 ## Objective
 Route read-only intents using OpenClaw-first classification/extraction for:
-`report.orders`, `order.lookup`, `order.status`, `schedule.day_view`, `shopping.list.generate`, `quote.order`.
+`admin.health`, `report.orders`, `order.lookup`, `order.status`, `schedule.day_view`, `shopping.list.generate`, `quote.order`.
 It must classify and extract draft query/scope data only and must not execute tools or mutate state.
 
 ## Inputs
@@ -44,6 +44,7 @@ It must classify and extract draft query/scope data only and must not execute to
 - Not applicable in this component (routing/extraction only).
 
 ## Test Cases
+- `routes_admin_health_without_extra_fields`
 - `routes_order_lookup_and_extracts_query`
 - `routes_report_orders_with_period`
 - `returns_unknown_when_quote_routing_disabled`

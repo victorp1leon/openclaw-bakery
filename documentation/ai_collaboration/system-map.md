@@ -61,6 +61,7 @@ Last Updated: 2026-03-23
 11. `shopping.list.generate`: consulta de insumos/surtido -> lectura de `Pedidos` via `gws` + agregacion de productos/insumos sugeridos con recetas `inline` (smoke/mock) o `CatalogoRecetas` via `gws` (live) -> respuesta resumida (sin confirmacion ni mutacion).
 12. `inventory.consume`: mutacion por referencia de pedido (comando explicito, flag `INVENTORY_CONSUME_ENABLE`) -> confirmacion -> decremento de `Inventario` + append auditable en `MovimientosInventario` via `gws` con idempotencia por `operation_id`.
 13. `schedule.day_view`: consulta de agenda diaria (`agenda de hoy/manana/fecha`) -> lectura de `Pedidos` via `gws` (agendado por `fecha_hora_entrega_iso`) -> respuesta read-only en bloques `deliveries`, `preparation`, `suggestedPurchases` + `inconsistencies`, con `trace_ref` para soporte (sin confirmacion ni mutacion).
+14. `admin.health`: consulta admin de salud operativa (`estado del bot`, `admin health`) -> routing read-only (`OpenClaw` o fallback deterministico) -> `runHealthcheck` via tool `adminHealth` -> respuesta sanitizada con estado/checks y `Ref/trace_ref` (sin confirmacion ni mutacion).
 
 ## Source Documents
 - `documentation/bot-bakery.overview.md`

@@ -27,6 +27,7 @@ import { parseExpense, parseOrder, type ParseSource } from "../skills/parser";
 import { registerPendingOperation, upsertOperation } from "../state/operations";
 import { clearPending, getState, setState } from "../state/stateStore";
 import { appendExpenseTool } from "../tools/expense/appendExpense";
+import { createAdminHealthTool, type AdminHealthResult } from "../tools/admin/adminHealth";
 import { appendOrderTool } from "../tools/order/appendOrder";
 import {
   createCancelOrderTool,
@@ -135,6 +136,9 @@ type ProcessorDeps = {
     chat_id: string;
     query: string;
   }) => Promise<OrderStatusResult>;
+  executeAdminHealthFn?: (args: {
+    chat_id: string;
+  }) => Promise<AdminHealthResult>;
   executeShoppingListFn?: (args: {
     chat_id: string;
     scope: ShoppingListScope;
@@ -944,6 +948,23 @@ function detectScheduleDayRequestWithoutScope(args: {
   return detectScheduleDayPeriod(args) == null;
 }
 
+function detectAdminHealthRequest(text: string): boolean {
+  const normalized = normalizeForMatch(text);
+
+  const hasHealthHint = /\b(health|healthcheck|salud|estado)\b/.test(normalized);
+  if (!hasHealthHint) return false;
+
+  const hasAdminContext = /\b(admin|bot|sistema|runtime)\b/.test(normalized);
+  if (!hasAdminContext) return false;
+
+  return (
+    /\badmin\b.*\b(health|salud|estado)\b/.test(normalized) ||
+    /\b(health|salud|estado)\b.*\badmin\b/.test(normalized) ||
+    /\b(estado|salud)\s+(del\s+)?(bot|sistema|runtime)\b/.test(normalized) ||
+    /\bhealthcheck\b/.test(normalized)
+  );
+}
+
 function detectQuoteOrderQuery(text: string): string | undefined {
   const normalized = normalizeForMatch(text);
   const hasQuoteVerb = /\b(cotiza|cotizar|cotizacion|cuanto\s+cuesta|cuanto\s+sale|cuanto\s+vale|presupuesto|precio\s+de)\b/.test(
@@ -1341,6 +1362,26 @@ function formatOrderStatusReply(result: OrderStatusResult): string {
 
   const extra = result.total > shown.length ? `\n... y ${result.total - shown.length} más. Puedes refinar con folio u operation_id.` : "";
   return `Estado de pedidos para "${result.query}" (${result.total}):\n${lines.join("\n")}${extra}\nRef: ${result.trace_ref}`;
+}
+
+function formatAdminHealthStatusLabel(status: AdminHealthResult["status"]): string {
+  if (status === "ok") return "OK";
+  if (status === "degraded") return "DEGRADED";
+  return "ERROR";
+}
+
+function formatAdminHealthReply(result: AdminHealthResult): string {
+  const checks = result.checks
+    .slice(0, 12)
+    .map((check, idx) => `${idx + 1}. ${check.name}: ${formatAdminHealthStatusLabel(check.status)} | ${check.detail}`);
+  const checksBlock = checks.length > 0 ? `Checks:\n${checks.join("\n")}` : "Checks: sin datos";
+
+  return [
+    `Estado admin del bot: ${formatAdminHealthStatusLabel(result.status)}`,
+    checksBlock,
+    `Generado: ${result.generated_at}`,
+    `Ref: ${result.trace_ref}`
+  ].join("\n");
 }
 
 function formatShoppingListReply(result: ShoppingListResult): string {
@@ -1780,6 +1821,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeOrderReportFn = deps.executeOrderReportFn ?? createReportOrdersTool();
   const executeOrderLookupFn = deps.executeOrderLookupFn ?? createLookupOrderTool();
   const executeOrderStatusFn = deps.executeOrderStatusFn ?? createOrderStatusTool();
+  const executeAdminHealthFn = deps.executeAdminHealthFn ?? createAdminHealthTool();
   const executeShoppingListFn = deps.executeShoppingListFn ?? createShoppingListGenerateTool();
   const executeScheduleDayViewFn = deps.executeScheduleDayViewFn ?? createScheduleDayViewTool();
   const executeQuoteOrderFn = deps.executeQuoteOrderFn ?? createQuoteOrderTool();
@@ -4280,6 +4322,8 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     let statusQuery = detectOrderStatusQuery(msg.text);
     let statusNeedsQuery = detectOrderStatusRequestWithoutQuery(msg.text);
     let quoteQuery = detectQuoteOrderQuery(msg.text);
+    let adminHealthRequested = detectAdminHealthRequest(msg.text);
+    let adminHealthIntentSource: "openclaw" | "fallback" | "custom" = "fallback";
 
     if (openclawReadOnlyRoutingEnabled) {
       const routedReadOnly = await routeReadOnlyIntentFn({
@@ -4307,6 +4351,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         lookupNeedsQuery ||
         statusQuery ||
         statusNeedsQuery ||
+        adminHealthRequested ||
         (openclawReadOnlyQuoteEnabled && quoteQuery)
       );
 
@@ -4328,6 +4373,12 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         statusQuery = undefined;
         statusNeedsQuery = false;
         quoteQuery = undefined;
+        adminHealthRequested = false;
+        adminHealthIntentSource = routedReadOnly.source;
+
+        if (routedReadOnly.intent === "admin.health") {
+          adminHealthRequested = true;
+        }
 
         if (routedReadOnly.intent === "report.orders") {
           reportPeriod = routedReadOnly.period;
@@ -4358,6 +4409,39 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           const extracted = trimString(routedReadOnly.query);
           quoteQuery = extracted ?? detectQuoteOrderQuery(msg.text);
         }
+      }
+    }
+
+    if (adminHealthRequested) {
+      try {
+        const health = await executeAdminHealthFn({
+          chat_id: msg.chat_id
+        });
+
+        deps.onTrace?.({
+          event: "admin_health_succeeded",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "admin.health",
+          intent_source: adminHealthIntentSource,
+          detail: `status=${health.status};trace_ref=${health.trace_ref}`
+        });
+
+        return [formatAdminHealthReply(health)];
+      } catch (err) {
+        const safeDetail = err instanceof Error ? err.message : String(err);
+        const traceRef = `admin-health:${newOperationId()}`;
+
+        deps.onTrace?.({
+          event: "admin_health_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "admin.health",
+          intent_source: adminHealthIntentSource,
+          detail: `${safeDetail};ref=${traceRef}`
+        });
+
+        return [`No pude consultar la salud operativa en este momento. Ref: ${traceRef}`];
       }
     }
 

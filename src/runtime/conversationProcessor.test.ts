@@ -23,7 +23,15 @@ let createConversationProcessor: (args: {
     openclaw_error?: string;
   }>;
   routeReadOnlyIntentFn?: (args: { text: string; enableQuote: boolean }) => Promise<{
-    intent: "report.orders" | "order.lookup" | "order.status" | "schedule.day_view" | "shopping.list.generate" | "quote.order" | "unknown";
+    intent:
+      | "admin.health"
+      | "report.orders"
+      | "order.lookup"
+      | "order.status"
+      | "schedule.day_view"
+      | "shopping.list.generate"
+      | "quote.order"
+      | "unknown";
     source: "openclaw" | "fallback" | "custom";
     strict_mode: boolean;
     openclaw_error?: string;
@@ -200,6 +208,19 @@ let createConversationProcessor: (args: {
     }>;
     trace_ref: string;
     detail: string;
+  }>;
+  executeAdminHealthFn?: (args: {
+    chat_id: string;
+  }) => Promise<{
+    status: "ok" | "degraded" | "error";
+    checks: Array<{
+      name: string;
+      status: "ok" | "degraded" | "error";
+      detail: string;
+    }>;
+    trace_ref: string;
+    detail: string;
+    generated_at: string;
   }>;
   executeShoppingListFn?: (args: {
     chat_id: string;
@@ -3528,6 +3549,116 @@ describe("conversation processor security flow", () => {
       if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
       else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
     }
+  });
+
+  it("usa ruta read-only OpenClaw para admin.health cuando el flag está activo", async () => {
+    const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+    process.env.OPENCLAW_READONLY_ROUTING_ENABLE = "1";
+
+    try {
+      const routeReadOnlyIntentFn = vi.fn(async () => ({
+        intent: "admin.health" as const,
+        source: "openclaw" as const,
+        strict_mode: false
+      }));
+      const executeAdminHealthFn = vi.fn(async () => ({
+        status: "degraded" as const,
+        checks: [
+          { name: "allowlist", status: "degraded" as const, detail: "ALLOWLIST_CHAT_IDS vacío" }
+        ],
+        trace_ref: "admin-health:trace-admin-openclaw",
+        detail: "admin-health executed (checks=1)",
+        generated_at: "2026-03-23T12:00:00.000Z"
+      }));
+
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-admin-openclaw"]),
+        routeReadOnlyIntentFn,
+        executeAdminHealthFn,
+        routeIntentFn: async () => "unknown"
+      });
+
+      const replies = await processor.handleMessage({ chat_id: "chat-admin-openclaw", text: "estado del bot" });
+      expect(replies[0]).toContain("Estado admin del bot: DEGRADED");
+      expect(replies[0]).toContain("Ref: admin-health:trace-admin-openclaw");
+      expect(routeReadOnlyIntentFn).toHaveBeenCalledWith({ text: "estado del bot", enableQuote: true });
+      expect(executeAdminHealthFn).toHaveBeenCalledWith({
+        chat_id: "chat-admin-openclaw"
+      });
+    } finally {
+      if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+      else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+    }
+  });
+
+  it("usa fallback deterministico para admin.health cuando OpenClaw read-only esta deshabilitado", async () => {
+    const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+    delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+
+    try {
+      const executeAdminHealthFn = vi.fn(async () => ({
+        status: "ok" as const,
+        checks: [
+          { name: "env", status: "ok" as const, detail: "NODE_ENV=development" }
+        ],
+        trace_ref: "admin-health:trace-admin-fallback",
+        detail: "admin-health executed (checks=1)",
+        generated_at: "2026-03-23T12:00:00.000Z"
+      }));
+      const executeOrderStatusFn = vi.fn();
+
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-admin-fallback"]),
+        routeIntentFn: async () => "unknown",
+        executeAdminHealthFn,
+        executeOrderStatusFn
+      });
+
+      const replies = await processor.handleMessage({ chat_id: "chat-admin-fallback", text: "salud del sistema" });
+      expect(replies[0]).toContain("Estado admin del bot: OK");
+      expect(replies[0]).toContain("Ref: admin-health:trace-admin-fallback");
+      expect(executeAdminHealthFn).toHaveBeenCalledTimes(1);
+      expect(executeOrderStatusFn).not.toHaveBeenCalled();
+    } finally {
+      if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+      else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+    }
+  });
+
+  it("no interfiere con order.status cuando el mensaje es de pedido", async () => {
+    const executeAdminHealthFn = vi.fn();
+    const executeOrderStatusFn = vi.fn(async () => ({
+      query: "op-xyz-123",
+      timezone: "America/Mexico_City",
+      total: 1,
+      orders: [
+        {
+          folio: "op-xyz-123",
+          fecha_hora_entrega: "2026-03-20 10:00",
+          nombre_cliente: "Ana",
+          producto: "pastel",
+          estado_pago: "pendiente" as const,
+          estado_operativo: "programado" as const,
+          total: 450,
+          moneda: "MXN",
+          operation_id: "op-xyz-123"
+        }
+      ],
+      trace_ref: "order-status:op-xyz-123:a1",
+      detail: "order-status executed (provider=gws, attempt=1)"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-order-status-priority"]),
+      routeIntentFn: async () => "unknown",
+      executeOrderStatusFn,
+      executeAdminHealthFn
+    });
+
+    const replies = await processor.handleMessage({ chat_id: "chat-order-status-priority", text: "estado del pedido folio op-xyz-123" });
+    expect(replies[0]).toContain("Estado de pedidos para");
+    expect(executeOrderStatusFn).toHaveBeenCalledTimes(1);
+    expect(executeAdminHealthFn).not.toHaveBeenCalled();
   });
 
   it("en estricto no cae a fallback read-only cuando OpenClaw responde unknown", async () => {

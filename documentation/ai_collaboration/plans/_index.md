@@ -5,6 +5,7 @@ Last Updated: 2026-03-23
 ## Active Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `runtime/implementation/phase6-admin-operations-spec-driven-v1.md` | Implementation | In Progress | 2026-03-23 |
 
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |

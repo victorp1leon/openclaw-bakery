@@ -1,7 +1,7 @@
 # DDD Roadmap Coverage Matrix
 
 Status: In Progress
-Last Updated: 2026-03-17
+Last Updated: 2026-03-23
 
 ## Purpose
 Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
@@ -59,7 +59,7 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 | 5 | `costing.recipe_cost` | Roadmap only | No | No | Planned | Crear spec de catalogo/recetas |
 | 5 | `profit.order` | Roadmap only | No | No | Planned | Crear spec de calculo de utilidad |
 | 5 | `cashflow.week` | Roadmap only | No | No | Planned | Crear spec de agregacion financiera |
-| 6 | `admin.health` | Covered by healthcheck specs | `src/health/healthcheck.test.ts` | `src/health/healthcheck.ts` | Partial | Definir skill/command admin explicito |
+| 6 | `admin.health` | Yes (`documentation/specs/runtime/admin-health/` + contratos `admin-health`/runtime) | `src/tools/admin/adminHealth.test.ts`, `src/skills/readOnlyIntentRouter.test.ts`, `src/runtime/conversationProcessor.test.ts`, `scripts/smoke/admin-health-smoke.ts` | `src/tools/admin/adminHealth.ts`, `src/skills/readOnlyIntentRouter.ts`, `src/runtime/conversationProcessor.ts`, `src/index.ts` | Done | Continuar Fase 6 con `admin.config.view` |
 | 6 | `admin.logs` / `admin.allowlist` / `admin.config.view` | Roadmap only | No | No | Planned | Crear specs de skills admin y seguridad |
 
 ## Immediate Design Backlog (Spec-First)
@@ -67,6 +67,7 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 2. Fase 3 funcional:
    - Definir spec de `schedule.week_view` y `report.reminders`.
 3. Fases 5 y 6: analytics (`costing/profit/cashflow`) y admin skills.
+   - `admin-health` entregado (spec + runtime + smoke); siguiente capability: `admin.config.view`.
 
 ## Exit Criteria: "Sistema completamente disenado"
 Se considera completo cuando todas las capacidades del roadmap tienen:
