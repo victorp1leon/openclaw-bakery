@@ -9,6 +9,7 @@ import { buildTextPreview, REQUIRED_REDACTION_PATHS } from "./logging/loggingPol
 import { createConversationProcessor } from "./runtime/conversationProcessor";
 import { db } from "./state/database";
 import { createAdminHealthTool } from "./tools/admin/adminHealth";
+import { createCodeReviewGraphTool } from "./tools/admin/codeReviewGraph";
 import { createAppendExpenseTool } from "./tools/expense/appendExpense";
 import { createAppendOrderTool } from "./tools/order/appendOrder";
 import { createCancelOrderTool } from "./tools/order/cancelOrder";
@@ -150,6 +151,19 @@ logger.info(
       readOnlyRoutingEnabled: appConfig.openclaw.readOnlyRoutingEnabled,
       readOnlyQuoteEnabled: appConfig.openclaw.readOnlyQuoteEnabled
     },
+    code_review_graph: {
+      enabled: appConfig.codeReviewGraph.enabled,
+      command: appConfig.codeReviewGraph.command,
+      commandArgs: appConfig.codeReviewGraph.commandArgs,
+      timeoutMs: appConfig.codeReviewGraph.timeoutMs,
+      allowlistCount: appConfig.codeReviewGraph.repoAllowlist.length,
+      defaultRepoConfigured: Boolean(appConfig.codeReviewGraph.defaultRepoRoot),
+      maxDepth: appConfig.codeReviewGraph.maxDepth,
+      includeSourceDefault: appConfig.codeReviewGraph.includeSourceDefault,
+      maxLinesPerFile: appConfig.codeReviewGraph.maxLinesPerFile,
+      maxOutputChars: appConfig.codeReviewGraph.maxOutputChars,
+      baseRef: appConfig.codeReviewGraph.baseRef
+    },
     telegram: {
       configured: Boolean(appConfig.telegram.botToken),
       pollIntervalMs: appConfig.telegram.pollIntervalMs,
@@ -286,6 +300,10 @@ const executeAdminHealth = createAdminHealthTool({
   isDbOpen: () => db.open
 });
 
+const executeCodeReviewGraph = createCodeReviewGraphTool({
+  config: appConfig
+});
+
 const executeOrderUpdate = createUpdateOrderTool({
   dryRunDefault: appConfig.orderTool.sheets.dryRun,
   gwsCommand: appConfig.orderTool.sheets.gws.command,
@@ -357,6 +375,7 @@ const tracedProcessor = createConversationProcessor({
   executeOrderLookupFn: executeOrderLookup,
   executeOrderStatusFn: executeOrderStatus,
   executeAdminHealthFn: executeAdminHealth,
+  executeCodeReviewGraphFn: executeCodeReviewGraph,
   executeShoppingListFn: executeShoppingList,
   executeScheduleDayViewFn: executeScheduleDayView,
   executeQuoteOrderFn: executeQuoteOrder,

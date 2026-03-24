@@ -1,7 +1,7 @@
 # Specs Index (Canonical SDD)
 
 Status: In Progress
-Last Updated: 2026-03-23
+Last Updated: 2026-03-24
 
 ## Purpose
 Canonical registry for feature specs under `documentation/specs`.
@@ -21,6 +21,7 @@ This index tracks migrated/verified and new SDD-native features by domain.
 | platform | agents-scaffolding-foundation | verified | documentation/specs/platform/agents-scaffolding-foundation/ | documentation/ai_collaboration/plans/platform/implementation/agents-scaffolding-foundation.md | Migrated from legacy implementation plan. |
 | platform | ai-first-documentation-publication-readiness | verified | documentation/specs/platform/ai-first-documentation-publication-readiness/ | documentation/ai_collaboration/plans/platform/implementation/ai-first-documentation-publication-readiness.md | Migrated from legacy implementation plan. |
 | platform | audit-prompt-and-audit-skill-alignment | verified | documentation/specs/platform/audit-prompt-and-audit-skill-alignment/ | documentation/ai_collaboration/plans/platform/implementation/audit-prompt-and-audit-skill-alignment.md | Migrated from legacy implementation plan. |
+| platform | code-review-graph-integration | in_progress | documentation/specs/platform/code-review-graph-integration/ | N/A | New SDD-native integration package; implementation in progress. |
 | platform | codex-collaboration-rollout | verified | documentation/specs/platform/codex-collaboration-rollout/ | documentation/ai_collaboration/plans/platform/implementation/codex-collaboration-rollout.md | Migrated from legacy implementation plan. |
 | platform | codex-skill-registry-sync-automation | verified | documentation/specs/platform/codex-skill-registry-sync-automation/ | documentation/ai_collaboration/plans/platform/implementation/codex-skill-registry-sync-automation.md | Migrated from legacy implementation plan. |
 | platform | codex-skills-rules-acceleration-foundation | verified | documentation/specs/platform/codex-skills-rules-acceleration-foundation/ | documentation/ai_collaboration/plans/platform/implementation/codex-skills-rules-acceleration-foundation.md | Migrated from legacy implementation plan. |

@@ -222,6 +222,31 @@ let createConversationProcessor: (args: {
     detail: string;
     generated_at: string;
   }>;
+  executeCodeReviewGraphFn?: (args: {
+    chat_id: string;
+    operation: "build_or_update_graph" | "get_impact_radius" | "get_review_context";
+    repo_root?: string;
+    target_file?: string;
+    line_number?: number;
+    max_depth?: number;
+    include_source?: boolean;
+    full_rebuild?: boolean;
+  }) => Promise<{
+    status: "ok" | "error";
+    operation: "build_or_update_graph" | "get_impact_radius" | "get_review_context";
+    summary: string;
+    detail: string;
+    trace_ref: string;
+    generated_at: string;
+    data: Record<string, unknown>;
+    meta: {
+      repo_root?: string;
+      duration_ms: number;
+      timed_out: boolean;
+      exit_code: number | null;
+      truncated: boolean;
+    };
+  }>;
   executeShoppingListFn?: (args: {
     chat_id: string;
     scope:
@@ -3622,6 +3647,106 @@ describe("conversation processor security flow", () => {
     } finally {
       if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
       else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+    }
+  });
+
+  it("ejecuta Code Review Graph impact cuando el feature flag está activo", async () => {
+    const prevCrg = process.env.CODE_REVIEW_GRAPH_ENABLE;
+    process.env.CODE_REVIEW_GRAPH_ENABLE = "1";
+
+    try {
+      const executeCodeReviewGraphFn = vi.fn(async () => ({
+        status: "ok" as const,
+        operation: "get_impact_radius" as const,
+        summary: "Blast radius for 1 changed file(s).",
+        detail: "ok",
+        trace_ref: "code-review-graph:trace-impact-1",
+        generated_at: "2026-03-24T19:00:00.000Z",
+        data: { impacted_files_count: 3 },
+        meta: {
+          repo_root: "/home/victor/openclaw-bakery",
+          duration_ms: 121,
+          timed_out: false,
+          exit_code: 0,
+          truncated: false
+        }
+      }));
+
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-crg-impact"]),
+        routeIntentFn: async () => "unknown",
+        executeCodeReviewGraphFn
+      });
+
+      const replies = await processor.handleMessage({
+        chat_id: "chat-crg-impact",
+        text: "admin crg impact src/runtime/conversationProcessor.ts depth 3"
+      });
+
+      expect(replies[0]).toContain("Code Review Graph: OK");
+      expect(replies[0]).toContain("Ref: code-review-graph:trace-impact-1");
+      expect(executeCodeReviewGraphFn).toHaveBeenCalledWith({
+        chat_id: "chat-crg-impact",
+        operation: "get_impact_radius",
+        repo_root: undefined,
+        target_file: "src/runtime/conversationProcessor.ts",
+        line_number: undefined,
+        max_depth: 3,
+        include_source: undefined
+      });
+    } finally {
+      if (prevCrg == null) delete process.env.CODE_REVIEW_GRAPH_ENABLE;
+      else process.env.CODE_REVIEW_GRAPH_ENABLE = prevCrg;
+    }
+  });
+
+  it("pide ruta de archivo para Code Review Graph impact/context", async () => {
+    const prevCrg = process.env.CODE_REVIEW_GRAPH_ENABLE;
+    process.env.CODE_REVIEW_GRAPH_ENABLE = "1";
+
+    try {
+      const executeCodeReviewGraphFn = vi.fn();
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-crg-missing-path"]),
+        routeIntentFn: async () => "unknown",
+        executeCodeReviewGraphFn
+      });
+
+      const replies = await processor.handleMessage({
+        chat_id: "chat-crg-missing-path",
+        text: "admin crg impact"
+      });
+
+      expect(replies[0]).toContain("Necesito la ruta del archivo objetivo");
+      expect(executeCodeReviewGraphFn).not.toHaveBeenCalled();
+    } finally {
+      if (prevCrg == null) delete process.env.CODE_REVIEW_GRAPH_ENABLE;
+      else process.env.CODE_REVIEW_GRAPH_ENABLE = prevCrg;
+    }
+  });
+
+  it("bloquea Code Review Graph cuando el feature flag está deshabilitado", async () => {
+    const prevCrg = process.env.CODE_REVIEW_GRAPH_ENABLE;
+    delete process.env.CODE_REVIEW_GRAPH_ENABLE;
+
+    try {
+      const executeCodeReviewGraphFn = vi.fn();
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-crg-disabled"]),
+        routeIntentFn: async () => "unknown",
+        executeCodeReviewGraphFn
+      });
+
+      const replies = await processor.handleMessage({
+        chat_id: "chat-crg-disabled",
+        text: "admin crg build"
+      });
+
+      expect(replies[0]).toContain("Code Review Graph está deshabilitado");
+      expect(executeCodeReviewGraphFn).not.toHaveBeenCalled();
+    } finally {
+      if (prevCrg == null) delete process.env.CODE_REVIEW_GRAPH_ENABLE;
+      else process.env.CODE_REVIEW_GRAPH_ENABLE = prevCrg;
     }
   });
 

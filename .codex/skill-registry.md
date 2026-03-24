@@ -1,6 +1,6 @@
 # Skill Registry
 
-Generated At (UTC): 2026-03-24 00:02:24.510 UTC
+Generated At (UTC): 2026-03-24 18:38:33.006 UTC
 
 ## Skills
 
@@ -8,6 +8,7 @@ Generated At (UTC): 2026-03-24 00:02:24.510 UTC
 |---|---|---|
 | docs-plan-handoff | Maintain collaboration artifacts for complex tasks. Use when work requires creating or updating plans, plans index entries, and session handoff notes. | `.codex/skills/docs-plan-handoff/SKILL.md` |
 | env-validate | Validate and normalize .env for unit, smoke, and live flows. Use when the user asks to check missing variables, duplicate keys, or configuration errors before running bot flows. | `.codex/skills/env-validate/SKILL.md` |
+| external-tool-adapter-safety | Deliver external tool adapters safely (CLI/Python/MCP bridge) with allowlist validation, timeout controls, output redaction, feature flags, and smoke-summary evidence. Use when integrating third-party analysis tools into OpenClaw runtime/tools. | `.codex/skills/external-tool-adapter-safety/SKILL.md` |
 | feature-delivery-flow | Execute end-to-end delivery for missing roadmap features with explicit gates: scope and acceptance criteria, spec-first design/docs, design verification, implementation, unit tests, smoke-integration summary, operational checks, and manual business validation by the user (Instagram). Use when implementing any non-trivial feature across runtime/tools/integrations. | `.codex/skills/feature-delivery-flow/SKILL.md` |
 | git-commit | Prepare and create clean git commits in this repository when the user asks to commit changes. Use for staging selected files, writing a conventional commit message, validating what is being committed, and confirming final repo status. | `.codex/skills/git-commit/SKILL.md` |
 | grill-me | Run a focused, high-rigor design interview to stress-test a plan before implementation. Use when the user asks to be "grilled", wants to challenge architecture/trade-offs, or needs confidence that open decisions and risks are resolved. | `.codex/skills/grill-me/SKILL.md` |

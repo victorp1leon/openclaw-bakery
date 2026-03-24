@@ -126,6 +126,19 @@ export type AppConfig = {
       facebookPageUrl?: string;
     };
   };
+  codeReviewGraph: {
+    enabled: boolean;
+    command: string;
+    commandArgs: string[];
+    timeoutMs: number;
+    repoAllowlist: string[];
+    defaultRepoRoot?: string;
+    maxDepth: number;
+    includeSourceDefault: boolean;
+    maxLinesPerFile: number;
+    maxOutputChars: number;
+    baseRef: string;
+  };
 };
 
 function toPositiveInt(raw: string | undefined, fallback: number): number {
@@ -215,6 +228,11 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     env.INVENTORY_CONSUME_GWS_VALUE_INPUT_OPTION,
     parseGwsValueInputOption(env.ORDER_SHEETS_GWS_VALUE_INPUT_OPTION, "USER_ENTERED")
   );
+  const codeReviewGraphCommand = env.CODE_REVIEW_GRAPH_COMMAND?.trim() || "python3";
+  const codeReviewGraphCommandArgs = parseCsv(env.CODE_REVIEW_GRAPH_COMMAND_ARGS);
+  const codeReviewGraphAllowlist = parseCsv(env.CODE_REVIEW_GRAPH_REPO_ALLOWLIST);
+  const codeReviewGraphDefaultRepoRoot = env.CODE_REVIEW_GRAPH_DEFAULT_REPO_ROOT?.trim() || undefined;
+  const codeReviewGraphBaseRef = env.CODE_REVIEW_GRAPH_BASE?.trim() || "HEAD~1";
 
   return {
     botPersona: parseBotPersona(env.BOT_PERSONA),
@@ -336,6 +354,19 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
         allowedImageDomains: webAllowedImageDomains.length > 0 ? webAllowedImageDomains : ["facebook.com", "fbcdn.net"],
         facebookPageUrl: env.WEB_FACEBOOK_PAGE_URL?.trim() || undefined
       }
+    },
+    codeReviewGraph: {
+      enabled: (env.CODE_REVIEW_GRAPH_ENABLE ?? "0") === "1",
+      command: codeReviewGraphCommand,
+      commandArgs: codeReviewGraphCommandArgs,
+      timeoutMs: toPositiveInt(env.CODE_REVIEW_GRAPH_TIMEOUT_MS, 30000),
+      repoAllowlist: codeReviewGraphAllowlist,
+      defaultRepoRoot: codeReviewGraphDefaultRepoRoot,
+      maxDepth: toPositiveInt(env.CODE_REVIEW_GRAPH_MAX_DEPTH, 2),
+      includeSourceDefault: (env.CODE_REVIEW_GRAPH_INCLUDE_SOURCE_DEFAULT ?? "0") === "1",
+      maxLinesPerFile: toPositiveInt(env.CODE_REVIEW_GRAPH_MAX_LINES_PER_FILE, 120),
+      maxOutputChars: toPositiveInt(env.CODE_REVIEW_GRAPH_MAX_OUTPUT_CHARS, 12000),
+      baseRef: codeReviewGraphBaseRef
     }
   };
 }

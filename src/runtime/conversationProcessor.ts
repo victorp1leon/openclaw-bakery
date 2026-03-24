@@ -28,6 +28,11 @@ import { registerPendingOperation, upsertOperation } from "../state/operations";
 import { clearPending, getState, setState } from "../state/stateStore";
 import { appendExpenseTool } from "../tools/expense/appendExpense";
 import { createAdminHealthTool, type AdminHealthResult } from "../tools/admin/adminHealth";
+import {
+  createCodeReviewGraphTool,
+  type CodeReviewGraphOperation,
+  type CodeReviewGraphResult
+} from "../tools/admin/codeReviewGraph";
 import { appendOrderTool } from "../tools/order/appendOrder";
 import {
   createCancelOrderTool,
@@ -139,6 +144,16 @@ type ProcessorDeps = {
   executeAdminHealthFn?: (args: {
     chat_id: string;
   }) => Promise<AdminHealthResult>;
+  executeCodeReviewGraphFn?: (args: {
+    chat_id: string;
+    operation: CodeReviewGraphOperation;
+    repo_root?: string;
+    target_file?: string;
+    line_number?: number;
+    max_depth?: number;
+    include_source?: boolean;
+    full_rebuild?: boolean;
+  }) => Promise<CodeReviewGraphResult>;
   executeShoppingListFn?: (args: {
     chat_id: string;
     scope: ShoppingListScope;
@@ -965,6 +980,68 @@ function detectAdminHealthRequest(text: string): boolean {
   );
 }
 
+type DetectedCodeReviewGraphRequest =
+  | {
+    requested: false;
+  }
+  | {
+    requested: true;
+    operation?: CodeReviewGraphOperation;
+    repo_root?: string;
+    target_file?: string;
+    line_number?: number;
+    max_depth?: number;
+    include_source?: boolean;
+  };
+
+function parseCodeReviewGraphCommand(text: string): DetectedCodeReviewGraphRequest {
+  const normalized = normalizeForMatch(text);
+  const requested = /\b(crg|code[\s-]?review[\s-]?graph|review[\s-]?graph)\b/.test(normalized);
+  if (!requested) return { requested: false };
+
+  const hasBuildHint = /\b(build|rebuild|actualiza|actualizar|update|reconstruye|reconstruir)\b/.test(normalized);
+  const hasImpactHint = /\b(impact|blast|radio|afecta|afectados)\b/.test(normalized);
+  const hasContextHint = /\b(context|contexto|review|revision|revisión)\b/.test(normalized);
+
+  let operation: CodeReviewGraphOperation | undefined;
+  if (hasImpactHint) operation = "get_impact_radius";
+  else if (hasContextHint) operation = "get_review_context";
+  else if (hasBuildHint) operation = "build_or_update_graph";
+
+  const fileMatch =
+    text.match(/`([^`]+)`/)?.[1] ??
+    text.match(/"([^"]+)"/)?.[1] ??
+    text.match(/'([^']+)'/)?.[1] ??
+    text.match(/\b(?:[A-Za-z0-9._-]+\/)+[A-Za-z0-9._-]+\.[A-Za-z0-9_-]{1,10}\b/)?.[0];
+  const target_file = trimString(fileMatch);
+
+  const lineNumberMatch = normalized.match(/\b(?:linea|line|l)\s*[:#]?\s*(\d{1,6})\b/);
+  const line_number = lineNumberMatch?.[1] ? Number(lineNumberMatch[1]) : undefined;
+
+  const depthMatch = normalized.match(/\b(?:depth|profundidad)\s*[:=]?\s*(\d{1,2})\b/);
+  const max_depth = depthMatch?.[1] ? Number(depthMatch[1]) : undefined;
+
+  const repoMatch = text.match(/\brepo\s*[:=]?\s*([^\s]+)/i)?.[1];
+  const repo_root = trimString(repoMatch);
+
+  let include_source: boolean | undefined;
+  if (/\b(include\s+source|source\s+on|con\s+source|incluye\s+codigo|mostrar\s+codigo)\b/.test(normalized)) {
+    include_source = true;
+  } else if (/\b(no\s+source|source\s+off|sin\s+source|sin\s+codigo)\b/.test(normalized)) {
+    include_source = false;
+  }
+
+  return {
+    requested: true,
+    operation,
+    repo_root,
+    target_file,
+    line_number: Number.isInteger(line_number) && (line_number ?? 0) > 0 ? line_number : undefined,
+    max_depth: Number.isInteger(max_depth) && (max_depth ?? 0) > 0 ? max_depth : undefined,
+    include_source
+  };
+}
+
 function detectQuoteOrderQuery(text: string): string | undefined {
   const normalized = normalizeForMatch(text);
   const hasQuoteVerb = /\b(cotiza|cotizar|cotizacion|cuanto\s+cuesta|cuanto\s+sale|cuanto\s+vale|presupuesto|precio\s+de)\b/.test(
@@ -1381,6 +1458,37 @@ function formatAdminHealthReply(result: AdminHealthResult): string {
     checksBlock,
     `Generado: ${result.generated_at}`,
     `Ref: ${result.trace_ref}`
+  ].join("\n");
+}
+
+function formatCodeReviewGraphOperationLabel(operation: CodeReviewGraphOperation): string {
+  if (operation === "build_or_update_graph") return "build/update graph";
+  if (operation === "get_impact_radius") return "impact radius";
+  return "review context";
+}
+
+function formatCodeReviewGraphReply(result: CodeReviewGraphResult): string {
+  const statusLabel = result.status === "ok" ? "OK" : "ERROR";
+  const repoLabel = trimString(result.meta.repo_root) ?? "-";
+  const durationMs = Number.isFinite(result.meta.duration_ms) ? Math.trunc(result.meta.duration_ms) : 0;
+  const truncatedNote = result.meta.truncated ? "\nNota: la salida fue truncada por límite de seguridad." : "";
+
+  return [
+    `Code Review Graph: ${statusLabel} (${formatCodeReviewGraphOperationLabel(result.operation)})`,
+    `Resumen: ${result.summary}`,
+    `Repo: ${repoLabel}`,
+    `Tiempo: ${durationMs}ms`,
+    `Ref: ${result.trace_ref}${truncatedNote}`
+  ].join("\n");
+}
+
+function formatCodeReviewGraphUsageReply(): string {
+  return [
+    "No pude identificar la operación de Code Review Graph.",
+    "Usa uno de estos formatos:",
+    "1) admin crg build",
+    "2) admin crg impact `src/ruta/archivo.ts` depth 2",
+    "3) admin crg context `src/ruta/archivo.ts` line 120"
   ].join("\n");
 }
 
@@ -1806,6 +1914,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const strict_mode = process.env.OPENCLAW_STRICT === "1";
   const openclawReadOnlyRoutingEnabled = process.env.OPENCLAW_READONLY_ROUTING_ENABLE === "1";
   const openclawReadOnlyQuoteEnabled = (process.env.OPENCLAW_READONLY_QUOTE_ENABLE ?? "1") === "1";
+  const codeReviewGraphEnabled = (process.env.CODE_REVIEW_GRAPH_ENABLE ?? "0") === "1";
   const nowMs = deps.nowMs ?? (() => Date.now());
   const newOperationId = deps.newOperationId ?? uuidv4;
   const routeIntentDetailedFn = deps.routeIntentDetailedFn ?? routeIntentDetailed;
@@ -1822,6 +1931,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeOrderLookupFn = deps.executeOrderLookupFn ?? createLookupOrderTool();
   const executeOrderStatusFn = deps.executeOrderStatusFn ?? createOrderStatusTool();
   const executeAdminHealthFn = deps.executeAdminHealthFn ?? createAdminHealthTool();
+  const executeCodeReviewGraphFn = deps.executeCodeReviewGraphFn ?? createCodeReviewGraphTool();
   const executeShoppingListFn = deps.executeShoppingListFn ?? createShoppingListGenerateTool();
   const executeScheduleDayViewFn = deps.executeScheduleDayViewFn ?? createScheduleDayViewTool();
   const executeQuoteOrderFn = deps.executeQuoteOrderFn ?? createQuoteOrderTool();
@@ -4324,6 +4434,64 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     let quoteQuery = detectQuoteOrderQuery(msg.text);
     let adminHealthRequested = detectAdminHealthRequest(msg.text);
     let adminHealthIntentSource: "openclaw" | "fallback" | "custom" = "fallback";
+    const codeReviewGraphRequest = parseCodeReviewGraphCommand(msg.text);
+
+    if (codeReviewGraphRequest.requested) {
+      if (!codeReviewGraphEnabled) {
+        return [
+          "Code Review Graph está deshabilitado. Activa CODE_REVIEW_GRAPH_ENABLE=1 y configura CODE_REVIEW_GRAPH_REPO_ALLOWLIST."
+        ];
+      }
+
+      if (!codeReviewGraphRequest.operation) {
+        return [formatCodeReviewGraphUsageReply()];
+      }
+
+      if (
+        (codeReviewGraphRequest.operation === "get_impact_radius" ||
+          codeReviewGraphRequest.operation === "get_review_context") &&
+        !codeReviewGraphRequest.target_file
+      ) {
+        return ["Necesito la ruta del archivo objetivo para ejecutar esa operación de Code Review Graph."];
+      }
+
+      try {
+        const graphResult = await executeCodeReviewGraphFn({
+          chat_id: msg.chat_id,
+          operation: codeReviewGraphRequest.operation,
+          repo_root: codeReviewGraphRequest.repo_root,
+          target_file: codeReviewGraphRequest.target_file,
+          line_number: codeReviewGraphRequest.line_number,
+          max_depth: codeReviewGraphRequest.max_depth,
+          include_source: codeReviewGraphRequest.include_source
+        });
+
+        deps.onTrace?.({
+          event: graphResult.status === "ok" ? "code_review_graph_succeeded" : "code_review_graph_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "admin.code_review_graph",
+          intent_source: "fallback",
+          detail: `${graphResult.operation};status=${graphResult.status};ref=${graphResult.trace_ref}`
+        });
+
+        return [formatCodeReviewGraphReply(graphResult)];
+      } catch (err) {
+        const safeDetail = err instanceof Error ? err.message : String(err);
+        const traceRef = `code-review-graph:${newOperationId()}`;
+
+        deps.onTrace?.({
+          event: "code_review_graph_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "admin.code_review_graph",
+          intent_source: "fallback",
+          detail: `${safeDetail};ref=${traceRef}`
+        });
+
+        return [`No pude ejecutar Code Review Graph en este momento. Ref: ${traceRef}`];
+      }
+    }
 
     if (openclawReadOnlyRoutingEnabled) {
       const routedReadOnly = await routeReadOnlyIntentFn({

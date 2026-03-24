@@ -74,6 +74,17 @@ describe("appConfig", () => {
     expect(config.webTool.publish.maxRetries).toBe(2);
     expect(config.webTool.publish.allowedImageDomains).toEqual(["facebook.com", "fbcdn.net"]);
     expect(config.webTool.publish.facebookPageUrl).toBeUndefined();
+    expect(config.codeReviewGraph.enabled).toBe(false);
+    expect(config.codeReviewGraph.command).toBe("python3");
+    expect(config.codeReviewGraph.commandArgs).toEqual([]);
+    expect(config.codeReviewGraph.timeoutMs).toBe(30000);
+    expect(config.codeReviewGraph.repoAllowlist).toEqual([]);
+    expect(config.codeReviewGraph.defaultRepoRoot).toBeUndefined();
+    expect(config.codeReviewGraph.maxDepth).toBe(2);
+    expect(config.codeReviewGraph.includeSourceDefault).toBe(false);
+    expect(config.codeReviewGraph.maxLinesPerFile).toBe(120);
+    expect(config.codeReviewGraph.maxOutputChars).toBe(12000);
+    expect(config.codeReviewGraph.baseRef).toBe("HEAD~1");
   });
 
   it("parses openclaw flags and timeouts", () => {
@@ -287,5 +298,36 @@ describe("appConfig", () => {
     expect(config.webTool.publish.maxRetries).toBe(4);
     expect(config.webTool.publish.allowedImageDomains).toEqual(["images.hadibakery.com", "fbcdn.net"]);
     expect(config.webTool.publish.facebookPageUrl).toBe("https://www.facebook.com/hadibakery");
+  });
+
+  it("parses code review graph settings", () => {
+    const config = loadAppConfig({
+      CODE_REVIEW_GRAPH_ENABLE: "1",
+      CODE_REVIEW_GRAPH_COMMAND: " python3 ",
+      CODE_REVIEW_GRAPH_COMMAND_ARGS: " -u, -X dev ",
+      CODE_REVIEW_GRAPH_TIMEOUT_MS: "18000",
+      CODE_REVIEW_GRAPH_REPO_ALLOWLIST: " /home/victor/openclaw-bakery, /home/victor/code-review-graph ",
+      CODE_REVIEW_GRAPH_DEFAULT_REPO_ROOT: " /home/victor/openclaw-bakery ",
+      CODE_REVIEW_GRAPH_MAX_DEPTH: "4",
+      CODE_REVIEW_GRAPH_INCLUDE_SOURCE_DEFAULT: "1",
+      CODE_REVIEW_GRAPH_MAX_LINES_PER_FILE: "220",
+      CODE_REVIEW_GRAPH_MAX_OUTPUT_CHARS: "16000",
+      CODE_REVIEW_GRAPH_BASE: "origin/main"
+    } as NodeJS.ProcessEnv);
+
+    expect(config.codeReviewGraph.enabled).toBe(true);
+    expect(config.codeReviewGraph.command).toBe("python3");
+    expect(config.codeReviewGraph.commandArgs).toEqual(["-u", "-X dev"]);
+    expect(config.codeReviewGraph.timeoutMs).toBe(18000);
+    expect(config.codeReviewGraph.repoAllowlist).toEqual([
+      "/home/victor/openclaw-bakery",
+      "/home/victor/code-review-graph"
+    ]);
+    expect(config.codeReviewGraph.defaultRepoRoot).toBe("/home/victor/openclaw-bakery");
+    expect(config.codeReviewGraph.maxDepth).toBe(4);
+    expect(config.codeReviewGraph.includeSourceDefault).toBe(true);
+    expect(config.codeReviewGraph.maxLinesPerFile).toBe(220);
+    expect(config.codeReviewGraph.maxOutputChars).toBe(16000);
+    expect(config.codeReviewGraph.baseRef).toBe("origin/main");
   });
 });
