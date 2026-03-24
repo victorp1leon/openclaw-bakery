@@ -21,6 +21,7 @@
     "smoke:code-review-graph": "npx ts-node --transpile-only scripts/smoke/code-review-graph-smoke.ts",
     "smoke:readonly-routing-trace": "npx ts-node --transpile-only scripts/smoke/readonly-routing-trace-smoke.ts",
     "smoke:schedule": "npx ts-node --transpile-only scripts/smoke/schedule-day-view-smoke.ts",
+    "smoke:schedule-week": "npx ts-node --transpile-only scripts/smoke/schedule-week-view-smoke.ts",
     "smoke:quote": "npx ts-node --transpile-only scripts/smoke/quote-smoke.ts",
     "smoke:update": "npx ts-node --transpile-only scripts/smoke/update-smoke.ts",
     "smoke:cancel": "npx ts-node --transpile-only scripts/smoke/cancel-smoke.ts",

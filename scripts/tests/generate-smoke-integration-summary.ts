@@ -543,6 +543,11 @@ function main(): void {
       env: smokeLive ? undefined : { SMOKE_SCHEDULE_LIVE: "0" }
     },
     {
+      scenario: "smoke:schedule-week",
+      npmScript: "smoke:schedule-week",
+      env: smokeLive ? undefined : { SMOKE_SCHEDULE_WEEK_LIVE: "0" }
+    },
+    {
       scenario: "smoke:quote",
       npmScript: "smoke:quote",
       env: smokeLive ? undefined : { SMOKE_QUOTE_LIVE: "0" }

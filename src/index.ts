@@ -23,6 +23,7 @@ import { createQuoteOrderTool } from "./tools/order/quoteOrder";
 import { createOrderStatusTool } from "./tools/order/orderStatus";
 import { createReportOrdersTool } from "./tools/order/reportOrders";
 import { createScheduleDayViewTool } from "./tools/order/scheduleDayView";
+import { createScheduleWeekViewTool } from "./tools/order/scheduleWeekView";
 import { createShoppingListGenerateTool } from "./tools/order/shoppingListGenerate";
 import { createUpdateOrderTool } from "./tools/order/updateOrder";
 import { createPublishSiteTool } from "./tools/web/publishSite";
@@ -294,6 +295,11 @@ const executeScheduleDayView = createScheduleDayViewTool({
   timezone: appConfig.timezone
 });
 
+const executeScheduleWeekView = createScheduleWeekViewTool({
+  timezone: appConfig.timezone,
+  executeScheduleDayViewFn: executeScheduleDayView
+});
+
 const executeAdminHealth = createAdminHealthTool({
   config: appConfig,
   allowlistSize: allowedChatIds.size,
@@ -384,6 +390,7 @@ const tracedProcessor = createConversationProcessor({
   executeCodeReviewGraphFn: executeCodeReviewGraph,
   executeShoppingListFn: executeShoppingList,
   executeScheduleDayViewFn: executeScheduleDayView,
+  executeScheduleWeekViewFn: executeScheduleWeekView,
   executeQuoteOrderFn: executeQuoteOrder,
   executeOrderUpdateFn: executeOrderUpdate,
   executeOrderCancelFn: executeOrderCancel,

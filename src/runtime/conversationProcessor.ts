@@ -73,6 +73,11 @@ import {
   type ScheduleDayViewResult
 } from "../tools/order/scheduleDayView";
 import {
+  createScheduleWeekViewTool,
+  type ScheduleWeekFilter,
+  type ScheduleWeekViewResult
+} from "../tools/order/scheduleWeekView";
+import {
   createUpdateOrderTool,
   type OrderUpdateExecutionPayload,
   type OrderUpdateReference
@@ -166,6 +171,10 @@ type ProcessorDeps = {
     chat_id: string;
     day: ScheduleDayFilter;
   }) => Promise<ScheduleDayViewResult>;
+  executeScheduleWeekViewFn?: (args: {
+    chat_id: string;
+    week: ScheduleWeekFilter;
+  }) => Promise<ScheduleWeekViewResult>;
   executeQuoteOrderFn?: (args: {
     chat_id: string;
     query: string;
@@ -437,11 +446,26 @@ function parseOrderReportWeekPeriod(args: {
   now: Date;
   timezone: string;
 }): OrderReportPeriod | undefined {
+  const hasWeekHint = /\b(semana|semanal)\b/.test(args.normalized);
+  const looksLikeStandaloneDate =
+    /^\d{4}[/-]\d{1,2}[/-]\d{1,2}$/.test(args.normalized) ||
+    /^\d{1,2}[/-]\d{1,2}(?:[/-]\d{4})?$/.test(args.normalized) ||
+    /^\d{1,2}\s+de\s+[a-z]+(?:\s+de\s+\d{4})?$/.test(args.normalized);
+
   if (/\b(siguiente\s+semana|semana\s+siguiente|proxima\s+semana|semana\s+proxima)\b/.test(args.normalized)) {
     return {
       type: "week",
       anchorDateKey: toDateKeyFromDate(new Date(args.now.getTime() + 7 * DAY_MS), args.timezone),
       label: "la siguiente semana"
+    };
+  }
+
+  const explicitDay = parseOrderReportDayPeriod(args);
+  if (explicitDay && explicitDay.type === "day" && (hasWeekHint || looksLikeStandaloneDate)) {
+    return {
+      type: "week",
+      anchorDateKey: explicitDay.dateKey,
+      label: `semana de ${explicitDay.dateKey}`
     };
   }
 
@@ -942,6 +966,7 @@ function detectScheduleDayPeriod(args: {
 }): ScheduleDayFilter | undefined {
   const normalized = normalizeForMatch(args.text);
   if (!hasScheduleDayHint(normalized)) return undefined;
+  if (/\b(semana|semanal)\b/.test(normalized)) return undefined;
 
   const dayPeriod = parseOrderReportDayPeriod({
     normalized,
@@ -964,7 +989,46 @@ function detectScheduleDayRequestWithoutScope(args: {
 }): boolean {
   const normalized = normalizeForMatch(args.text);
   if (!hasScheduleDayHint(normalized)) return false;
+  if (/\b(semana|semanal)\b/.test(normalized)) return false;
   return detectScheduleDayPeriod(args) == null;
+}
+
+function hasScheduleWeekHint(normalized: string): boolean {
+  const hasScheduleWord = /\b(agenda|horario|cronograma|programacion|plan)\b/.test(normalized);
+  if (!hasScheduleWord) return false;
+  return /\b(semana|semanal)\b/.test(normalized);
+}
+
+function detectScheduleWeekPeriod(args: {
+  text: string;
+  now: Date;
+  timezone: string;
+}): ScheduleWeekFilter | undefined {
+  const normalized = normalizeForMatch(args.text);
+  if (!hasScheduleWeekHint(normalized)) return undefined;
+
+  const weekPeriod = parseOrderReportWeekPeriod({
+    normalized,
+    now: args.now,
+    timezone: args.timezone
+  });
+  if (!weekPeriod || weekPeriod.type !== "week") return undefined;
+
+  return {
+    type: "week",
+    anchorDateKey: weekPeriod.anchorDateKey,
+    label: weekPeriod.label
+  };
+}
+
+function detectScheduleWeekRequestWithoutScope(args: {
+  text: string;
+  now: Date;
+  timezone: string;
+}): boolean {
+  const normalized = normalizeForMatch(args.text);
+  if (!hasScheduleWeekHint(normalized)) return false;
+  return detectScheduleWeekPeriod(args) == null;
 }
 
 function detectAdminHealthRequest(text: string): boolean {
@@ -1658,6 +1722,67 @@ function formatScheduleDayViewReply(result: ScheduleDayViewResult): string {
   ].join("\n");
 }
 
+function formatScheduleWeekViewReply(result: ScheduleWeekViewResult): string {
+  const label = result.week.label;
+  const maxInconsistencies = 10;
+  const inconsistencies = result.inconsistencies.slice(0, maxInconsistencies).map((item, idx) =>
+    `${idx + 1}. ${item.dateKey} | ${item.reference}: ${item.reason} (${item.affects})`
+  );
+  const inconsistenciesExtra = result.inconsistencies.length > inconsistencies.length
+    ? `\n... y ${result.inconsistencies.length - inconsistencies.length} inconsistencias más`
+    : "";
+  const inconsistenciesBlock = result.inconsistencies.length > 0
+    ? `\nInconsistencias (${result.inconsistencies.length}):\n${inconsistencies.join("\n")}${inconsistenciesExtra}`
+    : "";
+
+  if (result.totalOrders === 0) {
+    return `No encontré pedidos para armar la agenda semanal de ${label}.${inconsistenciesBlock}\nRef: ${result.trace_ref}`;
+  }
+
+  const remindersByDate = new Map(result.reminders.map((item) => [item.dateKey, item]));
+  const daysWithOrders = result.days.filter((day) => day.totalOrders > 0).slice(0, 7);
+  const dayLines = daysWithOrders.map((day, idx) => {
+    const reminder = remindersByDate.get(day.day.dateKey);
+    const window = reminder?.firstDelivery
+      ? ` | ventana: ${reminder.firstDelivery}${reminder.lastDelivery && reminder.lastDelivery !== reminder.firstDelivery ? ` -> ${reminder.lastDelivery}` : ""}`
+      : "";
+    return `${idx + 1}. ${day.day.dateKey}: ${day.totalOrders} pedido(s)${window}`;
+  });
+
+  const preparation = result.preparation
+    .slice(0, 14)
+    .map((item, idx) => `${idx + 1}. ${item.product}: x${item.quantity} (${item.orders} pedido(s))`);
+  const preparationExtra = result.preparation.length > preparation.length
+    ? `\n... y ${result.preparation.length - preparation.length} productos más`
+    : "";
+  const preparationBlock = preparation.length > 0
+    ? `Preparación semanal:\n${preparation.join("\n")}${preparationExtra}`
+    : "Preparación semanal: sin datos";
+
+  const purchases = result.suggestedPurchases
+    .slice(0, 14)
+    .map((item, idx) => {
+      const source = item.sourceProducts.length > 0 ? ` [${item.sourceProducts.join(", ")}]` : "";
+      return `${idx + 1}. ${item.item}: ${item.amount} ${item.unit}${source}`;
+    });
+  const purchasesExtra = result.suggestedPurchases.length > purchases.length
+    ? `\n... y ${result.suggestedPurchases.length - purchases.length} compras sugeridas más`
+    : "";
+  const purchasesBlock = purchases.length > 0
+    ? `Compras sugeridas semanales:\n${purchases.join("\n")}${purchasesExtra}`
+    : "Compras sugeridas semanales: sin datos";
+
+  const assumptions = result.assumptions.length > 0 ? `\nSupuestos: ${result.assumptions.join(" ; ")}` : "";
+
+  return [
+    `Agenda semanal para ${label} (${result.totalOrders} pedidos):`,
+    `Días con carga:\n${dayLines.join("\n")}`,
+    preparationBlock,
+    `${purchasesBlock}${assumptions}${inconsistenciesBlock}`,
+    `Ref: ${result.trace_ref}`
+  ].join("\n");
+}
+
 function formatQuoteOrderReply(result: QuoteOrderResult): string {
   const base = result.lines.find((line) => line.kind === "base");
   const nonBase = result.lines.filter((line) => line.kind !== "base");
@@ -1990,6 +2115,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeCodeReviewGraphFn = deps.executeCodeReviewGraphFn ?? createCodeReviewGraphTool();
   const executeShoppingListFn = deps.executeShoppingListFn ?? createShoppingListGenerateTool();
   const executeScheduleDayViewFn = deps.executeScheduleDayViewFn ?? createScheduleDayViewTool();
+  const executeScheduleWeekViewFn = deps.executeScheduleWeekViewFn ?? createScheduleWeekViewTool();
   const executeQuoteOrderFn = deps.executeQuoteOrderFn ?? createQuoteOrderTool();
   const executeOrderUpdateFn = deps.executeOrderUpdateFn ?? createUpdateOrderTool();
   const executeOrderCancelFn = deps.executeOrderCancelFn ?? createCancelOrderTool();
@@ -3388,6 +3514,63 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           }
         }
 
+        if (st.pending.action.intent === "schedule.week_view") {
+          const query = msg.text.trim();
+          if (query.length < 2) {
+            return [copy.askFor("schedule_week_query")];
+          }
+
+          const weekCandidate = parseOrderReportWeekPeriod({
+            normalized: normalizeForMatch(query),
+            now: new Date(nowMs()),
+            timezone: orderReportTimezone
+          });
+          const week = weekCandidate && weekCandidate.type === "week"
+            ? {
+              type: "week" as const,
+              anchorDateKey: weekCandidate.anchorDateKey,
+              label: weekCandidate.label
+            }
+            : undefined;
+          if (!week) {
+            return [copy.askFor("schedule_week_query")];
+          }
+
+          try {
+            const weekView = await executeScheduleWeekViewFn({
+              chat_id: msg.chat_id,
+              week
+            });
+
+            deps.onTrace?.({
+              event: "schedule_week_view_succeeded",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "schedule.week_view",
+              intent_source: "fallback",
+              detail: `${weekView.detail};trace_ref=${weekView.trace_ref};inconsistencies=${weekView.inconsistencies.length}`
+            });
+
+            clearPending(msg.chat_id);
+            return [formatScheduleWeekViewReply(weekView)];
+          } catch (err) {
+            const safeDetail = err instanceof Error ? err.message : String(err);
+            const traceRef = `schedule-week-view:${newOperationId()}`;
+
+            deps.onTrace?.({
+              event: "schedule_week_view_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "schedule.week_view",
+              intent_source: "fallback",
+              detail: `${safeDetail};ref=${traceRef}`
+            });
+
+            clearPending(msg.chat_id);
+            return [`No pude generar la agenda semanal en este momento. Ref: ${traceRef}`];
+          }
+        }
+
         if (st.pending.action.intent === "order.lookup") {
           const query = msg.text.trim();
           if (query.length < 2) {
@@ -4473,6 +4656,17 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       now,
       timezone: orderReportTimezone
     });
+    let scheduleWeekPeriod = detectScheduleWeekPeriod({
+      text: msg.text,
+      now,
+      timezone: orderReportTimezone
+    });
+    let scheduleWeekNeedsScope = detectScheduleWeekRequestWithoutScope({
+      text: msg.text,
+      now,
+      timezone: orderReportTimezone
+    });
+    let scheduleWeekIntentSource: "openclaw" | "fallback" | "custom" = "fallback";
     let shoppingScope = detectShoppingListScope({
       text: msg.text,
       now,
@@ -4571,6 +4765,8 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         reportNeedsPeriod ||
         scheduleDayPeriod ||
         scheduleDayNeedsScope ||
+        scheduleWeekPeriod ||
+        scheduleWeekNeedsScope ||
         shoppingScope ||
         shoppingNeedsScope ||
         lookupQuery ||
@@ -4593,6 +4789,9 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         reportNeedsPeriod = false;
         scheduleDayPeriod = undefined;
         scheduleDayNeedsScope = false;
+        scheduleWeekPeriod = undefined;
+        scheduleWeekNeedsScope = false;
+        scheduleWeekIntentSource = routedReadOnly.source;
         shoppingScope = undefined;
         shoppingNeedsScope = false;
         lookupQuery = undefined;
@@ -4620,6 +4819,11 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         if (routedReadOnly.intent === "schedule.day_view") {
           scheduleDayPeriod = routedReadOnly.day;
           scheduleDayNeedsScope = !routedReadOnly.day;
+        }
+
+        if (routedReadOnly.intent === "schedule.week_view") {
+          scheduleWeekPeriod = routedReadOnly.week;
+          scheduleWeekNeedsScope = !routedReadOnly.week;
         }
 
         if (routedReadOnly.intent === "shopping.list.generate") {
@@ -4727,6 +4931,23 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       return [copy.askFor("schedule_day_query")];
     }
 
+    if (scheduleWeekNeedsScope) {
+      const operation_id = newOperationId();
+      setState(msg.chat_id, {
+        pending: {
+          operation_id,
+          idempotency_key: operation_id,
+          action: {
+            intent: "schedule.week_view",
+            payload: {}
+          },
+          missing: ["schedule_week_query"],
+          asked: "schedule_week_query"
+        }
+      });
+      return [copy.askFor("schedule_week_query")];
+    }
+
     if (reportNeedsPeriod) {
       const operation_id = newOperationId();
       setState(msg.chat_id, {
@@ -4775,6 +4996,40 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         });
 
         return [`No pude generar la agenda del día en este momento. Ref: ${traceRef}`];
+      }
+    }
+
+    if (scheduleWeekPeriod) {
+      try {
+        const weekView = await executeScheduleWeekViewFn({
+          chat_id: msg.chat_id,
+          week: scheduleWeekPeriod
+        });
+
+        deps.onTrace?.({
+          event: "schedule_week_view_succeeded",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "schedule.week_view",
+          intent_source: scheduleWeekIntentSource,
+          detail: `${weekView.detail};trace_ref=${weekView.trace_ref};inconsistencies=${weekView.inconsistencies.length}`
+        });
+
+        return [formatScheduleWeekViewReply(weekView)];
+      } catch (err) {
+        const safeDetail = err instanceof Error ? err.message : String(err);
+        const traceRef = `schedule-week-view:${newOperationId()}`;
+
+        deps.onTrace?.({
+          event: "schedule_week_view_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "schedule.week_view",
+          intent_source: scheduleWeekIntentSource,
+          detail: `${safeDetail};ref=${traceRef}`
+        });
+
+        return [`No pude generar la agenda semanal en este momento. Ref: ${traceRef}`];
       }
     }
 

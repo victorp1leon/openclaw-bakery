@@ -1,6 +1,6 @@
 # Skill Registry
 
-Generated At (UTC): 2026-03-24 19:31:13.727 UTC
+Generated At (UTC): 2026-03-24 22:25:45.704 UTC
 
 ## Skills
 
@@ -34,6 +34,7 @@ Generated At (UTC): 2026-03-24 19:31:13.727 UTC
 | documentation-validation-placeholder-filter | `.codex/rules/documentation-validation-placeholder-filter.md` |
 | gws-only | `.codex/rules/gws-only.md` |
 | intent-disambiguation-guard | `.codex/rules/intent-disambiguation-guard.md` |
+| intent-scope-collision-guard | `.codex/rules/intent-scope-collision-guard.md` |
 | intent-skill-coverage-gate | `.codex/rules/intent-skill-coverage-gate.md` |
 | live-flags-gate | `.codex/rules/live-flags-gate.md` |
 | mandatory-validation | `.codex/rules/mandatory-validation.md` |

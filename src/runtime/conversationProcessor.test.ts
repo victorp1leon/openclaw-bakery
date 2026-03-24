@@ -30,6 +30,7 @@ let createConversationProcessor: (args: {
       | "order.lookup"
       | "order.status"
       | "schedule.day_view"
+      | "schedule.week_view"
       | "shopping.list.generate"
       | "quote.order"
       | "unknown";
@@ -39,6 +40,7 @@ let createConversationProcessor: (args: {
     period?: unknown;
     query?: string;
     day?: unknown;
+    week?: unknown;
     scope?: unknown;
   }>;
   routeIntentFn?: (text: string) => Promise<"gasto" | "pedido" | "web" | "ayuda" | "unknown">;
@@ -459,6 +461,74 @@ let createConversationProcessor: (args: {
       source: "catalog" | "inline" | "fallback_generic";
     }>;
     inconsistencies: Array<{
+      reference: string;
+      reason: "delivery_iso_missing_or_invalid" | "quantity_invalid";
+      affects: "day_schedule" | "preparation_and_purchases";
+      detail: string;
+    }>;
+    assumptions: string[];
+    detail: string;
+  }>;
+  executeScheduleWeekViewFn?: (args: {
+    chat_id: string;
+    week: { type: "week"; anchorDateKey: string; label: string };
+  }) => Promise<{
+    week: { type: "week"; anchorDateKey: string; label: string };
+    timezone: string;
+    trace_ref: string;
+    totalOrders: number;
+    days: Array<{
+      day: { type: "day"; dateKey: string; label: string };
+      totalOrders: number;
+      deliveries: Array<{
+        folio: string;
+        operation_id?: string;
+        fecha_hora_entrega: string;
+        fecha_hora_entrega_iso?: string;
+        nombre_cliente: string;
+        producto: string;
+        cantidad: number;
+        cantidad_invalida?: boolean;
+        tipo_envio?: string;
+        estado_pago?: string;
+        total?: number;
+        moneda?: string;
+        estado_pedido?: string;
+      }>;
+      preparation: Array<{ product: string; quantity: number; orders: number }>;
+      suggestedPurchases: Array<{
+        item: string;
+        unit: string;
+        amount: number;
+        sourceProducts: string[];
+        source: "catalog" | "inline" | "fallback_generic";
+      }>;
+      inconsistencies: Array<{
+        reference: string;
+        reason: "delivery_iso_missing_or_invalid" | "quantity_invalid";
+        affects: "day_schedule" | "preparation_and_purchases";
+        detail: string;
+      }>;
+      trace_ref: string;
+      detail: string;
+    }>;
+    reminders: Array<{
+      dateKey: string;
+      label: string;
+      totalOrders: number;
+      firstDelivery?: string;
+      lastDelivery?: string;
+    }>;
+    preparation: Array<{ product: string; quantity: number; orders: number }>;
+    suggestedPurchases: Array<{
+      item: string;
+      unit: string;
+      amount: number;
+      sourceProducts: string[];
+      source: "catalog" | "inline" | "fallback_generic";
+    }>;
+    inconsistencies: Array<{
+      dateKey: string;
       reference: string;
       reason: "delivery_iso_missing_or_invalid" | "quantity_invalid";
       affects: "day_schedule" | "preparation_and_purchases";
@@ -1178,6 +1248,159 @@ describe("conversation processor security flow", () => {
     });
 
     expect(replies[0]).toContain("Ref: schedule-day-view:op-schedule-fail-1");
+  });
+
+  it("resuelve agenda semanal sin pasar por intent router", async () => {
+    const routeIntentFn = vi.fn(async () => "pedido" as const);
+    const executeScheduleWeekViewFn = vi.fn(async () => ({
+      week: { type: "week", anchorDateKey: "2026-03-07", label: "esta semana" } as const,
+      timezone: "America/Mexico_City",
+      trace_ref: "schedule-week-view:2026-03-03:a1",
+      totalOrders: 2,
+      days: [
+        {
+          day: { type: "day", dateKey: "2026-03-07", label: "viernes 2026-03-07" } as const,
+          totalOrders: 2,
+          deliveries: [
+            {
+              folio: "op-week-1",
+              fecha_hora_entrega: "2026-03-07 14:00",
+              nombre_cliente: "Ana",
+              producto: "cupcakes",
+              cantidad: 12
+            }
+          ],
+          preparation: [
+            {
+              product: "cupcakes",
+              quantity: 12,
+              orders: 2
+            }
+          ],
+          suggestedPurchases: [
+            {
+              item: "harina",
+              unit: "g",
+              amount: 540,
+              sourceProducts: ["cupcakes"],
+              source: "catalog" as const
+            }
+          ],
+          inconsistencies: [],
+          trace_ref: "schedule-day-view:2026-03-07:a1",
+          detail: "ok"
+        }
+      ],
+      reminders: [
+        {
+          dateKey: "2026-03-07",
+          label: "viernes 2026-03-07",
+          totalOrders: 2,
+          firstDelivery: "2026-03-07 14:00",
+          lastDelivery: "2026-03-07 17:00"
+        }
+      ],
+      preparation: [
+        {
+          product: "cupcakes",
+          quantity: 12,
+          orders: 2
+        }
+      ],
+      suggestedPurchases: [
+        {
+          item: "harina",
+          unit: "g",
+          amount: 540,
+          sourceProducts: ["cupcakes"],
+          source: "catalog" as const
+        }
+      ],
+      inconsistencies: [],
+      assumptions: [],
+      detail: "schedule-week-view executed"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-schedule-week"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn,
+      executeScheduleWeekViewFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-schedule-week",
+      text: "dame la agenda de esta semana"
+    });
+
+    expect(replies[0]).toContain("Agenda semanal para esta semana");
+    expect(replies[0]).toContain("Ref: schedule-week-view:2026-03-03:a1");
+    expect(routeIntentFn).not.toHaveBeenCalled();
+    expect(executeScheduleWeekViewFn).toHaveBeenCalledWith({
+      chat_id: "chat-schedule-week",
+      week: { type: "week", anchorDateKey: "2026-03-07", label: "esta semana" }
+    });
+  });
+
+  it("pide semana faltante para agenda semanal y luego responde", async () => {
+    const executeScheduleWeekViewFn = vi.fn(async ({ week }) => ({
+      week,
+      timezone: "America/Mexico_City",
+      trace_ref: "schedule-week-view:2026-03-03:a1",
+      totalOrders: 0,
+      days: [],
+      reminders: [],
+      preparation: [],
+      suggestedPurchases: [],
+      inconsistencies: [],
+      assumptions: [],
+      detail: "schedule-week-view executed"
+    }));
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-schedule-week-missing"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn: async () => "pedido",
+      executeScheduleWeekViewFn
+    });
+
+    const ask = await processor.handleMessage({
+      chat_id: "chat-schedule-week-missing",
+      text: "dame la agenda semanal"
+    });
+    expect(ask[0].toLowerCase()).toContain("qué semana");
+
+    const reply = await processor.handleMessage({
+      chat_id: "chat-schedule-week-missing",
+      text: "esta semana"
+    });
+
+    expect(reply[0]).toContain("No encontré pedidos para armar la agenda semanal de esta semana");
+    expect(executeScheduleWeekViewFn).toHaveBeenCalledWith({
+      chat_id: "chat-schedule-week-missing",
+      week: { type: "week", anchorDateKey: "2026-03-07", label: "esta semana" }
+    });
+  });
+
+  it("incluye trace ref cuando falla schedule.week_view", async () => {
+    const executeScheduleWeekViewFn = vi.fn(async () => {
+      throw new Error("schedule_week_view_day_failed");
+    });
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-schedule-week-fail"]),
+      nowMs: () => Date.parse("2026-03-07T12:00:00.000Z"),
+      routeIntentFn: async () => "pedido",
+      newOperationId: () => "op-schedule-week-fail-1",
+      executeScheduleWeekViewFn
+    });
+
+    const replies = await processor.handleMessage({
+      chat_id: "chat-schedule-week-fail",
+      text: "dame la agenda de esta semana"
+    });
+
+    expect(replies[0]).toContain("Ref: schedule-week-view:op-schedule-week-fail-1");
   });
 
   it("resuelve lista de insumos sin pasar por intent router", async () => {

@@ -65,6 +65,9 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - `shopping.list.generate` should prioritize nearest deliveries first and keep top 10 orders by default.
 - For day schedule queries (e.g. `agenda de hoy`, `agenda del 2026-03-20`), route deterministically to `schedule-day-view` without entering confirm flow.
 - When `schedule.day_view` excludes rows due to critical data quality issues (e.g. missing ISO datetime), runtime must still return a partial agenda plus visible `inconsistencias`.
+- For week schedule queries (e.g. `agenda de esta semana`, `agenda semanal de 2026-03-23`), route deterministically to `schedule-week-view` without entering confirm flow.
+- If user asks week schedule intent without explicit scope (e.g. `agenda semanal`), runtime must ask for clarification (`esta semana|proxima semana|fecha ancla`) and continue once resolved.
+- `schedule.week_view` replies must include `Ref` (`trace_ref`) in success/no-match, and controlled failure with `Ref` when provider fails.
 - For `quote.order`, after returning the quote, require an explicit user decision (`confirmar/cancelar`) to convert quote into `pedido` draft.
 - For `quote.order` with `envio_domicilio`, if zone is missing/ambiguous runtime must ask for `zona` before closing quote total.
 - For `quote.order`, if options/extras matching is ambiguous, runtime must ask explicit clarification (or allow `sin extras`) before continuing.
@@ -143,6 +146,7 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - `returns_admin_config_view_for_supported_queries`
 - `returns_shopping_list_for_supported_queries`
 - `returns_schedule_day_view_for_supported_queries`
+- `returns_schedule_week_view_for_supported_queries`
 - `supports_order_update_summary_and_confirm_flow`
 - `supports_order_update_lookup_resolution_when_reference_missing`
 - `supports_order_update_ambiguous_reference_prompt_with_options`

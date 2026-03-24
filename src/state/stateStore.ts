@@ -4,8 +4,11 @@ export type PendingAction =
   | { intent: "gasto"; payload: any }
   | { intent: "pedido"; payload: any }
   | { intent: "web"; payload: any }
+  | { intent: "reporte"; payload: any }
   | { intent: "quote.order"; payload: any }
   | { intent: "shopping.list.generate"; payload: any }
+  | { intent: "schedule.day_view"; payload: any }
+  | { intent: "schedule.week_view"; payload: any }
   | { intent: "order.lookup"; payload: any }
   | { intent: "order.update"; payload: any }
   | { intent: "order.cancel"; payload: any }

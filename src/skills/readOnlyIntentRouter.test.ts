@@ -93,6 +93,27 @@ describe("routeReadOnlyIntentDetailed", () => {
     });
   });
 
+  it("mapea schedule.week_view con anchor_date_key explicito", async () => {
+    const runtime = {
+      completeJson: async () => ({
+        intent: "schedule.week_view",
+        period: { kind: "week", anchor_date_key: "2026-03-23" }
+      })
+    };
+
+    const routed = await routeReadOnlyIntentDetailed({
+      text: "agenda semanal de 2026-03-23",
+      runtime
+    });
+
+    expect(routed.intent).toBe("schedule.week_view");
+    expect(routed.week).toEqual({
+      type: "week",
+      anchorDateKey: "2026-03-23",
+      label: "semana de 2026-03-23"
+    });
+  });
+
   it("devuelve unknown cuando quote está deshabilitado", async () => {
     const runtime = {
       completeJson: async () => ({

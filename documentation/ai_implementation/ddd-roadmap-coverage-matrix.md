@@ -1,7 +1,7 @@
 # DDD Roadmap Coverage Matrix
 
 Status: In Progress
-Last Updated: 2026-03-23
+Last Updated: 2026-03-24
 
 ## Purpose
 Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
@@ -53,7 +53,7 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 | 3 | `shopping.list.generate` | `.../contracts/components/shopping-list-generate.spec.md` + `.../contracts/components/conversation-processor.spec.md` | `src/tools/order/shoppingListGenerate.test.ts` + `src/runtime/conversationProcessor.test.ts` | Lista de insumos sugerida read-only sobre `Pedidos` via `gws` por scope (`day|week|order_ref|lookup`) con recetas `inline` (smoke/mock) o `CatalogoRecetas` via `gws` (`live`) sin confirm flow ni mutaciones | Done | Curar y versionar `CatalogoRecetas` para mejorar cobertura de aliases y unidades |
 | 3 | `inventory.consume` | `.../contracts/components/inventory-consume.spec.md` + `.../contracts/components/conversation-processor.spec.md` | `src/tools/order/inventoryConsume.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/inventory-consume-smoke.ts` | Mutacion controlada por comando explicito con confirm flow, feature flag `INVENTORY_CONSUME_ENABLE`, decremento en `Inventario`, append auditable en `MovimientosInventario`, idempotencia por `operation_id`, conversion `g<->kg` y fallo parcial con reconciliacion manual | Done | Ejecutar validacion live controlada (3 corridas sin reconciliacion) antes de adopcion operativa |
 | 3 | `schedule.day_view` | `.../contracts/components/schedule-day-view.spec.md` + `.../contracts/components/conversation-processor.spec.md` | `src/tools/order/scheduleDayView.test.ts` + `src/runtime/conversationProcessor.test.ts` + `scripts/smoke/schedule-day-view-smoke.ts` | Lectura read-only de `Pedidos` via `gws` con agenda diaria en 3 bloques (`deliveries`, `preparation`, `suggestedPurchases`), `fecha_hora_entrega_iso` obligatoria para agendado, bloque visible de `inconsistencies`, `trace_ref` en exito/error y compras sugeridas por `CatalogoRecetas` con fallback `inline` | Done | Curar aliases/cobertura de `CatalogoRecetas` y monitorear tasa de inconsistencias por faltantes ISO |
-| 3 | `schedule.week_view` | Roadmap only | No | No | Planned | Definir spec de vista semanal y reglas de recordatorio |
+| 3 | `schedule.week_view` | `.../contracts/components/schedule-week-view.spec.md` + `.../contracts/components/conversation-processor.spec.md` + `.../contracts/components/read-only-intent-router.spec.md` | `src/tools/order/scheduleWeekView.test.ts` + `src/runtime/conversationProcessor.test.ts` + `src/skills/readOnlyIntentRouter.test.ts` + `scripts/smoke/schedule-week-view-smoke.ts` | Vista semanal read-only (`schedule.week_view`) por `esta semana|proxima semana|fecha ancla`, agregada sobre `schedule.day_view` (lunes-domingo), con consolidado `preparation/suggestedPurchases`, `inconsistencies` con `dateKey` y `trace_ref` en exito/fallo controlado | Done | Medir precision operativa del bloque semanal (`reminders`) y considerar semaforos de carga en `v1.1` |
 | 3/5 | `report.orders` | `.../contracts/components/report-orders.spec.md` + `.../contracts/components/conversation-processor.spec.md` | `src/tools/order/reportOrders.test.ts` + `src/runtime/conversationProcessor.test.ts` + `src/config/appConfig.test.ts` | Lectura real de `Pedidos` via `gws` + filtros `day|week|month|year` (incluye fechas/meses explícitos), orden por recencia, límite configurable (`ORDER_REPORT_LIMIT`, default 10), `trace_ref` en éxito/no-match, fail controlado con `Ref`, y bloque visible de inconsistencias de fecha | Done | Evaluar soporte para `año pasado`/`año siguiente` y métricas agregadas por estado si se prioriza |
 | 3/5 | `report.reminders` | Roadmap only | No | No | Planned | Crear spec + ventana de proximidad y reglas de recordatorio |
 | 5 | `costing.recipe_cost` | Roadmap only | No | No | Planned | Crear spec de catalogo/recetas |
@@ -66,7 +66,7 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 ## Immediate Design Backlog (Spec-First)
 1. Mantener `npm run web:rollback:drill` como control manual bajo demanda y conservar bitacora de tiempos por ejecucion.
 2. Fase 3 funcional:
-   - Definir spec de `schedule.week_view` y `report.reminders`.
+   - Definir spec de `report.reminders`.
 3. Fases 5 y 6: analytics (`costing/profit/cashflow`) y admin skills.
    - `admin-health` y `admin-config-view` entregados; siguiente capability: `admin.logs`.
 
