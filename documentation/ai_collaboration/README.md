@@ -14,6 +14,7 @@ Artefactos para continuidad entre sesiones IA + developer.
 - `references/framework/**`: marcos/metodologias reutilizables (externalizables).
 - `references/operations/**`: plantillas/checklists operativos reutilizables.
   - incluye `code-review-graph-gate-checklist.md` para integrar CRG en Discover/Implement/Validate.
+  - incluye `code-review-graph-ab-evaluation-template.md` para medir impacto real con/sin CRG en 5 tareas.
 
 ## Usage
 1. Revisar `plans/_index.md`.

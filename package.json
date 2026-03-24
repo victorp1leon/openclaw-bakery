@@ -4,6 +4,7 @@
     "healthcheck": "npx ts-node --transpile-only src/healthcheck.ts",
     "test": "vitest",
     "test:summary": "npx ts-node --transpile-only scripts/tests/generate-test-summary.ts",
+    "test:crg-ab:summary": "npx ts-node --transpile-only scripts/tests/generate-crg-ab-summary.ts",
     "test:smoke-integration:summary": "npx ts-node --transpile-only scripts/tests/generate-smoke-integration-summary.ts",
     "codex:skill-registry": "node scripts/codex/generate-skill-registry.js",
     "check:intent-skills": "node scripts/codex/check-intent-skill-coverage.js",
