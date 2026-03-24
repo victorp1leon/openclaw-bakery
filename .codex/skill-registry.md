@@ -1,6 +1,6 @@
 # Skill Registry
 
-Generated At (UTC): 2026-03-24 18:38:33.006 UTC
+Generated At (UTC): 2026-03-24 19:31:13.727 UTC
 
 ## Skills
 
@@ -30,6 +30,7 @@ Generated At (UTC): 2026-03-24 18:38:33.006 UTC
 | Rule | Path |
 |---|---|
 | approval-keyword-gate | `.codex/rules/approval-keyword-gate.md` |
+| code-review-graph-impact-gate | `.codex/rules/code-review-graph-impact-gate.md` |
 | documentation-validation-placeholder-filter | `.codex/rules/documentation-validation-placeholder-filter.md` |
 | gws-only | `.codex/rules/gws-only.md` |
 | intent-disambiguation-guard | `.codex/rules/intent-disambiguation-guard.md` |

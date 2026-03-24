@@ -1,7 +1,7 @@
 # AI Collaboration Docs
 
 Status: Active
-Last Updated: 2026-03-23
+Last Updated: 2026-03-24
 
 ## Purpose
 Artefactos para continuidad entre sesiones IA + developer.
@@ -13,6 +13,7 @@ Artefactos para continuidad entre sesiones IA + developer.
 - `plans/**`: planes de implementacion/review + handoffs de sesion.
 - `references/framework/**`: marcos/metodologias reutilizables (externalizables).
 - `references/operations/**`: plantillas/checklists operativos reutilizables.
+  - incluye `code-review-graph-gate-checklist.md` para integrar CRG en Discover/Implement/Validate.
 
 ## Usage
 1. Revisar `plans/_index.md`.

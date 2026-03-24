@@ -1,7 +1,7 @@
 # Spec-Driven Collaboration Flow v1 (OpenClaw Bakery)
 
 Status: Active
-Last Updated: 2026-03-23
+Last Updated: 2026-03-24
 
 ## Objective
 Definir un flujo canonico unico, estructurado y repetible para colaboracion Developer + Codex, inspirado en Spec-Driven Development, pero adaptado a los guardrails operativos de OpenClaw Bakery.
@@ -62,6 +62,22 @@ Definir un flujo canonico unico, estructurado y repetible para colaboracion Deve
 - Actualizar estado final de plan.
 - Actualizar `plans/_index.md`.
 - Escribir handoff corto accionable.
+
+## CRG Impact Gate (When Enabled)
+- Objetivo: usar Code Review Graph para priorizar revision y pruebas por impacto real.
+- Activacion recomendada:
+  - cambios en `src/runtime/`, `src/tools/`, `src/config/`, `src/skills/` o scripts de integracion.
+  - `CODE_REVIEW_GRAPH_ENABLE=1` y repo allowlisted.
+- Secuencia minima:
+  1. Discover: `crg build` baseline.
+  2. Implement: `crg impact` por archivo principal modificado (depth sugerido: 2).
+  3. Validate/Close: `crg context` para archivo de mayor riesgo + evidencia (`trace_ref`) en plan/handoff.
+- Escalamiento sugerido por impacto:
+  - `0-2` archivos impactados: unit focalizados.
+  - `3-5` archivos impactados: unit + smoke de dominio.
+  - `>=6` archivos impactados: unit + smoke/integration summary.
+- Plantilla operativa:
+  - `documentation/ai_collaboration/references/operations/code-review-graph-gate-checklist.md`
 
 ## Mandatory Artifacts by Stage
 - Discover: referencias consultadas (en plan o respuesta de cierre).
