@@ -1,7 +1,7 @@
 # OpenClaw Bakery - System Map (AI Collaboration)
 
 Status: Active
-Last Updated: 2026-03-23
+Last Updated: 2026-03-24
 
 ## Architecture Snapshot
 ```text
@@ -62,6 +62,7 @@ Last Updated: 2026-03-23
 12. `inventory.consume`: mutacion por referencia de pedido (comando explicito, flag `INVENTORY_CONSUME_ENABLE`) -> confirmacion -> decremento de `Inventario` + append auditable en `MovimientosInventario` via `gws` con idempotencia por `operation_id`.
 13. `schedule.day_view`: consulta de agenda diaria (`agenda de hoy/manana/fecha`) -> lectura de `Pedidos` via `gws` (agendado por `fecha_hora_entrega_iso`) -> respuesta read-only en bloques `deliveries`, `preparation`, `suggestedPurchases` + `inconsistencies`, con `trace_ref` para soporte (sin confirmacion ni mutacion).
 14. `admin.health`: consulta admin de salud operativa (`estado del bot`, `admin health`) -> routing read-only (`OpenClaw` o fallback deterministico) -> `runHealthcheck` via tool `adminHealth` -> respuesta sanitizada con estado/checks y `Ref/trace_ref` (sin confirmacion ni mutacion).
+15. `admin.config.view`: consulta admin de configuracion (`configuracion del bot`, `admin config`) -> routing read-only (`OpenClaw` o fallback deterministico) -> snapshot sanitizado via tool `adminConfigView` (flags/booleans/counts, sin secretos) -> respuesta con `Ref/trace_ref` (sin confirmacion ni mutacion).
 
 ## Source Documents
 - `documentation/bot-bakery.overview.md`

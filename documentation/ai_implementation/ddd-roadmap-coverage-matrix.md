@@ -60,14 +60,15 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 | 5 | `profit.order` | Roadmap only | No | No | Planned | Crear spec de calculo de utilidad |
 | 5 | `cashflow.week` | Roadmap only | No | No | Planned | Crear spec de agregacion financiera |
 | 6 | `admin.health` | Yes (`documentation/specs/runtime/admin-health/` + contratos `admin-health`/runtime) | `src/tools/admin/adminHealth.test.ts`, `src/skills/readOnlyIntentRouter.test.ts`, `src/runtime/conversationProcessor.test.ts`, `scripts/smoke/admin-health-smoke.ts` | `src/tools/admin/adminHealth.ts`, `src/skills/readOnlyIntentRouter.ts`, `src/runtime/conversationProcessor.ts`, `src/index.ts` | Done | Continuar Fase 6 con `admin.config.view` |
-| 6 | `admin.logs` / `admin.allowlist` / `admin.config.view` | Roadmap only | No | No | Planned | Crear specs de skills admin y seguridad |
+| 6 | `admin.config.view` | Yes (`documentation/specs/runtime/admin-config-view/` + contratos read-only/runtime) | `src/tools/admin/adminConfigView.test.ts`, `src/skills/readOnlyIntentRouter.test.ts`, `src/runtime/conversationProcessor.test.ts`, `scripts/smoke/admin-config-view-smoke.ts` | `src/tools/admin/adminConfigView.ts`, `src/skills/readOnlyIntentRouter.ts`, `src/runtime/conversationProcessor.ts`, `src/index.ts` | Done | Siguiente capability Fase 6: `admin.logs` |
+| 6 | `admin.logs` / `admin.allowlist` | Roadmap only | No | No | Planned | Crear specs de skills admin y seguridad |
 
 ## Immediate Design Backlog (Spec-First)
 1. Mantener `npm run web:rollback:drill` como control manual bajo demanda y conservar bitacora de tiempos por ejecucion.
 2. Fase 3 funcional:
    - Definir spec de `schedule.week_view` y `report.reminders`.
 3. Fases 5 y 6: analytics (`costing/profit/cashflow`) y admin skills.
-   - `admin-health` entregado (spec + runtime + smoke); siguiente capability: `admin.config.view`.
+   - `admin-health` y `admin-config-view` entregados; siguiente capability: `admin.logs`.
 
 ## Exit Criteria: "Sistema completamente disenado"
 Se considera completo cuando todas las capacidades del roadmap tienen:

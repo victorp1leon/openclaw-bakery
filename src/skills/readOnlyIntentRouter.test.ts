@@ -20,6 +20,23 @@ describe("routeReadOnlyIntentDetailed", () => {
     expect(routed.query).toBeUndefined();
   });
 
+  it("enruta admin.config.view sin campos extra", async () => {
+    const runtime = {
+      completeJson: async () => ({
+        intent: "admin.config.view"
+      })
+    };
+
+    const routed = await routeReadOnlyIntentDetailed({
+      text: "ver configuracion del bot",
+      runtime
+    });
+
+    expect(routed.intent).toBe("admin.config.view");
+    expect(routed.source).toBe("openclaw");
+    expect(routed.query).toBeUndefined();
+  });
+
   it("enruta order.lookup y extrae query", async () => {
     const runtime = {
       completeJson: async () => ({

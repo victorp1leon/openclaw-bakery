@@ -28,6 +28,7 @@ import { registerPendingOperation, upsertOperation } from "../state/operations";
 import { clearPending, getState, setState } from "../state/stateStore";
 import { appendExpenseTool } from "../tools/expense/appendExpense";
 import { createAdminHealthTool, type AdminHealthResult } from "../tools/admin/adminHealth";
+import { createAdminConfigViewTool, type AdminConfigViewResult } from "../tools/admin/adminConfigView";
 import {
   createCodeReviewGraphTool,
   type CodeReviewGraphOperation,
@@ -144,6 +145,9 @@ type ProcessorDeps = {
   executeAdminHealthFn?: (args: {
     chat_id: string;
   }) => Promise<AdminHealthResult>;
+  executeAdminConfigViewFn?: (args: {
+    chat_id: string;
+  }) => Promise<AdminConfigViewResult>;
   executeCodeReviewGraphFn?: (args: {
     chat_id: string;
     operation: CodeReviewGraphOperation;
@@ -980,6 +984,25 @@ function detectAdminHealthRequest(text: string): boolean {
   );
 }
 
+function detectAdminConfigViewRequest(text: string): boolean {
+  const normalized = normalizeForMatch(text);
+
+  const hasConfigHint = /\b(config|configuracion|configuración|settings|ajustes)\b/.test(normalized);
+  if (!hasConfigHint) return false;
+
+  const hasAdminContext = /\b(admin|bot|sistema|runtime)\b/.test(normalized);
+  if (!hasAdminContext) return false;
+
+  return (
+    /\badmin\b.*\b(config|configuracion|configuración|settings|ajustes)\b/.test(normalized) ||
+    /\b(config|configuracion|configuración|settings|ajustes)\b.*\badmin\b/.test(normalized) ||
+    /\b(config|configuracion|configuración|settings|ajustes)\s+(del\s+)?(bot|sistema|runtime)\b/.test(normalized) ||
+    /\b(ver|mostrar|mostrarme|consulta|consultar)\b.*\b(config|configuracion|configuración|settings|ajustes)\b/.test(
+      normalized
+    )
+  );
+}
+
 type DetectedCodeReviewGraphRequest =
   | {
     requested: false;
@@ -1461,6 +1484,38 @@ function formatAdminHealthReply(result: AdminHealthResult): string {
   ].join("\n");
 }
 
+function formatEnabledLabel(value: boolean): string {
+  return value ? "ON" : "OFF";
+}
+
+function formatConfiguredLabel(value: boolean): string {
+  return value ? "SI" : "NO";
+}
+
+function formatAdminConfigViewReply(result: AdminConfigViewResult): string {
+  const runtime = result.snapshot.runtime;
+  const openclaw = result.snapshot.openclaw;
+  const telegram = result.snapshot.telegram;
+  const expense = result.snapshot.expense;
+  const order = result.snapshot.order;
+  const inventory = result.snapshot.inventory_consume;
+  const web = result.snapshot.web;
+  const crg = result.snapshot.code_review_graph;
+
+  return [
+    "Configuracion admin (sanitizada):",
+    `Runtime: env=${runtime.node_env} | canal=${runtime.channel_mode} | tz=${runtime.timezone} | allowlist=${runtime.allowlist_size}`,
+    `OpenClaw: ${formatEnabledLabel(openclaw.enabled)} | strict=${formatEnabledLabel(openclaw.strict)} | readonly=${formatEnabledLabel(openclaw.readonly_routing_enabled)} | quote=${formatEnabledLabel(openclaw.readonly_quote_enabled)}`,
+    `Telegram: token_configurado=${formatConfiguredLabel(telegram.bot_token_configured)} | poll=${telegram.poll_interval_ms}ms`,
+    `Connectors: expense_dry_run=${formatEnabledLabel(expense.dry_run)} | order_trello_dry_run=${formatEnabledLabel(order.trello.dry_run)} | order_sheets_dry_run=${formatEnabledLabel(order.sheets.dry_run)}`,
+    `Inventory: enabled=${formatEnabledLabel(inventory.enabled)} | allow_negative=${formatEnabledLabel(inventory.allow_negative_stock)} | recipe_source=${inventory.recipe_source}`,
+    `Web: chat=${formatEnabledLabel(web.chat_enabled)} | publish_dry_run=${formatEnabledLabel(web.publish.dry_run)} | webhook=${formatConfiguredLabel(web.publish.webhook_url_configured)}`,
+    `CRG: enabled=${formatEnabledLabel(crg.enabled)} | allowlist=${crg.allowlist_count} | timeout=${crg.timeout_ms}ms`,
+    `Generado: ${result.generated_at}`,
+    `Ref: ${result.trace_ref}`
+  ].join("\n");
+}
+
 function formatCodeReviewGraphOperationLabel(operation: CodeReviewGraphOperation): string {
   if (operation === "build_or_update_graph") return "build/update graph";
   if (operation === "get_impact_radius") return "impact radius";
@@ -1931,6 +1986,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeOrderLookupFn = deps.executeOrderLookupFn ?? createLookupOrderTool();
   const executeOrderStatusFn = deps.executeOrderStatusFn ?? createOrderStatusTool();
   const executeAdminHealthFn = deps.executeAdminHealthFn ?? createAdminHealthTool();
+  const executeAdminConfigViewFn = deps.executeAdminConfigViewFn ?? createAdminConfigViewTool();
   const executeCodeReviewGraphFn = deps.executeCodeReviewGraphFn ?? createCodeReviewGraphTool();
   const executeShoppingListFn = deps.executeShoppingListFn ?? createShoppingListGenerateTool();
   const executeScheduleDayViewFn = deps.executeScheduleDayViewFn ?? createScheduleDayViewTool();
@@ -4434,6 +4490,8 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     let quoteQuery = detectQuoteOrderQuery(msg.text);
     let adminHealthRequested = detectAdminHealthRequest(msg.text);
     let adminHealthIntentSource: "openclaw" | "fallback" | "custom" = "fallback";
+    let adminConfigViewRequested = detectAdminConfigViewRequest(msg.text);
+    let adminConfigViewIntentSource: "openclaw" | "fallback" | "custom" = "fallback";
     const codeReviewGraphRequest = parseCodeReviewGraphCommand(msg.text);
 
     if (codeReviewGraphRequest.requested) {
@@ -4520,6 +4578,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         statusQuery ||
         statusNeedsQuery ||
         adminHealthRequested ||
+        adminConfigViewRequested ||
         (openclawReadOnlyQuoteEnabled && quoteQuery)
       );
 
@@ -4543,9 +4602,14 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         quoteQuery = undefined;
         adminHealthRequested = false;
         adminHealthIntentSource = routedReadOnly.source;
+        adminConfigViewRequested = false;
+        adminConfigViewIntentSource = routedReadOnly.source;
 
         if (routedReadOnly.intent === "admin.health") {
           adminHealthRequested = true;
+        }
+        if (routedReadOnly.intent === "admin.config.view") {
+          adminConfigViewRequested = true;
         }
 
         if (routedReadOnly.intent === "report.orders") {
@@ -4610,6 +4674,39 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         });
 
         return [`No pude consultar la salud operativa en este momento. Ref: ${traceRef}`];
+      }
+    }
+
+    if (adminConfigViewRequested) {
+      try {
+        const configView = await executeAdminConfigViewFn({
+          chat_id: msg.chat_id
+        });
+
+        deps.onTrace?.({
+          event: "admin_config_view_succeeded",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "admin.config.view",
+          intent_source: adminConfigViewIntentSource,
+          detail: `status=${configView.status};trace_ref=${configView.trace_ref}`
+        });
+
+        return [formatAdminConfigViewReply(configView)];
+      } catch (err) {
+        const safeDetail = err instanceof Error ? err.message : String(err);
+        const traceRef = `admin-config-view:${newOperationId()}`;
+
+        deps.onTrace?.({
+          event: "admin_config_view_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "admin.config.view",
+          intent_source: adminConfigViewIntentSource,
+          detail: `${safeDetail};ref=${traceRef}`
+        });
+
+        return [`No pude consultar la configuracion operativa en este momento. Ref: ${traceRef}`];
       }
     }
 

@@ -525,6 +525,10 @@ function main(): void {
       npmScript: "smoke:admin-health"
     },
     {
+      scenario: "smoke:admin-config-view",
+      npmScript: "smoke:admin-config-view"
+    },
+    {
       scenario: "smoke:readonly-routing-trace",
       npmScript: "smoke:readonly-routing-trace",
       env: {

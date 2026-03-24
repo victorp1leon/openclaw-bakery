@@ -9,6 +9,7 @@ import { buildTextPreview, REQUIRED_REDACTION_PATHS } from "./logging/loggingPol
 import { createConversationProcessor } from "./runtime/conversationProcessor";
 import { db } from "./state/database";
 import { createAdminHealthTool } from "./tools/admin/adminHealth";
+import { createAdminConfigViewTool } from "./tools/admin/adminConfigView";
 import { createCodeReviewGraphTool } from "./tools/admin/codeReviewGraph";
 import { createAppendExpenseTool } from "./tools/expense/appendExpense";
 import { createAppendOrderTool } from "./tools/order/appendOrder";
@@ -299,6 +300,10 @@ const executeAdminHealth = createAdminHealthTool({
   dbPath: process.env.BOT_DB_PATH ?? "bot.db",
   isDbOpen: () => db.open
 });
+const executeAdminConfigView = createAdminConfigViewTool({
+  config: appConfig,
+  allowlistSize: allowedChatIds.size
+});
 
 const executeCodeReviewGraph = createCodeReviewGraphTool({
   config: appConfig
@@ -375,6 +380,7 @@ const tracedProcessor = createConversationProcessor({
   executeOrderLookupFn: executeOrderLookup,
   executeOrderStatusFn: executeOrderStatus,
   executeAdminHealthFn: executeAdminHealth,
+  executeAdminConfigViewFn: executeAdminConfigView,
   executeCodeReviewGraphFn: executeCodeReviewGraph,
   executeShoppingListFn: executeShoppingList,
   executeScheduleDayViewFn: executeScheduleDayView,

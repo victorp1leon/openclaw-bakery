@@ -3,7 +3,7 @@
 > **Type:** `Implementation`
 > **Status:** `In Progress`
 > **Created:** `2026-03-23`
-> **Last Updated:** `2026-03-23`
+> **Last Updated:** `2026-03-24`
 
 ## Cross-References
 | Documento | Ruta | Uso |
@@ -35,7 +35,7 @@ Fase 6 (Hardening + Operations + Admin skills) aparece como `Partial` en la matr
 | 1 | Definir plan maestro Fase 6 con entrega incremental | Complete | Orden: `admin.health` -> `admin.config.view` -> `admin.logs` -> `admin.allowlist` |
 | 2 | Iniciar `admin.health` en modo spec-first | Complete | Paquete SDD creado en `documentation/specs/runtime/admin-health/` |
 | 3 | Implementar `admin.health` end-to-end | Complete | Routing + tool + runtime + smoke + contratos canónicos actualizados |
-| 4 | Ejecutar `admin.config.view` (read-only sanitizado) | Pending | Requiere politica de redaccion alineada a seguridad |
+| 4 | Ejecutar `admin.config.view` (read-only sanitizado) | Complete | Tool + routing + runtime + tests + smoke entregados sin fuga de secretos |
 | 5 | Ejecutar `admin.logs` (consulta trazas segura) | Pending | Requiere filtros por `chat_id|operation_id` sin secretos |
 | 6 | Ejecutar `admin.allowlist` con guardrails estrictos | Pending | Incluir confirmaciones y policy operativa |
 | 7 | Cerrar Fase 6 en matriz DDD y roadmap operativo | Pending | Actualizar estado final + handoff de cierre |
@@ -58,9 +58,14 @@ Fase 6 (Hardening + Operations + Admin skills) aparece como `Partial` en la matr
   - `SMOKE_CHAT_ID=smoke-admin-health-20260323 npm run smoke:admin-health`
   - `npm run test:smoke-integration:summary`
   - `npm run security:scan`
+- Verificaciones ejecutadas (`admin.config.view` implementation):
+  - `CI=1 npm test -- --run src/tools/admin/adminConfigView.test.ts src/skills/readOnlyIntentRouter.test.ts src/runtime/conversationProcessor.test.ts`
+  - `SMOKE_CHAT_ID=smoke-admin-config-view-20260324 npm run smoke:admin-config-view`
+  - `npm run test:smoke-integration:summary`
+  - `npm run security:scan`
 - Criterio de aceptacion:
   - Existe plan maestro activo de Fase 6 y `admin.health` queda iniciado con paquete spec canonico.
 
 ## Outcome
-Fase 6 mantiene plan maestro activo y entrega completa de `admin.health` bajo flujo spec-first.
-Siguiente milestone recomendado: iniciar `admin.config.view` con politica de redaccion/sanitizacion antes del wiring runtime.
+Fase 6 mantiene plan maestro activo y entrega completa de `admin.health` + `admin.config.view` bajo flujo spec-first.
+Siguiente milestone recomendado: iniciar `admin.logs` con filtros seguros por `chat_id|operation_id` y politicas de retencion/redaccion.

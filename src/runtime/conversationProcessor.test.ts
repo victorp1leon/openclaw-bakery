@@ -25,6 +25,7 @@ let createConversationProcessor: (args: {
   routeReadOnlyIntentFn?: (args: { text: string; enableQuote: boolean }) => Promise<{
     intent:
       | "admin.health"
+      | "admin.config.view"
       | "report.orders"
       | "order.lookup"
       | "order.status"
@@ -218,6 +219,143 @@ let createConversationProcessor: (args: {
       status: "ok" | "degraded" | "error";
       detail: string;
     }>;
+    trace_ref: string;
+    detail: string;
+    generated_at: string;
+  }>;
+  executeAdminConfigViewFn?: (args: {
+    chat_id: string;
+  }) => Promise<{
+    status: "ok";
+    snapshot: {
+      runtime: {
+        node_env: string;
+        channel_mode: "console" | "telegram";
+        timezone: string;
+        allowlist_size: number;
+        rate_limit: {
+          enabled: boolean;
+          window_ms: number;
+          max_messages_per_window: number;
+          block_duration_ms: number;
+        };
+      };
+      openclaw: {
+        enabled: boolean;
+        agent_id: string;
+        profile_configured: boolean;
+        timeout_seconds: number;
+        strict: boolean;
+        strict_softfail: boolean;
+        thinking_configured: boolean;
+        readonly_routing_enabled: boolean;
+        readonly_quote_enabled: boolean;
+      };
+      telegram: {
+        bot_token_configured: boolean;
+        poll_interval_ms: number;
+        long_poll_timeout_seconds: number;
+        api_base_url: string;
+      };
+      expense: {
+        dry_run: boolean;
+        provider: "gws";
+        timeout_ms: number;
+        max_retries: number;
+        gws: {
+          command: string;
+          command_args_count: number;
+          spreadsheet_configured: boolean;
+          range_configured: boolean;
+          value_input_option: "RAW" | "USER_ENTERED";
+        };
+      };
+      order: {
+        trello: {
+          dry_run: boolean;
+          api_key_configured: boolean;
+          token_configured: boolean;
+          list_id_configured: boolean;
+          cancel_list_id_configured: boolean;
+          api_base_url: string;
+          timeout_ms: number;
+          max_retries: number;
+        };
+        sheets: {
+          dry_run: boolean;
+          provider: "gws";
+          timeout_ms: number;
+          max_retries: number;
+          gws: {
+            command: string;
+            command_args_count: number;
+            spreadsheet_configured: boolean;
+            range_configured: boolean;
+            value_input_option: "RAW" | "USER_ENTERED";
+          };
+        };
+        recipes: {
+          source: "inline" | "gws";
+          timeout_ms: number;
+          max_retries: number;
+          gws: {
+            command: string;
+            command_args_count: number;
+            spreadsheet_configured: boolean;
+            range_configured: boolean;
+          };
+        };
+        limits: {
+          lookup: number;
+          status: number;
+          report: number;
+        };
+      };
+      inventory_consume: {
+        enabled: boolean;
+        allow_negative_stock: boolean;
+        recipe_source: "inline" | "gws";
+        timeout_ms: number;
+        max_retries: number;
+        gws: {
+          command: string;
+          command_args_count: number;
+          spreadsheet_configured: boolean;
+          orders_range_configured: boolean;
+          inventory_range_configured: boolean;
+          movements_range_configured: boolean;
+          recipes_range_configured: boolean;
+          value_input_option: "RAW" | "USER_ENTERED";
+        };
+      };
+      web: {
+        chat_enabled: boolean;
+        content_path_configured: boolean;
+        publish: {
+          dry_run: boolean;
+          webhook_url_configured: boolean;
+          api_key_configured: boolean;
+          api_key_header: string;
+          allowed_image_domains_count: number;
+          facebook_page_url_configured: boolean;
+          timeout_ms: number;
+          max_retries: number;
+        };
+      };
+      code_review_graph: {
+        enabled: boolean;
+        command: string;
+        command_args_count: number;
+        timeout_ms: number;
+        allowlist_count: number;
+        default_repo_configured: boolean;
+        max_depth: number;
+        include_source_default: boolean;
+        max_lines_per_file: number;
+        max_output_chars: number;
+        base_ref: string;
+      };
+    };
     trace_ref: string;
     detail: string;
     generated_at: string;
@@ -3643,6 +3781,332 @@ describe("conversation processor security flow", () => {
       expect(replies[0]).toContain("Estado admin del bot: OK");
       expect(replies[0]).toContain("Ref: admin-health:trace-admin-fallback");
       expect(executeAdminHealthFn).toHaveBeenCalledTimes(1);
+      expect(executeOrderStatusFn).not.toHaveBeenCalled();
+    } finally {
+      if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+      else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+    }
+  });
+
+  it("usa ruta read-only OpenClaw para admin.config.view cuando el flag esta activo", async () => {
+    const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+    process.env.OPENCLAW_READONLY_ROUTING_ENABLE = "1";
+
+    try {
+      const routeReadOnlyIntentFn = vi.fn(async () => ({
+        intent: "admin.config.view" as const,
+        source: "openclaw" as const,
+        strict_mode: false
+      }));
+      const executeAdminConfigViewFn = vi.fn(async () => ({
+        status: "ok" as const,
+        snapshot: {
+          runtime: {
+            node_env: "test",
+            channel_mode: "telegram" as const,
+            timezone: "America/Mexico_City",
+            allowlist_size: 1,
+            rate_limit: {
+              enabled: true,
+              window_ms: 10_000,
+              max_messages_per_window: 8,
+              block_duration_ms: 30_000
+            }
+          },
+          openclaw: {
+            enabled: true,
+            agent_id: "main",
+            profile_configured: false,
+            timeout_seconds: 30,
+            strict: false,
+            strict_softfail: false,
+            thinking_configured: false,
+            readonly_routing_enabled: true,
+            readonly_quote_enabled: true
+          },
+          telegram: {
+            bot_token_configured: true,
+            poll_interval_ms: 1000,
+            long_poll_timeout_seconds: 25,
+            api_base_url: "https://api.telegram.org"
+          },
+          expense: {
+            dry_run: true,
+            provider: "gws" as const,
+            timeout_ms: 30_000,
+            max_retries: 2,
+            gws: {
+              command: "gws",
+              command_args_count: 0,
+              spreadsheet_configured: true,
+              range_configured: true,
+              value_input_option: "USER_ENTERED" as const
+            }
+          },
+          order: {
+            trello: {
+              dry_run: true,
+              api_key_configured: true,
+              token_configured: true,
+              list_id_configured: true,
+              cancel_list_id_configured: true,
+              api_base_url: "https://api.trello.com",
+              timeout_ms: 30_000,
+              max_retries: 2
+            },
+            sheets: {
+              dry_run: true,
+              provider: "gws" as const,
+              timeout_ms: 30_000,
+              max_retries: 2,
+              gws: {
+                command: "gws",
+                command_args_count: 0,
+                spreadsheet_configured: true,
+                range_configured: true,
+                value_input_option: "USER_ENTERED" as const
+              }
+            },
+            recipes: {
+              source: "inline" as const,
+              timeout_ms: 30_000,
+              max_retries: 2,
+              gws: {
+                command: "gws",
+                command_args_count: 0,
+                spreadsheet_configured: false,
+                range_configured: false
+              }
+            },
+            limits: {
+              lookup: 10,
+              status: 10,
+              report: 10
+            }
+          },
+          inventory_consume: {
+            enabled: false,
+            allow_negative_stock: false,
+            recipe_source: "gws" as const,
+            timeout_ms: 30_000,
+            max_retries: 2,
+            gws: {
+              command: "gws",
+              command_args_count: 0,
+              spreadsheet_configured: true,
+              orders_range_configured: true,
+              inventory_range_configured: true,
+              movements_range_configured: true,
+              recipes_range_configured: true,
+              value_input_option: "USER_ENTERED" as const
+            }
+          },
+          web: {
+            chat_enabled: true,
+            content_path_configured: true,
+            publish: {
+              dry_run: true,
+              webhook_url_configured: false,
+              api_key_configured: false,
+              api_key_header: "x-api-key",
+              allowed_image_domains_count: 0,
+              facebook_page_url_configured: false,
+              timeout_ms: 30_000,
+              max_retries: 2
+            }
+          },
+          code_review_graph: {
+            enabled: false,
+            command: "python3",
+            command_args_count: 2,
+            timeout_ms: 15_000,
+            allowlist_count: 1,
+            default_repo_configured: true,
+            max_depth: 2,
+            include_source_default: false,
+            max_lines_per_file: 80,
+            max_output_chars: 60_000,
+            base_ref: "HEAD~1"
+          }
+        },
+        trace_ref: "admin-config-view:trace-openclaw",
+        detail: "admin-config-view executed (sanitized)",
+        generated_at: "2026-03-24T20:00:00.000Z"
+      }));
+
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-admin-config-openclaw"]),
+        routeReadOnlyIntentFn,
+        executeAdminConfigViewFn,
+        routeIntentFn: async () => "unknown"
+      });
+
+      const replies = await processor.handleMessage({ chat_id: "chat-admin-config-openclaw", text: "ver config del bot" });
+      expect(replies[0]).toContain("Configuracion admin (sanitizada):");
+      expect(replies[0]).toContain("Ref: admin-config-view:trace-openclaw");
+      expect(routeReadOnlyIntentFn).toHaveBeenCalledWith({ text: "ver config del bot", enableQuote: true });
+      expect(executeAdminConfigViewFn).toHaveBeenCalledWith({
+        chat_id: "chat-admin-config-openclaw"
+      });
+    } finally {
+      if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+      else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+    }
+  });
+
+  it("usa fallback deterministico para admin.config.view cuando OpenClaw read-only esta deshabilitado", async () => {
+    const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+    delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+
+    try {
+      const executeAdminConfigViewFn = vi.fn(async () => ({
+        status: "ok" as const,
+        snapshot: {
+          runtime: {
+            node_env: "test",
+            channel_mode: "console" as const,
+            timezone: "America/Mexico_City",
+            allowlist_size: 1,
+            rate_limit: {
+              enabled: true,
+              window_ms: 10_000,
+              max_messages_per_window: 8,
+              block_duration_ms: 30_000
+            }
+          },
+          openclaw: {
+            enabled: false,
+            agent_id: "main",
+            profile_configured: false,
+            timeout_seconds: 30,
+            strict: false,
+            strict_softfail: false,
+            thinking_configured: false,
+            readonly_routing_enabled: false,
+            readonly_quote_enabled: true
+          },
+          telegram: {
+            bot_token_configured: false,
+            poll_interval_ms: 1000,
+            long_poll_timeout_seconds: 25,
+            api_base_url: "https://api.telegram.org"
+          },
+          expense: {
+            dry_run: true,
+            provider: "gws" as const,
+            timeout_ms: 30_000,
+            max_retries: 2,
+            gws: {
+              command: "gws",
+              command_args_count: 0,
+              spreadsheet_configured: false,
+              range_configured: false,
+              value_input_option: "USER_ENTERED" as const
+            }
+          },
+          order: {
+            trello: {
+              dry_run: true,
+              api_key_configured: false,
+              token_configured: false,
+              list_id_configured: false,
+              cancel_list_id_configured: false,
+              api_base_url: "https://api.trello.com",
+              timeout_ms: 30_000,
+              max_retries: 2
+            },
+            sheets: {
+              dry_run: true,
+              provider: "gws" as const,
+              timeout_ms: 30_000,
+              max_retries: 2,
+              gws: {
+                command: "gws",
+                command_args_count: 0,
+                spreadsheet_configured: false,
+                range_configured: false,
+                value_input_option: "USER_ENTERED" as const
+              }
+            },
+            recipes: {
+              source: "inline" as const,
+              timeout_ms: 30_000,
+              max_retries: 2,
+              gws: {
+                command: "gws",
+                command_args_count: 0,
+                spreadsheet_configured: false,
+                range_configured: false
+              }
+            },
+            limits: {
+              lookup: 10,
+              status: 10,
+              report: 10
+            }
+          },
+          inventory_consume: {
+            enabled: false,
+            allow_negative_stock: false,
+            recipe_source: "gws" as const,
+            timeout_ms: 30_000,
+            max_retries: 2,
+            gws: {
+              command: "gws",
+              command_args_count: 0,
+              spreadsheet_configured: false,
+              orders_range_configured: true,
+              inventory_range_configured: true,
+              movements_range_configured: true,
+              recipes_range_configured: true,
+              value_input_option: "USER_ENTERED" as const
+            }
+          },
+          web: {
+            chat_enabled: true,
+            content_path_configured: true,
+            publish: {
+              dry_run: true,
+              webhook_url_configured: false,
+              api_key_configured: false,
+              api_key_header: "x-api-key",
+              allowed_image_domains_count: 0,
+              facebook_page_url_configured: false,
+              timeout_ms: 30_000,
+              max_retries: 2
+            }
+          },
+          code_review_graph: {
+            enabled: false,
+            command: "python3",
+            command_args_count: 0,
+            timeout_ms: 15_000,
+            allowlist_count: 0,
+            default_repo_configured: false,
+            max_depth: 2,
+            include_source_default: false,
+            max_lines_per_file: 80,
+            max_output_chars: 60_000,
+            base_ref: "HEAD~1"
+          }
+        },
+        trace_ref: "admin-config-view:trace-fallback",
+        detail: "admin-config-view executed (sanitized)",
+        generated_at: "2026-03-24T20:05:00.000Z"
+      }));
+      const executeOrderStatusFn = vi.fn();
+
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-admin-config-fallback"]),
+        routeIntentFn: async () => "unknown",
+        executeAdminConfigViewFn,
+        executeOrderStatusFn
+      });
+
+      const replies = await processor.handleMessage({ chat_id: "chat-admin-config-fallback", text: "configuracion del bot" });
+      expect(replies[0]).toContain("Configuracion admin (sanitizada):");
+      expect(replies[0]).toContain("Ref: admin-config-view:trace-fallback");
+      expect(executeAdminConfigViewFn).toHaveBeenCalledTimes(1);
       expect(executeOrderStatusFn).not.toHaveBeenCalled();
     } finally {
       if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
