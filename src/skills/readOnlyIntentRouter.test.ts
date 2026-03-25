@@ -89,6 +89,53 @@ describe("routeReadOnlyIntentDetailed", () => {
     expect(routed.period).toBe("today");
   });
 
+  it("mapea report.reminders con period=month sin year/month al mes actual", async () => {
+    const runtime = {
+      completeJson: async () => ({
+        intent: "report.reminders",
+        period: { kind: "month" }
+      })
+    };
+
+    const routed = await routeReadOnlyIntentDetailed({
+      text: "recordatorios de este mes",
+      runtime,
+      now: new Date("2026-03-25T12:00:00.000Z"),
+      timezone: "America/Mexico_City"
+    });
+
+    expect(routed.intent).toBe("report.reminders");
+    expect(routed.period).toEqual({
+      type: "month",
+      year: 2026,
+      month: 3,
+      label: "3/2026"
+    });
+  });
+
+  it("mapea report.orders con period=year sin year al año actual", async () => {
+    const runtime = {
+      completeJson: async () => ({
+        intent: "report.orders",
+        period: { kind: "year" }
+      })
+    };
+
+    const routed = await routeReadOnlyIntentDetailed({
+      text: "pedidos de este año",
+      runtime,
+      now: new Date("2026-03-25T12:00:00.000Z"),
+      timezone: "America/Mexico_City"
+    });
+
+    expect(routed.intent).toBe("report.orders");
+    expect(routed.period).toEqual({
+      type: "year",
+      year: 2026,
+      label: "2026"
+    });
+  });
+
   it("mapea schedule.day_view con date_key explicito", async () => {
     const runtime = {
       completeJson: async () => ({

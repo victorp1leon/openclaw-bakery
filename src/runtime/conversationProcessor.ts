@@ -922,6 +922,23 @@ function hasShoppingListHint(normalized: string): boolean {
   );
 }
 
+function hasOrderCreateMutationHint(normalized: string): boolean {
+  const hasOrderNoun = /\b(pedido|orden|encargo)\b/.test(normalized);
+  if (!hasOrderNoun) return false;
+
+  const hasCreateVerb = /\b(agrega|agregar|anade|anadir|crea|crear|nuevo|nueva|registra|registrar|captura|capturar|levanta|levantar|alta)\b/.test(
+    normalized
+  );
+  if (!hasCreateVerb) return false;
+
+  const hasReadOnlyHint = /\b(estado|estatus|status|consulta|consultar|buscar|busca|reporte|reporta|resumen|recordatorio|recordatorios|agenda|insumos|compras|surtir|lista)\b/.test(
+    normalized
+  );
+  if (hasReadOnlyHint) return false;
+
+  return true;
+}
+
 function hasMeaningfulLookupQuery(value: string): boolean {
   const normalized = normalizeForMatch(value);
   if (normalized.length < 2) return false;
@@ -4885,7 +4902,19 @@ export function createConversationProcessor(deps: ProcessorDeps) {
       }
     }
 
-    if (openclawReadOnlyRoutingEnabled) {
+    const normalizedForReadOnlyRouting = normalizeForMatch(msg.text);
+    const bypassReadOnlyRouting = hasOrderCreateMutationHint(normalizedForReadOnlyRouting);
+    if (openclawReadOnlyRoutingEnabled && !bypassReadOnlyRouting) {
+      const fallbackReadOnly = {
+        reportPeriod,
+        remindersPeriod,
+        scheduleDayPeriod,
+        scheduleWeekPeriod,
+        shoppingScope,
+        lookupQuery,
+        statusQuery
+      };
+
       const routedReadOnly = await routeReadOnlyIntentFn({
         text: msg.text,
         enableQuote: openclawReadOnlyQuoteEnabled
@@ -4957,38 +4986,38 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         }
 
         if (routedReadOnly.intent === "report.orders") {
-          reportPeriod = routedReadOnly.period;
-          reportNeedsPeriod = !routedReadOnly.period;
+          reportPeriod = routedReadOnly.period ?? fallbackReadOnly.reportPeriod;
+          reportNeedsPeriod = !reportPeriod;
         }
 
         if (routedReadOnly.intent === "report.reminders") {
-          remindersPeriod = routedReadOnly.period;
-          remindersNeedsPeriod = !routedReadOnly.period;
+          remindersPeriod = routedReadOnly.period ?? fallbackReadOnly.remindersPeriod;
+          remindersNeedsPeriod = !remindersPeriod;
         }
 
         if (routedReadOnly.intent === "schedule.day_view") {
-          scheduleDayPeriod = routedReadOnly.day;
-          scheduleDayNeedsScope = !routedReadOnly.day;
+          scheduleDayPeriod = routedReadOnly.day ?? fallbackReadOnly.scheduleDayPeriod;
+          scheduleDayNeedsScope = !scheduleDayPeriod;
         }
 
         if (routedReadOnly.intent === "schedule.week_view") {
-          scheduleWeekPeriod = routedReadOnly.week;
-          scheduleWeekNeedsScope = !routedReadOnly.week;
+          scheduleWeekPeriod = routedReadOnly.week ?? fallbackReadOnly.scheduleWeekPeriod;
+          scheduleWeekNeedsScope = !scheduleWeekPeriod;
         }
 
         if (routedReadOnly.intent === "shopping.list.generate") {
-          shoppingScope = routedReadOnly.scope;
-          shoppingNeedsScope = !routedReadOnly.scope;
+          shoppingScope = routedReadOnly.scope ?? fallbackReadOnly.shoppingScope;
+          shoppingNeedsScope = !shoppingScope;
         }
 
         if (routedReadOnly.intent === "order.lookup") {
-          lookupQuery = routedReadOnly.query;
-          lookupNeedsQuery = !routedReadOnly.query;
+          lookupQuery = routedReadOnly.query ?? fallbackReadOnly.lookupQuery;
+          lookupNeedsQuery = !lookupQuery;
         }
 
         if (routedReadOnly.intent === "order.status") {
-          statusQuery = routedReadOnly.query;
-          statusNeedsQuery = !routedReadOnly.query;
+          statusQuery = routedReadOnly.query ?? fallbackReadOnly.statusQuery;
+          statusNeedsQuery = !statusQuery;
         }
 
         if (routedReadOnly.intent === "quote.order" && openclawReadOnlyQuoteEnabled) {

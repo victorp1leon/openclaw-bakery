@@ -4133,6 +4133,97 @@ describe("conversation processor security flow", () => {
     }
   });
 
+  it("conserva periodo detectado localmente para report.reminders cuando OpenClaw no lo extrae", async () => {
+    const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+    process.env.OPENCLAW_READONLY_ROUTING_ENABLE = "1";
+
+    try {
+      const routeReadOnlyIntentFn = vi.fn(async () => ({
+        intent: "report.reminders" as const,
+        source: "openclaw" as const,
+        strict_mode: false
+      }));
+      const executeReportRemindersFn = vi.fn(async ({ period }) => ({
+        period: period as { type: "month"; year: number; month: number; label: string },
+        timezone: "America/Mexico_City",
+        generated_at: "2026-03-25T12:00:00.000Z",
+        total: 0,
+        reminders: [],
+        inconsistencies: [],
+        trace_ref: "report-reminders:month-2026-03:a1",
+        detail: "report-reminders executed"
+      }));
+
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-reminders-openclaw-fallback"]),
+        nowMs: () => Date.parse("2026-03-25T12:00:00.000Z"),
+        routeReadOnlyIntentFn,
+        executeReportRemindersFn,
+        routeIntentFn: async () => "unknown"
+      });
+
+      const replies = await processor.handleMessage({
+        chat_id: "chat-reminders-openclaw-fallback",
+        text: "recordatorios de este mes"
+      });
+      expect(replies[0]).toContain("No encontré recordatorios para este mes");
+      expect(executeReportRemindersFn).toHaveBeenCalledWith({
+        chat_id: "chat-reminders-openclaw-fallback",
+        period: { type: "month", year: 2026, month: 3, label: "este mes" }
+      });
+    } finally {
+      if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+      else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+    }
+  });
+
+  it("conserva semana detectada localmente cuando OpenClaw no extrae scope para schedule.week_view", async () => {
+    const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+    process.env.OPENCLAW_READONLY_ROUTING_ENABLE = "1";
+
+    try {
+      const routeReadOnlyIntentFn = vi.fn(async () => ({
+        intent: "schedule.week_view" as const,
+        source: "openclaw" as const,
+        strict_mode: false
+      }));
+      const executeScheduleWeekViewFn = vi.fn(async ({ week }) => ({
+        week,
+        timezone: "America/Mexico_City",
+        trace_ref: "schedule-week-view:2026-03-24:a1",
+        totalOrders: 0,
+        days: [],
+        reminders: [],
+        preparation: [],
+        suggestedPurchases: [],
+        inconsistencies: [],
+        assumptions: [],
+        detail: "schedule-week-view executed"
+      }));
+
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-schedule-week-openclaw-fallback"]),
+        nowMs: () => Date.parse("2026-03-24T12:00:00.000Z"),
+        routeReadOnlyIntentFn,
+        executeScheduleWeekViewFn,
+        routeIntentFn: async () => "unknown"
+      });
+
+      const replies = await processor.handleMessage({
+        chat_id: "chat-schedule-week-openclaw-fallback",
+        text: "dame la agenda de esta semana"
+      });
+      expect(replies[0]).toContain("No encontré pedidos para armar la agenda semanal de esta semana");
+      expect(executeScheduleWeekViewFn).toHaveBeenCalledWith({
+        chat_id: "chat-schedule-week-openclaw-fallback",
+        week: { type: "week", anchorDateKey: "2026-03-24", label: "esta semana" }
+      });
+    } finally {
+      if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+      else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+    }
+  });
+
   it("usa ruta read-only OpenClaw para admin.health cuando el flag está activo", async () => {
     const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
     process.env.OPENCLAW_READONLY_ROUTING_ENABLE = "1";
@@ -4667,6 +4758,54 @@ describe("conversation processor security flow", () => {
     expect(replies[0]).toContain("Estado de pedidos para");
     expect(executeOrderStatusFn).toHaveBeenCalledTimes(1);
     expect(executeAdminHealthFn).not.toHaveBeenCalled();
+  });
+
+  it("prioriza alta de pedido y evita secuestro de shopping.list.generate en read-only routing", async () => {
+    const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+    process.env.OPENCLAW_READONLY_ROUTING_ENABLE = "1";
+
+    try {
+      const routeReadOnlyIntentFn = vi.fn(async () => ({
+        intent: "shopping.list.generate" as const,
+        source: "openclaw" as const,
+        strict_mode: false
+      }));
+      const routeIntentFn = vi.fn(async () => "pedido" as const);
+      const parseOrderFn = vi.fn(async () => ({
+        ok: true as const,
+        payload: {
+          nombre_cliente: "Victor",
+          producto: "pastel",
+          cantidad: 1,
+          tipo_envio: "recoger_en_tienda" as const,
+          fecha_hora_entrega: "2026-03-26 14:00",
+          moneda: "MXN"
+        }
+      }));
+      const executeShoppingListFn = vi.fn();
+
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-order-create-priority"]),
+        routeReadOnlyIntentFn,
+        routeIntentFn,
+        parseOrderFn,
+        executeShoppingListFn
+      });
+
+      const replies = await processor.handleMessage({
+        chat_id: "chat-order-create-priority",
+        text: "podrias agregar un pedido"
+      });
+
+      expect(replies[0]).toContain("Resumen");
+      expect(routeReadOnlyIntentFn).not.toHaveBeenCalled();
+      expect(routeIntentFn).toHaveBeenCalledWith("podrias agregar un pedido");
+      expect(parseOrderFn).toHaveBeenCalledTimes(1);
+      expect(executeShoppingListFn).not.toHaveBeenCalled();
+    } finally {
+      if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+      else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+    }
   });
 
   it("en estricto no cae a fallback read-only cuando OpenClaw responde unknown", async () => {

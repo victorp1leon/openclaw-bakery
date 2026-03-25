@@ -103,9 +103,23 @@ function addDays(base: Date, days: number): Date {
   return new Date(base.getTime() + days * 86_400_000);
 }
 
+function currentYearMonth(now: Date, timezone: string): { year: number; month: number } {
+  const dateKey = toDateKeyFromDate(now, timezone);
+  const [yearRaw, monthRaw] = dateKey.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  return {
+    year: Number.isInteger(year) ? year : now.getUTCFullYear(),
+    month: Number.isInteger(month) && month >= 1 && month <= 12 ? month : now.getUTCMonth() + 1
+  };
+}
+
 function buildReportPeriod(args: {
   raw: z.infer<typeof RawIntentSchema>;
+  now: Date;
+  timezone: string;
 }): OrderReportPeriod | undefined {
+  const current = currentYearMonth(args.now, args.timezone);
   const kind = args.raw.period?.kind;
   if (kind === "today") return "today";
   if (kind === "tomorrow") return "tomorrow";
@@ -141,20 +155,23 @@ function buildReportPeriod(args: {
 
   const year = args.raw.period?.year;
   const month = args.raw.period?.month;
-  if (kind === "month" && Number.isInteger(year) && Number.isInteger(month) && month! >= 1 && month! <= 12) {
+  if (kind === "month") {
+    const resolvedYear = Number.isInteger(year) ? year! : current.year;
+    const resolvedMonth = Number.isInteger(month) && month! >= 1 && month! <= 12 ? month! : current.month;
     return {
       type: "month",
-      year: year!,
-      month: month!,
-      label: `${month}/${year}`
+      year: resolvedYear,
+      month: resolvedMonth,
+      label: `${resolvedMonth}/${resolvedYear}`
     };
   }
 
-  if (kind === "year" && Number.isInteger(year)) {
+  if (kind === "year") {
+    const resolvedYear = Number.isInteger(year) ? year! : current.year;
     return {
       type: "year",
-      year: year!,
-      label: `${year}`
+      year: resolvedYear,
+      label: `${resolvedYear}`
     };
   }
 
@@ -386,7 +403,7 @@ export async function routeReadOnlyIntentDetailed(args: {
         intent: "report.orders",
         source: "openclaw",
         strict_mode,
-        period: buildReportPeriod({ raw: candidate })
+        period: buildReportPeriod({ raw: candidate, now, timezone })
       };
     }
 
@@ -395,7 +412,7 @@ export async function routeReadOnlyIntentDetailed(args: {
         intent: "report.reminders",
         source: "openclaw",
         strict_mode,
-        period: buildReportPeriod({ raw: candidate })
+        period: buildReportPeriod({ raw: candidate, now, timezone })
       };
     }
 
