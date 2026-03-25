@@ -4,7 +4,7 @@
 # Spec - conversationProcessor
 
 Status: MVP
-Last Updated: 2026-03-24
+Last Updated: 2026-03-25
 
 ## Objective
 Orchestrate the conversation flow for each message and produce a safe, consistent response.
@@ -48,7 +48,7 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - Runtime must accept natural delivery expressions (`hoy`, `mañana`, `pasado mañana`, `para el viernes`, `este/proximo viernes`) only if they can be converted to canonical datetime.
 - If delivery date is present without explicit time, runtime must request hour clarification before showing summary.
 - For order reporting queries (e.g. `pedidos hoy`, `pedidos del 28 de abril`, `pedidos esta semana`, `pedidos del mes de mayo`, `pedidos de este año`), route deterministically to `report-orders` without entering confirm flow.
-- When `OPENCLAW_READONLY_ROUTING_ENABLE=1`, evaluate read-only OpenClaw routing before deterministic read-only detectors (`admin.health`, `admin.config.view`, `report/orders`, `report/reminders`, `lookup`, `status`, `schedule`, `shopping`, `quote`).
+- When `OPENCLAW_READONLY_ROUTING_ENABLE=1`, evaluate read-only OpenClaw routing before deterministic read-only detectors (`admin.health`, `admin.logs`, `admin.config.view`, `report/orders`, `report/reminders`, `lookup`, `status`, `schedule`, `shopping`, `quote`).
 - If read-only OpenClaw routing is active and strict mode is enabled (`OPENCLAW_STRICT=1`), do not use deterministic read-only fallback when OpenClaw returns `unknown`/invalid payload; return controlled clarification instead.
 - If read-only OpenClaw routing is active and strict mode is disabled (`OPENCLAW_STRICT=0`), deterministic read-only fallback remains allowed when OpenClaw returns `unknown`.
 - `OPENCLAW_READONLY_QUOTE_ENABLE=0` disables OpenClaw read-only routing for `quote.order` only; quote flow remains available through deterministic routing.
@@ -76,6 +76,8 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - For `quote.order`, if options/extras matching is ambiguous, runtime must ask explicit clarification (or allow `sin extras`) before continuing.
 - For admin health queries (e.g. `estado del bot`, `admin health`, `salud del sistema`), route to read-only `admin.health` without confirm flow.
 - `admin.health` replies must include `Ref` (`trace_ref`) in success and controlled failure responses, and never include secrets/tokens/keys in detail fields.
+- For admin logs queries (e.g. `admin logs`, `logs operation_id op-123`, `logs chat_id chat-1`), route to read-only `admin.logs` without confirm flow.
+- `admin.logs` replies must include bounded rows with sanitized `payload_preview`, include `Ref` (`trace_ref`) in success/no-match and controlled failure responses.
 - For admin config queries (e.g. `configuracion del bot`, `admin config`, `ver settings del sistema`), route to read-only `admin.config.view` without confirm flow.
 - `admin.config.view` replies must expose only sanitized operational flags/booleans and include `Ref` (`trace_ref`) in success and controlled failure responses.
 - Before converting accepted quote to `pedido`, runtime must recalculate quote from latest catalog and compare snapshot (`total` + lines); if changed, show updated quote and require reconfirmation.
@@ -147,6 +149,7 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - `returns_order_lookup_for_supported_queries`
 - `returns_order_status_for_supported_queries`
 - `returns_admin_health_for_supported_queries`
+- `returns_admin_logs_for_supported_queries`
 - `returns_admin_config_view_for_supported_queries`
 - `returns_shopping_list_for_supported_queries`
 - `returns_schedule_day_view_for_supported_queries`

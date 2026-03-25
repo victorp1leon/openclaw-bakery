@@ -37,6 +37,23 @@ describe("routeReadOnlyIntentDetailed", () => {
     expect(routed.query).toBeUndefined();
   });
 
+  it("enruta admin.logs sin campos extra", async () => {
+    const runtime = {
+      completeJson: async () => ({
+        intent: "admin.logs"
+      })
+    };
+
+    const routed = await routeReadOnlyIntentDetailed({
+      text: "admin logs",
+      runtime
+    });
+
+    expect(routed.intent).toBe("admin.logs");
+    expect(routed.source).toBe("openclaw");
+    expect(routed.query).toBeUndefined();
+  });
+
   it("enruta order.lookup y extrae query", async () => {
     const runtime = {
       completeJson: async () => ({

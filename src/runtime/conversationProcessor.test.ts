@@ -25,6 +25,7 @@ let createConversationProcessor: (args: {
   routeReadOnlyIntentFn?: (args: { text: string; enableQuote: boolean }) => Promise<{
     intent:
       | "admin.health"
+      | "admin.logs"
       | "admin.config.view"
       | "report.orders"
       | "report.reminders"
@@ -401,6 +402,34 @@ let createConversationProcessor: (args: {
         base_ref: string;
       };
     };
+    trace_ref: string;
+    detail: string;
+    generated_at: string;
+  }>;
+  executeAdminLogsFn?: (args: {
+    chat_id: string;
+    filters?: {
+      chat_id?: string;
+      operation_id?: string;
+      limit?: number;
+    };
+  }) => Promise<{
+    status: "ok";
+    filters: {
+      chat_id?: string;
+      operation_id?: string;
+      limit: number;
+    };
+    total: number;
+    entries: Array<{
+      operation_id: string;
+      chat_id: string;
+      intent: string;
+      status: "pending_confirm" | "confirmed" | "canceled" | "executed" | "failed";
+      payload_preview: string;
+      created_at: string;
+      updated_at: string;
+    }>;
     trace_ref: string;
     detail: string;
     generated_at: string;
@@ -4291,6 +4320,105 @@ describe("conversation processor security flow", () => {
       expect(replies[0]).toContain("Estado admin del bot: OK");
       expect(replies[0]).toContain("Ref: admin-health:trace-admin-fallback");
       expect(executeAdminHealthFn).toHaveBeenCalledTimes(1);
+      expect(executeOrderStatusFn).not.toHaveBeenCalled();
+    } finally {
+      if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+      else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+    }
+  });
+
+  it("usa ruta read-only OpenClaw para admin.logs cuando el flag está activo", async () => {
+    const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+    process.env.OPENCLAW_READONLY_ROUTING_ENABLE = "1";
+
+    try {
+      const routeReadOnlyIntentFn = vi.fn(async () => ({
+        intent: "admin.logs" as const,
+        source: "openclaw" as const,
+        strict_mode: false
+      }));
+      const executeAdminLogsFn = vi.fn(async () => ({
+        status: "ok" as const,
+        filters: {
+          operation_id: "op-abc-123",
+          limit: 5
+        },
+        total: 1,
+        entries: [
+          {
+            operation_id: "op-abc-123",
+            chat_id: "chat-ops",
+            intent: "pedido",
+            status: "executed" as const,
+            payload_preview: "{\"nombre_cliente\":\"Ana\"}",
+            created_at: "2026-03-25T09:00:00.000Z",
+            updated_at: "2026-03-25T09:01:00.000Z"
+          }
+        ],
+        trace_ref: "admin-logs:trace-openclaw",
+        detail: "admin-logs executed (rows=1)",
+        generated_at: "2026-03-25T10:00:00.000Z"
+      }));
+
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-admin-logs-openclaw"]),
+        routeReadOnlyIntentFn,
+        executeAdminLogsFn,
+        routeIntentFn: async () => "unknown"
+      });
+
+      const replies = await processor.handleMessage({
+        chat_id: "chat-admin-logs-openclaw",
+        text: "admin logs operation_id op-abc-123 top 5"
+      });
+
+      expect(replies[0]).toContain("Logs admin (1):");
+      expect(replies[0]).toContain("Ref: admin-logs:trace-openclaw");
+      expect(routeReadOnlyIntentFn).toHaveBeenCalledWith({ text: "admin logs operation_id op-abc-123 top 5", enableQuote: true });
+      expect(executeAdminLogsFn).toHaveBeenCalledWith({
+        chat_id: "chat-admin-logs-openclaw",
+        filters: {
+          operation_id: "op-abc-123",
+          limit: 5
+        }
+      });
+    } finally {
+      if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+      else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
+    }
+  });
+
+  it("usa fallback deterministico para admin.logs y filtra por chat actual cuando no hay referencia", async () => {
+    const prevReadOnly = process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+    delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
+
+    try {
+      const executeAdminLogsFn = vi.fn(async () => ({
+        status: "ok" as const,
+        filters: {
+          chat_id: "chat-admin-logs-fallback",
+          limit: 10
+        },
+        total: 0,
+        entries: [],
+        trace_ref: "admin-logs:trace-fallback",
+        detail: "admin-logs executed (rows=0)",
+        generated_at: "2026-03-25T10:05:00.000Z"
+      }));
+      const executeOrderStatusFn = vi.fn();
+
+      const processor = createConversationProcessor({
+        allowedChatIds: new Set(["chat-admin-logs-fallback"]),
+        routeIntentFn: async () => "unknown",
+        executeAdminLogsFn,
+        executeOrderStatusFn
+      });
+
+      const replies = await processor.handleMessage({ chat_id: "chat-admin-logs-fallback", text: "logs del bot" });
+      expect(replies[0]).toContain("Logs admin (0):");
+      expect(replies[0]).toContain("chat_id=chat-admin-logs-fallback");
+      expect(replies[0]).toContain("Ref: admin-logs:trace-fallback");
+      expect(executeAdminLogsFn).toHaveBeenCalledTimes(1);
       expect(executeOrderStatusFn).not.toHaveBeenCalled();
     } finally {
       if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;

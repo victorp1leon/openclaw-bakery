@@ -1,7 +1,7 @@
 # Specs Index (Canonical SDD)
 
 Status: In Progress
-Last Updated: 2026-03-24
+Last Updated: 2026-03-25
 
 ## Purpose
 Canonical registry for feature specs under `documentation/specs`.
@@ -59,6 +59,7 @@ This index tracks migrated/verified and new SDD-native features by domain.
 | platform | web-runtime-integration | verified | documentation/specs/platform/web-runtime-integration/ | documentation/ai_collaboration/plans/platform/implementation/phase4-web-runtime-integration.md | Migrated from legacy implementation plan. |
 | runtime | admin-config-view | verified | documentation/specs/runtime/admin-config-view/ | N/A (new feature) | Fase 6 capability entregado: snapshot sanitizado + routing/runtime + smoke registrados. |
 | runtime | admin-health | verified | documentation/specs/runtime/admin-health/ | N/A (new feature) | Fase 6 capability entregado: routing + runtime + smoke registrados. |
+| runtime | admin-logs | verified | documentation/specs/runtime/admin-logs/ | N/A (new feature) | Fase 6 capability entregado: consulta segura de trazas (`chat_id|operation_id`) + routing/runtime + smoke registrados. |
 | runtime | bot-persona-and-telegram-ux | verified | documentation/specs/runtime/bot-persona-and-telegram-ux/ | documentation/ai_collaboration/plans/runtime/implementation/phase2-bot-persona-and-telegram-ux.md | Migrated from legacy implementation plan. |
 | runtime | expense-order-grill-hardening | verified | documentation/specs/runtime/expense-order-grill-hardening/ | documentation/ai_collaboration/plans/runtime/implementation/phase2-3-expense-order-grill-hardening-v1.md | Migrated from legacy implementation plan. |
 | runtime | gws-read-helper-refactor | verified | documentation/specs/runtime/gws-read-helper-refactor/ | documentation/ai_collaboration/plans/runtime/implementation/phase3-gws-read-helper-refactor-v1.md | Migrated from legacy implementation plan. |

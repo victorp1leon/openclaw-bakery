@@ -10,6 +10,7 @@ import { createConversationProcessor } from "./runtime/conversationProcessor";
 import { db } from "./state/database";
 import { createAdminHealthTool } from "./tools/admin/adminHealth";
 import { createAdminConfigViewTool } from "./tools/admin/adminConfigView";
+import { createAdminLogsTool } from "./tools/admin/adminLogs";
 import { createCodeReviewGraphTool } from "./tools/admin/codeReviewGraph";
 import { createAppendExpenseTool } from "./tools/expense/appendExpense";
 import { createAppendOrderTool } from "./tools/order/appendOrder";
@@ -322,6 +323,7 @@ const executeAdminConfigView = createAdminConfigViewTool({
   config: appConfig,
   allowlistSize: allowedChatIds.size
 });
+const executeAdminLogs = createAdminLogsTool();
 
 const executeCodeReviewGraph = createCodeReviewGraphTool({
   config: appConfig
@@ -400,6 +402,7 @@ const tracedProcessor = createConversationProcessor({
   executeOrderStatusFn: executeOrderStatus,
   executeAdminHealthFn: executeAdminHealth,
   executeAdminConfigViewFn: executeAdminConfigView,
+  executeAdminLogsFn: executeAdminLogs,
   executeCodeReviewGraphFn: executeCodeReviewGraph,
   executeShoppingListFn: executeShoppingList,
   executeScheduleDayViewFn: executeScheduleDayView,

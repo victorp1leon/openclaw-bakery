@@ -530,6 +530,10 @@ function main(): void {
       npmScript: "smoke:admin-health"
     },
     {
+      scenario: "smoke:admin-logs",
+      npmScript: "smoke:admin-logs"
+    },
+    {
       scenario: "smoke:admin-config-view",
       npmScript: "smoke:admin-config-view"
     },

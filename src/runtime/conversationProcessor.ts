@@ -29,6 +29,7 @@ import { clearPending, getState, setState } from "../state/stateStore";
 import { appendExpenseTool } from "../tools/expense/appendExpense";
 import { createAdminHealthTool, type AdminHealthResult } from "../tools/admin/adminHealth";
 import { createAdminConfigViewTool, type AdminConfigViewResult } from "../tools/admin/adminConfigView";
+import { createAdminLogsTool, type AdminLogsResult } from "../tools/admin/adminLogs";
 import {
   createCodeReviewGraphTool,
   type CodeReviewGraphOperation,
@@ -161,6 +162,14 @@ type ProcessorDeps = {
   executeAdminConfigViewFn?: (args: {
     chat_id: string;
   }) => Promise<AdminConfigViewResult>;
+  executeAdminLogsFn?: (args: {
+    chat_id: string;
+    filters?: {
+      chat_id?: string;
+      operation_id?: string;
+      limit?: number;
+    };
+  }) => Promise<AdminLogsResult>;
   executeCodeReviewGraphFn?: (args: {
     chat_id: string;
     operation: CodeReviewGraphOperation;
@@ -1125,6 +1134,56 @@ function detectAdminConfigViewRequest(text: string): boolean {
   );
 }
 
+type AdminLogsFilters = {
+  chat_id?: string;
+  operation_id?: string;
+  limit?: number;
+};
+
+function normalizeAdminLogToken(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const token = value.trim();
+  if (!token) return undefined;
+  return /^[a-zA-Z0-9._:-]{3,120}$/.test(token) ? token : undefined;
+}
+
+function detectAdminLogsRequest(text: string): boolean {
+  const normalized = normalizeForMatch(text);
+
+  const hasLogsHint = /\b(log|logs|bitacora|traza|trazas|trace|traces)\b/.test(normalized);
+  if (!hasLogsHint) return false;
+
+  const hasAdminContext = /\b(admin|bot|sistema|runtime)\b/.test(normalized);
+  const hasTraceReference = /\b(chat(?:_id)?|operation_id|operacion|operacion_id|op)\b/.test(normalized);
+  return hasAdminContext || hasTraceReference;
+}
+
+function extractAdminLogsFilters(args: { text: string; defaultChatId: string }): AdminLogsFilters {
+  const chatMatch = args.text.match(/\b(?:chat(?:_id)?|chat id)\s*[:=]?\s*([a-zA-Z0-9._:-]{3,120})\b/i);
+  const operationMatch =
+    args.text.match(/\b(?:operation_id|operacion|operación|operacion_id)\s*[:=]?\s*([a-zA-Z0-9._:-]{3,120})\b/i)?.[1] ??
+    args.text.match(/\b(op[-_][a-zA-Z0-9._:-]{2,120})\b/i)?.[1];
+  const limitMatch = args.text.match(/\b(?:ultim[oa]s?|top|limit)\s*[:=]?\s*(\d{1,3})\b/i);
+
+  const chat_id = normalizeAdminLogToken(chatMatch?.[1]);
+  const operation_id = normalizeAdminLogToken(operationMatch);
+  const parsedLimit = limitMatch?.[1] ? Number(limitMatch[1]) : undefined;
+  const limit = Number.isInteger(parsedLimit) ? Math.max(1, Math.min(50, parsedLimit!)) : undefined;
+
+  if (!chat_id && !operation_id) {
+    return {
+      chat_id: args.defaultChatId,
+      ...(limit ? { limit } : {})
+    };
+  }
+
+  return {
+    ...(chat_id ? { chat_id } : {}),
+    ...(operation_id ? { operation_id } : {}),
+    ...(limit ? { limit } : {})
+  };
+}
+
 type DetectedCodeReviewGraphRequest =
   | {
     requested: false;
@@ -1676,6 +1735,40 @@ function formatAdminConfigViewReply(result: AdminConfigViewResult): string {
   ].join("\n");
 }
 
+function formatAdminLogsFiltersLabel(filters: AdminLogsResult["filters"]): string {
+  const parts: string[] = [];
+  if (filters.chat_id) parts.push(`chat_id=${filters.chat_id}`);
+  if (filters.operation_id) parts.push(`operation_id=${filters.operation_id}`);
+  parts.push(`limit=${filters.limit}`);
+  return parts.join(" | ");
+}
+
+function formatAdminLogsReply(result: AdminLogsResult): string {
+  const header = `Logs admin (${result.total}): ${formatAdminLogsFiltersLabel(result.filters)}`;
+
+  if (result.total === 0) {
+    return [
+      header,
+      "No encontré trazas para ese filtro.",
+      `Generado: ${result.generated_at}`,
+      `Ref: ${result.trace_ref}`
+    ].join("\n");
+  }
+
+  const lines = result.entries
+    .slice(0, 12)
+    .map((entry, idx) =>
+      `${idx + 1}. op:${entry.operation_id} | chat:${entry.chat_id} | intent:${entry.intent} | status:${entry.status} | at:${entry.updated_at} | payload:${entry.payload_preview}`
+    );
+
+  return [
+    header,
+    `Entradas:\n${lines.join("\n")}`,
+    `Generado: ${result.generated_at}`,
+    `Ref: ${result.trace_ref}`
+  ].join("\n");
+}
+
 function formatCodeReviewGraphOperationLabel(operation: CodeReviewGraphOperation): string {
   if (operation === "build_or_update_graph") return "build/update graph";
   if (operation === "get_impact_radius") return "impact radius";
@@ -2209,6 +2302,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeOrderStatusFn = deps.executeOrderStatusFn ?? createOrderStatusTool();
   const executeAdminHealthFn = deps.executeAdminHealthFn ?? createAdminHealthTool();
   const executeAdminConfigViewFn = deps.executeAdminConfigViewFn ?? createAdminConfigViewTool();
+  const executeAdminLogsFn = deps.executeAdminLogsFn ?? createAdminLogsTool();
   const executeCodeReviewGraphFn = deps.executeCodeReviewGraphFn ?? createCodeReviewGraphTool();
   const executeShoppingListFn = deps.executeShoppingListFn ?? createShoppingListGenerateTool();
   const executeScheduleDayViewFn = deps.executeScheduleDayViewFn ?? createScheduleDayViewTool();
@@ -4841,6 +4935,12 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     let quoteQuery = detectQuoteOrderQuery(msg.text);
     let adminHealthRequested = detectAdminHealthRequest(msg.text);
     let adminHealthIntentSource: "openclaw" | "fallback" | "custom" = "fallback";
+    let adminLogsRequested = detectAdminLogsRequest(msg.text);
+    let adminLogsIntentSource: "openclaw" | "fallback" | "custom" = "fallback";
+    let adminLogsFilters = extractAdminLogsFilters({
+      text: msg.text,
+      defaultChatId: msg.chat_id
+    });
     let adminConfigViewRequested = detectAdminConfigViewRequest(msg.text);
     let adminConfigViewIntentSource: "openclaw" | "fallback" | "custom" = "fallback";
     const codeReviewGraphRequest = parseCodeReviewGraphCommand(msg.text);
@@ -4945,6 +5045,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         statusQuery ||
         statusNeedsQuery ||
         adminHealthRequested ||
+        adminLogsRequested ||
         adminConfigViewRequested ||
         (openclawReadOnlyQuoteEnabled && quoteQuery)
       );
@@ -4975,11 +5076,16 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         quoteQuery = undefined;
         adminHealthRequested = false;
         adminHealthIntentSource = routedReadOnly.source;
+        adminLogsRequested = false;
+        adminLogsIntentSource = routedReadOnly.source;
         adminConfigViewRequested = false;
         adminConfigViewIntentSource = routedReadOnly.source;
 
         if (routedReadOnly.intent === "admin.health") {
           adminHealthRequested = true;
+        }
+        if (routedReadOnly.intent === "admin.logs") {
+          adminLogsRequested = true;
         }
         if (routedReadOnly.intent === "admin.config.view") {
           adminConfigViewRequested = true;
@@ -5057,6 +5163,40 @@ export function createConversationProcessor(deps: ProcessorDeps) {
         });
 
         return [`No pude consultar la salud operativa en este momento. Ref: ${traceRef}`];
+      }
+    }
+
+    if (adminLogsRequested) {
+      try {
+        const logs = await executeAdminLogsFn({
+          chat_id: msg.chat_id,
+          filters: adminLogsFilters
+        });
+
+        deps.onTrace?.({
+          event: "admin_logs_succeeded",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "admin.logs",
+          intent_source: adminLogsIntentSource,
+          detail: `total=${logs.total};trace_ref=${logs.trace_ref}`
+        });
+
+        return [formatAdminLogsReply(logs)];
+      } catch (err) {
+        const safeDetail = err instanceof Error ? err.message : String(err);
+        const traceRef = `admin-logs:${newOperationId()}`;
+
+        deps.onTrace?.({
+          event: "admin_logs_failed",
+          chat_id: msg.chat_id,
+          strict_mode,
+          intent: "admin.logs",
+          intent_source: adminLogsIntentSource,
+          detail: `${safeDetail};ref=${traceRef}`
+        });
+
+        return [`No pude consultar las trazas operativas en este momento. Ref: ${traceRef}`];
       }
     }
 
