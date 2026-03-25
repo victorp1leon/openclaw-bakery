@@ -23,7 +23,7 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 | 3 | `pedido` E2E | Yes (tool specs connector-ready) | Yes (adapter + runtime tests) | Trello + Google Sheets (`gws`) connectors with rollback consistency + live smoke validated | Done |
 | 4 | `web` MVP | Yes (tool spec connector-ready) | Yes (`web.publish` adapter + runtime tests + smoke/content-driven scripts) | Runtime `intent web` integrado (feature-flagged, default off) + adapter real + `web:build` static scaffold + `web:publish` content-driven | Partial |
 | 5 | Analytics/profitability | No (roadmap only) | No | No | Planned |
-| 6 | Hardening/operations/admin skills | Partial | Partial | Partial | Partial |
+| 6 | Hardening/operations/admin skills | Yes | Yes | Yes | Done |
 
 ## Capability Matrix
 | Fase | Capability | Diseno (spec) | Tests | Implementacion | Estado | Siguiente accion DDD |
@@ -59,17 +59,17 @@ Matriz operativa para responder, por cada capacidad del roadmap, el estado de:
 | 5 | `costing.recipe_cost` | Roadmap only | No | No | Planned | Crear spec de catalogo/recetas |
 | 5 | `profit.order` | Roadmap only | No | No | Planned | Crear spec de calculo de utilidad |
 | 5 | `cashflow.week` | Roadmap only | No | No | Planned | Crear spec de agregacion financiera |
-| 6 | `admin.health` | Yes (`documentation/specs/runtime/admin-health/` + contratos `admin-health`/runtime) | `src/tools/admin/adminHealth.test.ts`, `src/skills/readOnlyIntentRouter.test.ts`, `src/runtime/conversationProcessor.test.ts`, `scripts/smoke/admin-health-smoke.ts` | `src/tools/admin/adminHealth.ts`, `src/skills/readOnlyIntentRouter.ts`, `src/runtime/conversationProcessor.ts`, `src/index.ts` | Done | Continuar Fase 6 con `admin.config.view` |
-| 6 | `admin.config.view` | Yes (`documentation/specs/runtime/admin-config-view/` + contratos read-only/runtime) | `src/tools/admin/adminConfigView.test.ts`, `src/skills/readOnlyIntentRouter.test.ts`, `src/runtime/conversationProcessor.test.ts`, `scripts/smoke/admin-config-view-smoke.ts` | `src/tools/admin/adminConfigView.ts`, `src/skills/readOnlyIntentRouter.ts`, `src/runtime/conversationProcessor.ts`, `src/index.ts` | Done | Siguiente capability Fase 6: `admin.logs` |
-| 6 | `admin.logs` | Yes (`documentation/specs/runtime/admin-logs/` + contratos read-only/runtime) | `src/tools/admin/adminLogs.test.ts`, `src/skills/readOnlyIntentRouter.test.ts`, `src/runtime/conversationProcessor.test.ts`, `scripts/smoke/admin-logs-smoke.ts` | `src/tools/admin/adminLogs.ts`, `src/skills/readOnlyIntentRouter.ts`, `src/runtime/conversationProcessor.ts`, `src/index.ts` | Done | Continuar Fase 6 con `admin.allowlist` |
-| 6 | `admin.allowlist` | Roadmap only | No | No | Planned | Crear spec de mutacion admin con confirm flow y guardrails estrictos |
+| 6 | `admin.health` | Yes (`documentation/specs/runtime/admin-health/` + contratos `admin-health`/runtime) | `src/tools/admin/adminHealth.test.ts`, `src/skills/readOnlyIntentRouter.test.ts`, `src/runtime/conversationProcessor.test.ts`, `scripts/smoke/admin-health-smoke.ts` | `src/tools/admin/adminHealth.ts`, `src/skills/readOnlyIntentRouter.ts`, `src/runtime/conversationProcessor.ts`, `src/index.ts` | Done | Mantener monitoreo de checks/degradados en operacion real |
+| 6 | `admin.config.view` | Yes (`documentation/specs/runtime/admin-config-view/` + contratos read-only/runtime) | `src/tools/admin/adminConfigView.test.ts`, `src/skills/readOnlyIntentRouter.test.ts`, `src/runtime/conversationProcessor.test.ts`, `scripts/smoke/admin-config-view-smoke.ts` | `src/tools/admin/adminConfigView.ts`, `src/skills/readOnlyIntentRouter.ts`, `src/runtime/conversationProcessor.ts`, `src/index.ts` | Done | Revisar ampliacion de alertas de configuracion en `v1.1` |
+| 6 | `admin.logs` | Yes (`documentation/specs/runtime/admin-logs/` + contratos read-only/runtime) | `src/tools/admin/adminLogs.test.ts`, `src/skills/readOnlyIntentRouter.test.ts`, `src/runtime/conversationProcessor.test.ts`, `scripts/smoke/admin-logs-smoke.ts` | `src/tools/admin/adminLogs.ts`, `src/skills/readOnlyIntentRouter.ts`, `src/runtime/conversationProcessor.ts`, `src/index.ts` | Done | Mantener redaccion y limites de consulta bajo monitoreo |
+| 6 | `admin.allowlist` | Yes (`documentation/specs/runtime/admin-allowlist/` + contratos runtime) | `src/tools/admin/adminAllowlist.test.ts`, `src/runtime/conversationProcessor.test.ts`, `scripts/smoke/admin-allowlist-smoke.ts` | `src/tools/admin/adminAllowlist.ts`, `src/runtime/conversationProcessor.ts`, `src/state/stateStore.ts`, `src/runtime/persona.ts`, `src/index.ts` | Done | Evaluar persistencia durable (`v1.1`) con control de cambios |
 
 ## Immediate Design Backlog (Spec-First)
 1. Mantener `npm run web:rollback:drill` como control manual bajo demanda y conservar bitacora de tiempos por ejecucion.
 2. Fase 3 funcional:
    - Bloque de reportes/scheduling read-only cerrado (`report.orders`, `report.reminders`, `schedule.day_view`, `schedule.week_view`).
-3. Fases 5 y 6: analytics (`costing/profit/cashflow`) y admin skills.
-   - `admin-health`, `admin-config-view` y `admin-logs` entregados; siguiente capability: `admin.allowlist`.
+3. Fase 5: analytics (`costing/profit/cashflow`) permanece pendiente de especificacion e implementacion.
+4. Fase 6 admin skills completada (`admin.health`, `admin.config.view`, `admin.logs`, `admin.allowlist`); mantener monitoreo operativo y hardening incremental.
 
 ## Exit Criteria: "Sistema completamente disenado"
 Se considera completo cuando todas las capacidades del roadmap tienen:

@@ -1,7 +1,7 @@
 # Phase 6 - Admin Operations Spec-Driven v1
 
 > **Type:** `Implementation`
-> **Status:** `In Progress`
+> **Status:** `Complete`
 > **Created:** `2026-03-23`
 > **Last Updated:** `2026-03-25`
 
@@ -15,7 +15,7 @@
 | Feature kickoff | `documentation/specs/runtime/admin-health/` | Primer capability en ejecucion |
 
 ## Contexto
-Fase 6 (Hardening + Operations + Admin skills) aparece como `Partial` en la matriz DDD. El backlog explicito de admin skills (`admin.health`, `admin.logs`, `admin.allowlist`, `admin.config.view`) requiere ejecucion spec-first con entrega incremental para cerrar riesgo operativo sin degradar seguridad.
+Fase 6 (Hardening + Operations + Admin skills) inicio como `Partial` en la matriz DDD. El backlog explicito de admin skills (`admin.health`, `admin.logs`, `admin.allowlist`, `admin.config.view`) se ejecuto con enfoque spec-first para cerrar riesgo operativo sin degradar seguridad.
 
 ## Alcance
 ### In Scope
@@ -37,8 +37,8 @@ Fase 6 (Hardening + Operations + Admin skills) aparece como `Partial` en la matr
 | 3 | Implementar `admin.health` end-to-end | Complete | Routing + tool + runtime + smoke + contratos canónicos actualizados |
 | 4 | Ejecutar `admin.config.view` (read-only sanitizado) | Complete | Tool + routing + runtime + tests + smoke entregados sin fuga de secretos |
 | 5 | Ejecutar `admin.logs` (consulta trazas segura) | Complete | Tool + routing + runtime + tests + smoke entregados con filtros seguros `chat_id|operation_id` |
-| 6 | Ejecutar `admin.allowlist` con guardrails estrictos | Pending | Incluir confirmaciones y policy operativa |
-| 7 | Cerrar Fase 6 en matriz DDD y roadmap operativo | Pending | Actualizar estado final + handoff de cierre |
+| 6 | Ejecutar `admin.allowlist` con guardrails estrictos | Complete | Tool `view|add|remove` + confirm flow para mutaciones + guardrails (`self-remove`/min-size) |
+| 7 | Cerrar Fase 6 en matriz DDD y roadmap operativo | Complete | Matriz DDD + roadmap + system-map + specs index sincronizados con estado final de Fase 6 |
 
 ## Decisions & Trade-offs
 | Decision | Rationale | Date |
@@ -69,9 +69,15 @@ Fase 6 (Hardening + Operations + Admin skills) aparece como `Partial` en la matr
   - `npm run test:smoke-integration:summary`
   - `npm run check:intent-skills`
   - `npm run security:scan`
+- Verificaciones ejecutadas (`admin.allowlist` implementation):
+  - `npm test -- --run src/tools/admin/adminAllowlist.test.ts src/runtime/conversationProcessor.test.ts`
+  - `npm test -- --run src/tools/admin/adminLogs.test.ts src/tools/admin/adminAllowlist.test.ts src/runtime/conversationProcessor.test.ts`
+  - `SMOKE_CHAT_ID=smoke-admin-allowlist-20260325 npm run smoke:admin-allowlist`
+  - `npm run check:intent-skills`
+  - `npm run security:scan`
 - Criterio de aceptacion:
-  - Existe plan maestro activo de Fase 6 y `admin.health` queda iniciado con paquete spec canonico.
+  - Las 4 capacidades admin de Fase 6 (`admin.health`, `admin.config.view`, `admin.logs`, `admin.allowlist`) quedan implementadas, validadas y trazadas en artefactos canonicos.
 
 ## Outcome
-Fase 6 mantiene plan maestro activo y entrega completa de `admin.health` + `admin.config.view` + `admin.logs` bajo flujo spec-first.
-Siguiente milestone recomendado: iniciar `admin.allowlist` con confirm flow y guardrails de seguridad/mutacion.
+Fase 6 queda cerrada con entrega completa de `admin.health` + `admin.config.view` + `admin.logs` + `admin.allowlist` bajo flujo spec-first.
+Siguiente milestone recomendado: priorizar backlog de Fase 5 (`costing.recipe_cost`, `profit.order`, `cashflow.week`).

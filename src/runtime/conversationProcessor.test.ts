@@ -434,6 +434,22 @@ let createConversationProcessor: (args: {
     detail: string;
     generated_at: string;
   }>;
+  executeAdminAllowlistFn?: (args: {
+    chat_id: string;
+    operation: "view" | "add" | "remove";
+    target_chat_id?: string;
+  }) => Promise<{
+    status: "ok";
+    operation: "view" | "add" | "remove";
+    changed: boolean;
+    target_chat_id?: string;
+    allowlist_size: number;
+    allowlist: Array<{ chat_id: string }>;
+    persistent: false;
+    trace_ref: string;
+    detail: string;
+    generated_at: string;
+  }>;
   executeCodeReviewGraphFn?: (args: {
     chat_id: string;
     operation: "build_or_update_graph" | "get_impact_radius" | "get_review_context";
@@ -4424,6 +4440,131 @@ describe("conversation processor security flow", () => {
       if (prevReadOnly == null) delete process.env.OPENCLAW_READONLY_ROUTING_ENABLE;
       else process.env.OPENCLAW_READONLY_ROUTING_ENABLE = prevReadOnly;
     }
+  });
+
+  it("consulta allowlist y ejecuta add/remove con confirm flow", async () => {
+    const executeAdminAllowlistFn = vi
+      .fn()
+      .mockResolvedValueOnce({
+        status: "ok" as const,
+        operation: "view" as const,
+        changed: false,
+        allowlist_size: 1,
+        allowlist: [{ chat_id: "chat-admin-allowlist" }],
+        persistent: false as const,
+        trace_ref: "admin-allowlist:view-a1",
+        detail: "admin-allowlist executed (operation=view;changed=0)",
+        generated_at: "2026-03-26T10:00:00.000Z"
+      })
+      .mockResolvedValueOnce({
+        status: "ok" as const,
+        operation: "add" as const,
+        changed: true,
+        target_chat_id: "chat-new",
+        allowlist_size: 2,
+        allowlist: [{ chat_id: "chat-admin-allowlist" }, { chat_id: "chat-new" }],
+        persistent: false as const,
+        trace_ref: "admin-allowlist:add-a1",
+        detail: "admin-allowlist executed (operation=add;changed=1)",
+        generated_at: "2026-03-26T10:01:00.000Z"
+      })
+      .mockResolvedValueOnce({
+        status: "ok" as const,
+        operation: "remove" as const,
+        changed: true,
+        target_chat_id: "chat-new",
+        allowlist_size: 1,
+        allowlist: [{ chat_id: "chat-admin-allowlist" }],
+        persistent: false as const,
+        trace_ref: "admin-allowlist:remove-a1",
+        detail: "admin-allowlist executed (operation=remove;changed=1)",
+        generated_at: "2026-03-26T10:02:00.000Z"
+      });
+
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-admin-allowlist"]),
+      routeIntentFn: async () => "unknown",
+      newOperationId: vi.fn()
+        .mockReturnValueOnce("op-allowlist-add-1")
+        .mockReturnValueOnce("op-allowlist-remove-1"),
+      executeAdminAllowlistFn
+    });
+
+    const viewReplies = await processor.handleMessage({
+      chat_id: "chat-admin-allowlist",
+      text: "admin allowlist"
+    });
+    expect(viewReplies[0]).toContain("Operación allowlist: consulta");
+    expect(viewReplies[0]).toContain("Ref: admin-allowlist:view-a1");
+
+    const addSummary = await processor.handleMessage({
+      chat_id: "chat-admin-allowlist",
+      text: "admin allowlist add chat-new"
+    });
+    expect(addSummary[0]).toContain("\"intent\": \"admin.allowlist\"");
+    expect(addSummary[0]).toContain("\"operation\": \"add\"");
+    expect(addSummary[0]).toContain("\"target_chat_id\": \"chat-new\"");
+
+    const addConfirm = await processor.handleMessage({
+      chat_id: "chat-admin-allowlist",
+      text: "confirmar"
+    });
+    expect(addConfirm[0]).toContain("Operación allowlist: agregado chat-new");
+    expect(addConfirm[0]).toContain("Ref: admin-allowlist:add-a1");
+
+    const removeSummary = await processor.handleMessage({
+      chat_id: "chat-admin-allowlist",
+      text: "admin allowlist remove chat-new"
+    });
+    expect(removeSummary[0]).toContain("\"operation\": \"remove\"");
+
+    const removeConfirm = await processor.handleMessage({
+      chat_id: "chat-admin-allowlist",
+      text: "confirmar"
+    });
+    expect(removeConfirm[0]).toContain("Operación allowlist: removido chat-new");
+    expect(removeConfirm[0]).toContain("Ref: admin-allowlist:remove-a1");
+  });
+
+  it("bloquea self-remove en admin.allowlist con Ref", async () => {
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-admin-allowlist-self", "chat-2"]),
+      routeIntentFn: async () => "unknown",
+      newOperationId: () => "op-allowlist-self-1"
+    });
+
+    await processor.handleMessage({
+      chat_id: "chat-admin-allowlist-self",
+      text: "admin allowlist remove chat-admin-allowlist-self"
+    });
+    const replies = await processor.handleMessage({
+      chat_id: "chat-admin-allowlist-self",
+      text: "confirmar"
+    });
+
+    expect(replies[0]).toContain("No puedo remover tu propio chat_id");
+    expect(replies[0]).toContain("Ref: admin-allowlist:op-allowlist-self-1");
+  });
+
+  it("pide chat_id cuando admin.allowlist add no incluye objetivo", async () => {
+    const processor = createConversationProcessor({
+      allowedChatIds: new Set(["chat-admin-allowlist-missing"]),
+      routeIntentFn: async () => "unknown",
+      newOperationId: () => "op-allowlist-missing-1"
+    });
+
+    const askReply = await processor.handleMessage({
+      chat_id: "chat-admin-allowlist-missing",
+      text: "admin allowlist add"
+    });
+    expect(askReply[0]).toContain("¿Cuál chat_id quieres aplicar en la allowlist?");
+
+    const summaryReply = await processor.handleMessage({
+      chat_id: "chat-admin-allowlist-missing",
+      text: "chat-new-target"
+    });
+    expect(summaryReply[0]).toContain("\"intent\": \"admin.allowlist\"");
+    expect(summaryReply[0]).toContain("\"target_chat_id\": \"chat-new-target\"");
   });
 
   it("usa ruta read-only OpenClaw para admin.config.view cuando el flag esta activo", async () => {

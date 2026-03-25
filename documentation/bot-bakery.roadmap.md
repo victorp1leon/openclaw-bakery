@@ -244,6 +244,7 @@ Current coverage (status):
 - `schedule.week_view` v1: agenda semanal read-only (`esta semana|proxima semana|fecha ancla`) agregada sobre `schedule.day_view` para lunes-domingo, con resumen `days/reminders`, consolidado de `preparation` y `suggestedPurchases`, `inconsistencies` por `dateKey` y `trace_ref` en exito/fallo controlado.
 - `report.reminders` v1: recordatorios read-only por periodo (`hoy|semana|mes|año`) sobre lectura de `report.orders`, con priorizacion por urgencia (`overdue|due_soon|upcoming`), campo `minutes_to_delivery`, `inconsistencies` visibles para fechas invalidas y `trace_ref` en exito/fallo controlado.
 - `admin.logs` v1: consulta admin read-only de trazas en SQLite (`operations`) por `chat_id|operation_id` con limite acotado, `payload_preview` redaccionado y `trace_ref` en exito/no-match/fallo controlado.
+- `admin.allowlist` v1: gestion admin de `chat_id` autorizados con `view` directo y `add/remove` con confirm flow, guardrails de `self-remove`/minimo allowlist y `Ref` en exito/fallo controlado.
 - `expense.add`: end-to-end completed (`gws` live validated) with dry-run safe defaults and smoke validation.
 - `web.publish`: adapter + runtime flow integrated, with chat path behind feature flag and content-driven terminal/CI publish path enabled.
 - Static site scaffold generated from repository content (`site/CONTENT.json` -> `site/dist`) via `npm run web:build`.

@@ -3,6 +3,7 @@ import { db } from "./database";
 export type PendingAction =
   | { intent: "gasto"; payload: any }
   | { intent: "pedido"; payload: any }
+  | { intent: "admin.allowlist"; payload: any }
   | { intent: "web"; payload: any }
   | { intent: "reporte"; payload: any }
   | { intent: "report.reminders"; payload: any }

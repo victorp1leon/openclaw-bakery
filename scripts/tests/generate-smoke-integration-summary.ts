@@ -534,6 +534,10 @@ function main(): void {
       npmScript: "smoke:admin-logs"
     },
     {
+      scenario: "smoke:admin-allowlist",
+      npmScript: "smoke:admin-allowlist"
+    },
+    {
       scenario: "smoke:admin-config-view",
       npmScript: "smoke:admin-config-view"
     },

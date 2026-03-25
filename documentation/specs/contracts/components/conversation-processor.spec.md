@@ -80,6 +80,11 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - `admin.logs` replies must include bounded rows with sanitized `payload_preview`, include `Ref` (`trace_ref`) in success/no-match and controlled failure responses.
 - For admin config queries (e.g. `configuracion del bot`, `admin config`, `ver settings del sistema`), route to read-only `admin.config.view` without confirm flow.
 - `admin.config.view` replies must expose only sanitized operational flags/booleans and include `Ref` (`trace_ref`) in success and controlled failure responses.
+- For admin allowlist queries/operations (e.g. `admin allowlist`, `admin allowlist add <chat_id>`, `admin allowlist remove <chat_id>`):
+  - `view` should execute as direct admin query (no confirm flow).
+  - `add/remove` must enter confirm flow and require explicit `confirmar|cancelar`.
+  - If target `chat_id` is missing for `add/remove`, runtime must ask for `admin_allowlist_target_chat_id` and resume.
+  - Runtime must block `self-remove` and minimum-size violations with controlled responses including `Ref`.
 - Before converting accepted quote to `pedido`, runtime must recalculate quote from latest catalog and compare snapshot (`total` + lines); if changed, show updated quote and require reconfirmation.
 - If quote is accepted for conversion, runtime must continue with regular `pedido` flow (ask missing fields, show summary, require final confirmation before executing `order.create` connectors).
 - Orders created from quote conversion must include lightweight traceability `quote_id` in `notas` (`Creado desde cotizacion (quote_id: ...)`).
@@ -151,6 +156,8 @@ It must coordinate flow/persistence and must not trust raw model output without 
 - `returns_admin_health_for_supported_queries`
 - `returns_admin_logs_for_supported_queries`
 - `returns_admin_config_view_for_supported_queries`
+- `supports_admin_allowlist_view_and_confirmable_add_remove`
+- `blocks_admin_allowlist_self_remove_with_ref`
 - `returns_shopping_list_for_supported_queries`
 - `returns_schedule_day_view_for_supported_queries`
 - `returns_schedule_week_view_for_supported_queries`

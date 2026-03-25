@@ -4,7 +4,7 @@
 # Spec - conversation state model and transitions
 
 Status: MVP
-Last Updated: 2026-03-12
+Last Updated: 2026-03-25
 
 ## Objective
 Define the canonical conversation state model and the runtime state transitions for chat-driven operations.
@@ -28,7 +28,7 @@ It must describe state semantics only and must not execute business actions dire
 - `pending?`
   - `operation_id: string`
   - `idempotency_key?: string`
-  - `action: { intent: "gasto" | "pedido" | "web" | "quote.order" | "order.lookup" | "order.update" | "order.cancel" | "payment.record"; payload: object }`
+  - `action: { intent: "gasto" | "pedido" | "web" | "quote.order" | "order.lookup" | "order.update" | "order.cancel" | "payment.record" | "admin.allowlist"; payload: object }`
   - `missing?: string[]`
   - `asked?: string`
 

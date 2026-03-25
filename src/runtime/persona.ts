@@ -30,6 +30,7 @@ const FIELD_PROMPTS: Record<string, string> = {
   order_status_query: "¿Me compartes folio, operation_id, nombre del cliente o producto para consultar el estado?",
   order_report_period: "¿Qué periodo quieres consultar? Puedes decir: hoy, semana, mes o año.",
   order_reminders_period: "¿Para qué periodo quieres recordatorios? Puedes decir: hoy, semana, mes o año.",
+  admin_allowlist_target_chat_id: "¿Cuál chat_id quieres aplicar en la allowlist?",
   shopping_list_query: "¿Para qué pedido(s) quieres la lista de insumos? Puedes compartir folio, nombre del cliente, producto o periodo.",
   schedule_day_query: "¿Para qué día quieres la agenda? Puedes decir hoy, mañana o una fecha (ej. 2026-03-20).",
   schedule_week_query: "¿Qué semana quieres consultar? Puedes decir esta semana, próxima semana o una fecha ancla (ej. 2026-03-23).",

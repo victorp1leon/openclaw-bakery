@@ -13,6 +13,7 @@ Estas reglas complementan `AGENTS.md` para acelerar desarrollo y reducir regresi
 - `mutation-clarification-flow-standard.md`: estandar obligatorio para aclaracion/desambiguacion en intents mutables con referencia o payload faltante.
 - `read-only-clarification-flow-standard.md`: estandar obligatorio para pedir aclaracion en intents read-only con query faltante/ambigua.
 - `secrets-never-commit.md`: manejo seguro de secretos y staging.
+- `security-scan-test-fixture-guard.md`: evita falsos positivos de `security:scan` en fixtures de tests sin relajar el control de secretos.
 - `approval-keyword-gate.md`: implementar o commitear solo con confirmacion explicita que incluya `apruebo`.
 - `documentation-validation-placeholder-filter.md`: en validaciones documentales, tratar placeholders (`...`, `*`, `<...>`) como no-bloqueantes para evitar falsos positivos.
 - `read-only-trace-ref-standard.md`: estandar obligatorio de `Ref/trace_ref` para intents read-only (exito/no-encontrado/falla controlada).

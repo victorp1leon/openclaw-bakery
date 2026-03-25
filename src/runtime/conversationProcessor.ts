@@ -31,6 +31,11 @@ import { createAdminHealthTool, type AdminHealthResult } from "../tools/admin/ad
 import { createAdminConfigViewTool, type AdminConfigViewResult } from "../tools/admin/adminConfigView";
 import { createAdminLogsTool, type AdminLogsResult } from "../tools/admin/adminLogs";
 import {
+  createAdminAllowlistTool,
+  type AdminAllowlistOperation,
+  type AdminAllowlistResult
+} from "../tools/admin/adminAllowlist";
+import {
   createCodeReviewGraphTool,
   type CodeReviewGraphOperation,
   type CodeReviewGraphResult
@@ -170,6 +175,11 @@ type ProcessorDeps = {
       limit?: number;
     };
   }) => Promise<AdminLogsResult>;
+  executeAdminAllowlistFn?: (args: {
+    chat_id: string;
+    operation: AdminAllowlistOperation;
+    target_chat_id?: string;
+  }) => Promise<AdminAllowlistResult>;
   executeCodeReviewGraphFn?: (args: {
     chat_id: string;
     operation: CodeReviewGraphOperation;
@@ -1184,6 +1194,67 @@ function extractAdminLogsFilters(args: { text: string; defaultChatId: string }):
   };
 }
 
+type DetectedAdminAllowlistRequest =
+  | {
+    requested: false;
+  }
+  | {
+    requested: true;
+    operation: AdminAllowlistOperation;
+    target_chat_id?: string;
+    missing_target: boolean;
+  };
+
+function normalizeAdminAllowlistChatId(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const out = value.trim();
+  if (!out) return undefined;
+  return /^[a-zA-Z0-9._:-]{3,120}$/.test(out) ? out : undefined;
+}
+
+function parseAdminAllowlistCommand(text: string): DetectedAdminAllowlistRequest {
+  const normalized = normalizeForMatch(text);
+  const hasHint = /\b(allowlist|whitelist|lista\s+blanca)\b/.test(normalized);
+  if (!hasHint) return { requested: false };
+
+  const addMatch = text.match(
+    /\b(?:add|agrega(?:r)?|autoriza(?:r)?|permit(?:e|ir)|allow)\b(?:\s+chat(?:_id)?(?=$|\s|[:=])\s*[:=]?)?\s*([a-zA-Z0-9._:-]{3,120})?/i
+  );
+  if (addMatch) {
+    const target_chat_id = normalizeAdminAllowlistChatId(addMatch[1]);
+    return {
+      requested: true,
+      operation: "add",
+      ...(target_chat_id ? { target_chat_id } : {}),
+      missing_target: !target_chat_id
+    };
+  }
+
+  const removeMatch = text.match(
+    /\b(?:remove|del|delete|quita(?:r)?|elimina(?:r)?|revoca(?:r)?|bloquea(?:r)?)\b(?:\s+chat(?:_id)?(?=$|\s|[:=])\s*[:=]?)?\s*([a-zA-Z0-9._:-]{3,120})?/i
+  );
+  if (removeMatch) {
+    const target_chat_id = normalizeAdminAllowlistChatId(removeMatch[1]);
+    return {
+      requested: true,
+      operation: "remove",
+      ...(target_chat_id ? { target_chat_id } : {}),
+      missing_target: !target_chat_id
+    };
+  }
+
+  const explicitTarget =
+    text.match(/\b(?:chat(?:_id)?|id)\s*[:=]?\s*([a-zA-Z0-9._:-]{3,120})\b/i)?.[1] ??
+    undefined;
+
+  return {
+    requested: true,
+    operation: "view",
+    ...(normalizeAdminAllowlistChatId(explicitTarget) ? { target_chat_id: normalizeAdminAllowlistChatId(explicitTarget) } : {}),
+    missing_target: false
+  };
+}
+
 type DetectedCodeReviewGraphRequest =
   | {
     requested: false;
@@ -1769,6 +1840,33 @@ function formatAdminLogsReply(result: AdminLogsResult): string {
   ].join("\n");
 }
 
+function formatAdminAllowlistReply(result: AdminAllowlistResult): string {
+  const preview = result.allowlist
+    .slice(0, 20)
+    .map((entry, idx) => `${idx + 1}. ${entry.chat_id}`);
+  const listBlock = preview.length > 0 ? `Chats autorizados:\n${preview.join("\n")}` : "Chats autorizados: (vacío)";
+
+  let actionLine = "Operación allowlist: consulta";
+  if (result.operation === "add") {
+    actionLine = result.changed
+      ? `Operación allowlist: agregado ${result.target_chat_id}`
+      : `Operación allowlist: ${result.target_chat_id} ya estaba autorizado`;
+  } else if (result.operation === "remove") {
+    actionLine = result.changed
+      ? `Operación allowlist: removido ${result.target_chat_id}`
+      : `Operación allowlist: ${result.target_chat_id} no estaba en allowlist`;
+  }
+
+  return [
+    actionLine,
+    `Total allowlist: ${result.allowlist_size}`,
+    listBlock,
+    "Persistencia: temporal (memoria runtime; no actualiza .env automáticamente).",
+    `Generado: ${result.generated_at}`,
+    `Ref: ${result.trace_ref}`
+  ].join("\n");
+}
+
 function formatCodeReviewGraphOperationLabel(operation: CodeReviewGraphOperation): string {
   if (operation === "build_or_update_graph") return "build/update graph";
   if (operation === "get_impact_radius") return "impact radius";
@@ -2303,6 +2401,9 @@ export function createConversationProcessor(deps: ProcessorDeps) {
   const executeAdminHealthFn = deps.executeAdminHealthFn ?? createAdminHealthTool();
   const executeAdminConfigViewFn = deps.executeAdminConfigViewFn ?? createAdminConfigViewTool();
   const executeAdminLogsFn = deps.executeAdminLogsFn ?? createAdminLogsTool();
+  const executeAdminAllowlistFn = deps.executeAdminAllowlistFn ?? createAdminAllowlistTool({
+    allowlist: deps.allowedChatIds
+  });
   const executeCodeReviewGraphFn = deps.executeCodeReviewGraphFn ?? createCodeReviewGraphTool();
   const executeShoppingListFn = deps.executeShoppingListFn ?? createShoppingListGenerateTool();
   const executeScheduleDayViewFn = deps.executeScheduleDayViewFn ?? createScheduleDayViewTool();
@@ -3457,6 +3558,108 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           }
         }
 
+        if (st.pending.action.intent === "admin.allowlist") {
+          const payload = st.pending.action.payload;
+          if (!isObjectRecord(payload) || typeof payload.operation !== "string") {
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "failed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "admin_allowlist_execute_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "admin.allowlist",
+              intent_source: "fallback",
+              detail: "payload_validation_failed"
+            });
+
+            return [`No pude procesar la operación de allowlist. Ref: admin-allowlist:${st.pending.operation_id}`];
+          }
+
+          const operation = payload.operation === "add" || payload.operation === "remove"
+            ? payload.operation
+            : "view";
+          const target_chat_id = trimString(payload.target_chat_id);
+
+          try {
+            const result = await executeAdminAllowlistFn({
+              chat_id: msg.chat_id,
+              operation,
+              ...(target_chat_id ? { target_chat_id } : {})
+            });
+
+            st.pending.action.payload = {
+              operation,
+              ...(target_chat_id ? { target_chat_id } : {})
+            };
+
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "executed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "admin_allowlist_execute_succeeded",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "admin.allowlist",
+              intent_source: "fallback",
+              detail: `${result.detail};trace_ref=${result.trace_ref}`
+            });
+
+            clearPending(msg.chat_id);
+            return [formatAdminAllowlistReply(result)];
+          } catch (err) {
+            const safeDetail = err instanceof Error ? err.message : String(err);
+            const traceRef = `admin-allowlist:${st.pending.operation_id}`;
+
+            upsertOperation({
+              operation_id: st.pending.operation_id,
+              chat_id: msg.chat_id,
+              intent: st.pending.action.intent,
+              payload: st.pending.action.payload,
+              status: "failed",
+              idempotency_key: idempotencyKey
+            });
+
+            deps.onTrace?.({
+              event: "admin_allowlist_execute_failed",
+              chat_id: msg.chat_id,
+              strict_mode,
+              intent: "admin.allowlist",
+              intent_source: "fallback",
+              detail: `${safeDetail};ref=${traceRef}`
+            });
+
+            if (safeDetail === "admin_allowlist_self_remove_blocked") {
+              clearPending(msg.chat_id);
+              return [`No puedo remover tu propio chat_id de la allowlist por seguridad. Ref: ${traceRef}`];
+            }
+            if (safeDetail === "admin_allowlist_min_size_violation") {
+              clearPending(msg.chat_id);
+              return [`No puedo dejar la allowlist vacía. Debe quedar al menos un chat autorizado. Ref: ${traceRef}`];
+            }
+            if (safeDetail === "admin_allowlist_target_missing") {
+              st.pending.asked = "admin_allowlist_target_chat_id";
+              st.pending.missing = ["admin_allowlist_target_chat_id"];
+              setState(msg.chat_id, st);
+              return [copy.askFor("admin_allowlist_target_chat_id")];
+            }
+
+            return [`No pude procesar la operación de allowlist en este momento. Ref: ${traceRef}`];
+          }
+        }
+
         if (st.pending.action.intent === "web") {
           const vWeb = validateWebPayloadDraft(st.pending.action.payload as Record<string, unknown>);
           if (!vWeb.ok) {
@@ -4253,6 +4456,54 @@ export function createConversationProcessor(deps: ProcessorDeps) {
           return [copy.summary("inventory.consume", st.pending.action.payload, st.pending.operation_id)];
         }
 
+        if (st.pending.action.intent === "admin.allowlist") {
+          const payload = isObjectRecord(st.pending.action.payload) ? { ...st.pending.action.payload } : {};
+          const operation = payload.operation === "add" || payload.operation === "remove"
+            ? payload.operation
+            : undefined;
+          const targetFromMessage =
+            normalizeAdminAllowlistChatId(msg.text.trim()) ??
+            normalizeAdminAllowlistChatId(msg.text.match(/\b(?:chat(?:_id)?|id)\s*[:=]?\s*([a-zA-Z0-9._:-]{3,120})\b/i)?.[1]);
+          const target_chat_id = targetFromMessage ?? trimString(payload.target_chat_id);
+
+          if (!operation) {
+            clearPending(msg.chat_id);
+            return [`No pude procesar la operación de allowlist. Ref: admin-allowlist:${st.pending.operation_id}`];
+          }
+
+          if (!target_chat_id) {
+            st.pending.asked = "admin_allowlist_target_chat_id";
+            st.pending.missing = ["admin_allowlist_target_chat_id"];
+            setState(msg.chat_id, st);
+            return [copy.askFor("admin_allowlist_target_chat_id")];
+          }
+
+          st.pending.action.payload = {
+            operation,
+            target_chat_id
+          };
+          st.pending.asked = undefined;
+          st.pending.missing = [];
+          setState(msg.chat_id, st);
+
+          const register = registerPendingOperation({
+            operation_id: st.pending.operation_id,
+            chat_id: msg.chat_id,
+            intent: "admin.allowlist",
+            payload: st.pending.action.payload,
+            idempotency_key: st.pending.idempotency_key ?? st.pending.operation_id
+          });
+
+          if (!register.inserted) {
+            clearPending(msg.chat_id);
+            return [
+              copy.duplicate(register.operation.operation_id, register.operation.status)
+            ];
+          }
+
+          return [copy.summary("admin.allowlist", st.pending.action.payload, st.pending.operation_id)];
+        }
+
         const updatedPayload = mergeField(st.pending.action.payload, st.pending.asked, msg.text);
         let payloadForValidation = updatedPayload;
         let orderDeliveryError: "time_missing" | "invalid" | undefined;
@@ -4943,6 +5194,7 @@ export function createConversationProcessor(deps: ProcessorDeps) {
     });
     let adminConfigViewRequested = detectAdminConfigViewRequest(msg.text);
     let adminConfigViewIntentSource: "openclaw" | "fallback" | "custom" = "fallback";
+    const adminAllowlistRequest = parseAdminAllowlistCommand(msg.text);
     const codeReviewGraphRequest = parseCodeReviewGraphCommand(msg.text);
 
     if (codeReviewGraphRequest.requested) {
@@ -5000,6 +5252,78 @@ export function createConversationProcessor(deps: ProcessorDeps) {
 
         return [`No pude ejecutar Code Review Graph en este momento. Ref: ${traceRef}`];
       }
+    }
+
+    if (adminAllowlistRequest.requested) {
+      if (adminAllowlistRequest.operation === "view") {
+        try {
+          const allowlistView = await executeAdminAllowlistFn({
+            chat_id: msg.chat_id,
+            operation: "view"
+          });
+
+          deps.onTrace?.({
+            event: "admin_allowlist_succeeded",
+            chat_id: msg.chat_id,
+            strict_mode,
+            intent: "admin.allowlist",
+            intent_source: "fallback",
+            detail: `${allowlistView.detail};trace_ref=${allowlistView.trace_ref}`
+          });
+
+          return [formatAdminAllowlistReply(allowlistView)];
+        } catch (err) {
+          const safeDetail = err instanceof Error ? err.message : String(err);
+          const traceRef = `admin-allowlist:${newOperationId()}`;
+
+          deps.onTrace?.({
+            event: "admin_allowlist_failed",
+            chat_id: msg.chat_id,
+            strict_mode,
+            intent: "admin.allowlist",
+            intent_source: "fallback",
+            detail: `${safeDetail};ref=${traceRef}`
+          });
+
+          return [`No pude consultar la allowlist en este momento. Ref: ${traceRef}`];
+        }
+      }
+
+      const operation_id = newOperationId();
+      const pendingPayload: Record<string, unknown> = {
+        operation: adminAllowlistRequest.operation,
+        ...(adminAllowlistRequest.target_chat_id ? { target_chat_id: adminAllowlistRequest.target_chat_id } : {})
+      };
+      const needsTarget = adminAllowlistRequest.missing_target || !pendingPayload.target_chat_id;
+      const pending = {
+        operation_id,
+        idempotency_key: operation_id,
+        action: { intent: "admin.allowlist" as const, payload: pendingPayload },
+        missing: needsTarget ? ["admin_allowlist_target_chat_id"] : [],
+        asked: needsTarget ? "admin_allowlist_target_chat_id" : undefined
+      };
+      setState(msg.chat_id, { pending });
+
+      if (needsTarget) {
+        return [copy.askFor("admin_allowlist_target_chat_id")];
+      }
+
+      const register = registerPendingOperation({
+        operation_id,
+        chat_id: msg.chat_id,
+        intent: "admin.allowlist",
+        payload: pendingPayload,
+        idempotency_key: operation_id
+      });
+
+      if (!register.inserted) {
+        clearPending(msg.chat_id);
+        return [
+          copy.duplicate(register.operation.operation_id, register.operation.status)
+        ];
+      }
+
+      return [copy.summary("admin.allowlist", pendingPayload, operation_id)];
     }
 
     const normalizedForReadOnlyRouting = normalizeForMatch(msg.text);

@@ -19,6 +19,7 @@
     "smoke:status": "npx ts-node --transpile-only scripts/smoke/status-smoke.ts",
     "smoke:admin-health": "npx ts-node --transpile-only scripts/smoke/admin-health-smoke.ts",
     "smoke:admin-logs": "npx ts-node --transpile-only scripts/smoke/admin-logs-smoke.ts",
+    "smoke:admin-allowlist": "npx ts-node --transpile-only scripts/smoke/admin-allowlist-smoke.ts",
     "smoke:admin-config-view": "npx ts-node --transpile-only scripts/smoke/admin-config-view-smoke.ts",
     "smoke:code-review-graph": "npx ts-node --transpile-only scripts/smoke/code-review-graph-smoke.ts",
     "smoke:readonly-routing-trace": "npx ts-node --transpile-only scripts/smoke/readonly-routing-trace-smoke.ts",

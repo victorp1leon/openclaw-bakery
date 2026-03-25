@@ -20,9 +20,9 @@ describe("createAdminLogsTool", () => {
             status: "executed",
             payload_json: JSON.stringify({
               total: 480,
-              token: "top-secret-token",
+              token: "tok-test",
               nested: {
-                apiKey: "secret-api-key"
+                apiKey: "mask-me-key"
               }
             }),
             created_at: "2026-03-25T11:00:00.000Z",
@@ -52,8 +52,8 @@ describe("createAdminLogsTool", () => {
     expect(result.generated_at).toBe("2026-03-25T12:00:00.000Z");
     expect(result.entries[0]?.payload_preview).toContain("\"token\":\"REDACTED\"");
     expect(result.entries[0]?.payload_preview).toContain("\"apiKey\":\"REDACTED\"");
-    expect(result.entries[0]?.payload_preview).not.toContain("top-secret-token");
-    expect(result.entries[0]?.payload_preview).not.toContain("secret-api-key");
+    expect(result.entries[0]?.payload_preview).not.toContain("tok-test");
+    expect(result.entries[0]?.payload_preview).not.toContain("mask-me-key");
   });
 
   it("usa limit default y normaliza payload invalido", async () => {
