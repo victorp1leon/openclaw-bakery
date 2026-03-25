@@ -10,6 +10,11 @@ Last Updated: 2026-03-25
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `platform/implementation/hadicakes-site-new-pack2-pack3-v4.md` | Implementation | Complete | 2026-03-25 |
+| `platform/implementation/hadicakes-site-new-ux-polish-v3.md` | Implementation | Complete | 2026-03-25 |
+| `platform/implementation/hadicakes-site-new-stitch-replication-v2.md` | Implementation | Complete | 2026-03-25 |
+| `platform/implementation/stitch-site-replication-skill-v1.md` | Implementation | Complete | 2026-03-25 |
+| `platform/implementation/hadicakes-site-new-stitch-replication-v1.md` | Implementation | Complete | 2026-03-25 |
 | `runtime/implementation/phase6-admin-operations-spec-driven-v1.md` | Implementation | Complete | 2026-03-25 |
 | `runtime/implementation/phase3-report-reminders-spec-driven-v1.md` | Implementation | Complete | 2026-03-24 |
 | `runtime/implementation/phase3-schedule-week-view-spec-driven-v1.md` | Implementation | Complete | 2026-03-24 |

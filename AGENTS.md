@@ -36,6 +36,24 @@ Flujo canonico unico: `documentation/ai_collaboration/spec-driven-flow-v1.md`
 - Tratar `*:init`, `*:apply` y comandos equivalentes como potencialmente mutables: ejecutar solo cuando se requiera explicitamente operacion live.
 - Antes de ejecutar scripts sensibles, declarar en la salida el modo efectivo (`preview` o `apply`) y evitar heredar flags live desde `.env` durante validaciones.
 
+## Stitch MCP Auth Baseline
+- Objetivo: evitar bloqueos `Auth required`/`quota project` al usar `stitch.googleapis.com/mcp` desde Codex.
+- Baseline de configuracion en `~/.codex/config.toml`:
+  - `mcp_servers.stitch.url = "https://stitch.googleapis.com/mcp"`
+  - `mcp_servers.stitch.bearer_token_env_var = "STITCH_MCP_BEARER_TOKEN"`
+  - `mcp_servers.stitch.http_headers.x-goog-user-project = "<gcp_project_id>"`
+- Baseline de proyecto GCP:
+  - habilitar API una vez: `gcloud services enable stitch.googleapis.com --project=<gcp_project_id>`
+- Arranque recomendado por sesion:
+  - `export STITCH_MCP_BEARER_TOKEN="$(gcloud auth print-access-token)"`
+  - iniciar Codex en la misma shell para heredar el token.
+- Troubleshooting rapido:
+  - `Auth required` -> falta token en entorno de la sesion.
+  - `quota project is not set` -> falta header `x-goog-user-project`.
+  - `API has not been used ... or it is disabled` -> habilitar `stitch.googleapis.com` en el proyecto activo.
+- Seguridad:
+  - no commitear tokens ni persistir bearer tokens en archivos del repo.
+
 ## Approval Gates
 - No iniciar implementacion de cambios (edicion de codigo/archivos del repo) sin aprobacion explicita del usuario en el mensaje, incluyendo la palabra `apruebo` (ej.: `dale, apruebo`, `continua, apruebo`).
 - No crear commits ni ejecutar flujo de commit salvo que el usuario lo indique explicitamente en el mensaje incluyendo la palabra `apruebo` (ej.: `haz commit, apruebo`, `commit apruebo`).

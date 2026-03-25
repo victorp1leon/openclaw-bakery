@@ -1,6 +1,6 @@
 # Skill Registry
 
-Generated At (UTC): 2026-03-25 18:56:02.983 UTC
+Generated At (UTC): 2026-03-25 22:19:19.564 UTC
 
 ## Skills
 
@@ -22,6 +22,7 @@ Generated At (UTC): 2026-03-25 18:56:02.983 UTC
 | skill-creator | Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Codex's capabilities with specialized knowledge, workflows, or tool integrations. | `.codex/skills/skill-creator/SKILL.md` |
 | skill-registry-sync | Maintain a deterministic local registry of project operational assets (skills, rules, agents, and instructions) to prevent cross-session drift. Use when files are added, removed, or renamed under `.codex/skills`, `.codex/rules`, `.github/agents`, or `.github/instructions`, and before closing a collaboration session that changed these artifacts. | `.codex/skills/skill-registry-sync/SKILL.md` |
 | specs-wave-migration | Migrate Spec-Driven documentation waves from `documentation/specs/migration-manifest.md` into canonical specs artifacts (feature packages for `R-*`/`P-*`, contract copies for `C4-*`), update manifest status (`pending` -> `migrated`), and rebuild `documentation/specs/_index.md` feature registry. Use for Wave A/B/C plan entries and Wave C.1 contract migration. | `.codex/skills/specs-wave-migration/SKILL.md` |
+| stitch-site-replication | Replicate the latest Stitch design into a local static site directory with robust local assets (images, fonts, vendor scripts), functional page links, and verification evidence. Use when the user asks to make a Stitch app design real in the repo. | `.codex/skills/stitch-site-replication/SKILL.md` |
 | test-smoke-integration | Run and summarize smoke and integration validation flows when the user asks to verify end-to-end behavior. Use for mock/default smoke checks, optional live smoke checks, and reading markdown/json summary artifacts. | `.codex/skills/test-smoke-integration/SKILL.md` |
 | test-unit | Run and summarize unit tests for this project when the user asks for unit validation. Use for focused Vitest runs, full unit runs, and optional markdown summary generation from test results. | `.codex/skills/test-unit/SKILL.md` |
 
