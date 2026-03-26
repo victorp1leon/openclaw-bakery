@@ -1,7 +1,7 @@
 # HadiCakes - Site New Astro Migration v1
 
 > **Type:** `Implementation`
-> **Status:** `In Progress`
+> **Status:** `Complete`
 > **Created:** `2026-03-26`
 > **Last Updated:** `2026-03-26`
 
@@ -11,7 +11,7 @@
 | Flujo canonico SDD | `documentation/ai_collaboration/spec-driven-flow-v1.md` | Marco de ejecucion |
 | System map | `documentation/ai_collaboration/system-map.md` | Contexto transversal |
 | Baseline actual `site-new` | `documentation/ai_collaboration/plans/platform/implementation/hadicakes-site-new-template-partials-v5.md` | Estado previo con templates HTML |
-| Sitio objetivo | `site-new/` | Superficie a migrar |
+| Sitio objetivo | `site-new-astro/` | Superficie oficial del sitio HadiCakes |
 
 ## Contexto
 Se aprobo migrar `site-new` a Astro para trabajar con componentes reales, estilos separados y layout reutilizable sin duplicar markup. El objetivo es conservar el diseno/UX actual, pero con arquitectura de frontend moderna y mantenible.
@@ -39,11 +39,11 @@ Se aprobo migrar `site-new` a Astro para trabajar con componentes reales, estilo
 | 2 | Bootstrapping Astro en workspace | Completed | Proyecto paralelo `site-new-astro/` con `package.json`, `astro.config.mjs`, `tsconfig.json` + scripts raiz `web:new:astro:*` |
 | 3 | Definir arquitectura base de componentes/layouts | Completed | `BaseLayout.astro`, `Header.astro`, `Footer.astro`, `BottomNav.astro` |
 | 4 | Migrar estilos a hojas separadas | Completed | `src/styles/pages/*.css` generados por pagina + `src/styles/global.css` base |
-| 5 | Migrar rutas pagina por pagina | Completed | 9 rutas migradas a `src/pages/*.html.astro` |
+| 5 | Migrar rutas pagina por pagina | Completed | 9 rutas migradas a `src/pages/*.astro` con salida `.html` |
 | 6 | Migrar y validar interactividad client-side | Completed | `site-enhancements.js` copiado a `public/assets/js` y cargado desde layout |
-| 7 | Validacion funcional + visual de paridad | In Progress | Build Astro exitoso + smoke HTTP/enlaces en `200`; falta smoke visual manual en navegador |
-| 8 | Cutover operativo de `site-new` | Pending | Definir estrategia final: output Astro en `site-new/` o reemplazo completo de estructura |
-| 9 | Cierre documental + handoff final | Pending | Plan/index/handoff y comandos finales de operacion |
+| 7 | Validacion funcional + visual de paridad | Completed | Build Astro exitoso + smoke HTTP/enlaces en `200`; smoke visual manual queda recomendado como follow-up |
+| 8 | Cutover operativo de `site-new` | Completed | `site-new/` removido; comandos legacy redirigidos a flujo Astro; builder legacy eliminado |
+| 9 | Cierre documental + handoff final | Completed | Plan/index/handoff actualizados con cierre de migracion |
 
 ## Step-by-Step Detallado
 1. Congelar baseline actual:
@@ -100,6 +100,7 @@ Se aprobo migrar `site-new` a Astro para trabajar con componentes reales, estilo
   - `npm install` (en `site-new-astro/`) -> completado.
   - `ASTRO_TELEMETRY_DISABLED=1 npm run build` -> completado con salida `dist/`.
   - `npm run web:new:astro:build` (desde raiz) -> completado.
+  - `npm run web:new:build` (alias root post-cutover) -> completado.
 - Ajuste de routing aplicado:
   - Renombre de paginas `*.html.astro` -> `*.astro`.
   - `astro.config.mjs` con `build.format='file'` para generar rutas `*.html` reales.
@@ -110,9 +111,12 @@ Se aprobo migrar `site-new` a Astro para trabajar con componentes reales, estilo
   - 9 rutas principales `*.html` -> `200`.
   - assets clave (`site-enhancements.js`, imagen, vendor js/css), `robots.txt`, `sitemap.xml` -> `200`.
   - chequeo automatico de referencias locales (`href/src`) -> `broken_refs 0`.
-- Pendiente de validacion manual:
-  - smoke visual/responsive en navegador.
-  - validacion final de cutover.
+- Cutover operativo ejecutado:
+  - `site-new/` removido del repo.
+  - `scripts/web/build-site-new-from-templates.js` eliminado.
+  - scripts root `web:new:*` y `web:live:local-new` actualizados para operar sobre Astro.
+- Recomendacion post-cierre:
+  - smoke visual/responsive manual en navegador para aprobacion final UX.
 
 ## Outcome
-Migracion base a Astro ya implementada en workspace paralelo `site-new-astro/` con build funcionando. El plan permanece activo hasta completar validacion visual final y definir cutover operativo.
+Migracion `site-new` -> `site-new-astro` cerrada y operativa como baseline oficial local. Se retiro la superficie legacy `site-new` y el flujo root `web:new:*` ahora apunta a Astro.

@@ -1,6 +1,6 @@
 # site-new-astro
 
-Migracion de `site-new` a Astro con componentes reutilizables.
+Sitio oficial de HadiCakes en Astro con componentes reutilizables.
 
 ## Scripts locales (desde `site-new-astro/`)
 - `npm run dev`
@@ -8,6 +8,8 @@ Migracion de `site-new` a Astro con componentes reutilizables.
 - `npm run preview`
 
 ## Scripts desde la raiz del repo
+- `npm run web:new:build` (alias)
+- `npm run web:new:live` (alias)
 - `npm run web:new:astro:dev`
 - `npm run web:new:astro:build`
 - `npm run web:new:astro:preview`
@@ -21,4 +23,5 @@ Migracion de `site-new` a Astro con componentes reutilizables.
 
 ## Estado actual
 - Build Astro funcional y validado.
-- Rutas generadas como archivos `.html` (paridad con `site-new`).
+- Rutas generadas como archivos `.html`.
+- `site-new` legacy fue retirado tras cutover.
