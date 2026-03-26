@@ -1,0 +1,25 @@
+---
+interface Props {
+  htmlClass?: string;
+  lang?: string;
+  bodyClass?: string;
+}
+
+const {
+  htmlClass = 'light',
+  lang = 'es',
+  bodyClass = ''
+} = Astro.props;
+---
+<!DOCTYPE html>
+<html class={htmlClass} lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <slot name="head" />
+    <script src="/assets/js/site-enhancements.js" defer></script>
+  </head>
+  <body class={bodyClass}>
+    <slot />
+  </body>
+</html>

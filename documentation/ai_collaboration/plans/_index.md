@@ -1,11 +1,11 @@
 # Plans Index (AI Collaboration)
 
-Last Updated: 2026-03-25
+Last Updated: 2026-03-26
 
 ## Active Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
-| _(sin planes activos)_ | - | - | - |
+| `platform/implementation/hadicakes-site-new-astro-migration-v1.md` | Implementation | In Progress | 2026-03-26 |
 
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |

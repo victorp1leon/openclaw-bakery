@@ -1,0 +1,12 @@
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+.glass-header {
+    background: rgba(249, 249, 249, 0.8);
+    backdrop-filter: blur(12px);
+}
+.hero-gradient {
+    background: linear-gradient(45deg, #7c563b 0%, #e8b695 100%);
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+

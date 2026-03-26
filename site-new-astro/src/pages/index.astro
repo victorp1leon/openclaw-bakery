@@ -1,0 +1,298 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import BottomNav from '../components/BottomNav.astro';
+import '../styles/pages/index.css';
+---
+<BaseLayout htmlClass="scroll-smooth" lang="es" bodyClass="bg-background font-body text-on-surface">
+  <Fragment slot="head">
+    <!-- SEO Pack2 Start -->
+    <meta name="description" content="Hadi Cakes en Colima: reposteria creativa artesanal, pasteles por pedido y disenos personalizados para celebraciones inolvidables."/>
+    <meta name="robots" content="index,follow"/>
+    <link rel="canonical" href="https://hadicakes.local/index.html"/>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg"/>
+    <meta property="og:title" content="Hadi Cakes • Repostería Creativa Colima"/>
+    <meta property="og:description" content="Hadi Cakes en Colima: reposteria creativa artesanal, pasteles por pedido y disenos personalizados para celebraciones inolvidables."/>
+    <meta property="og:type" content="website"/>
+    <meta property="og:site_name" content="Hadi Cakes"/>
+    <meta property="og:locale" content="es_MX"/>
+    <meta property="og:url" content="https://hadicakes.local/index.html"/>
+    <meta property="og:image" content="https://hadicakes.local/assets/images/img-011.jpg"/>
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="twitter:title" content="Hadi Cakes • Repostería Creativa Colima"/>
+    <meta name="twitter:description" content="Hadi Cakes en Colima: reposteria creativa artesanal, pasteles por pedido y disenos personalizados para celebraciones inolvidables."/>
+    <meta name="twitter:image" content="https://hadicakes.local/assets/images/img-011.jpg"/>
+    <!-- SEO Pack2 End -->
+    <title>Hadi Cakes • Repostería Creativa Colima</title>
+    <script is:inline src="/assets/vendor/tailwindcss-cdn.js"></script>
+    <link href="/assets/vendor/fonts-02.css" rel="stylesheet"/>
+    <link href="/assets/vendor/fonts-04.css" rel="stylesheet"/>
+    <script is:inline id="tailwind-config">
+          tailwind.config = {
+            darkMode: "class",
+            theme: {
+              extend: {
+                colors: {
+                  "on-secondary-fixed": "#201a19",
+                  "primary-fixed-dim": "#efbc9b",
+                  "surface-container-high": "#e8e8e8",
+                  "inverse-surface": "#2f3131",
+                  "error-container": "#ffdad6",
+                  "on-secondary": "#ffffff",
+                  "secondary-container": "#e9ddda",
+                  "inverse-primary": "#efbc9b",
+                  "tertiary-container": "#a0c7d3",
+                  "on-tertiary-fixed-variant": "#254c56",
+                  "surface-bright": "#f9f9f9",
+                  "secondary": "#655d5a",
+                  "on-primary-fixed": "#2f1502",
+                  "on-error-container": "#93000a",
+                  "on-surface-variant": "#50443d",
+                  "on-secondary-container": "#69615e",
+                  "surface-container-lowest": "#ffffff",
+                  "secondary-fixed-dim": "#cfc4c1",
+                  "on-background": "#1a1c1c",
+                  "primary": "#7c563b",
+                  "inverse-on-surface": "#f1f1f1",
+                  "primary-fixed": "#ffdcc6",
+                  "surface-dim": "#dadada",
+                  "surface-container-highest": "#e2e2e2",
+                  "tertiary": "#3e646e",
+                  "on-tertiary": "#ffffff",
+                  "surface-container": "#eeeeee",
+                  "on-tertiary-fixed": "#001f26",
+                  "primary-container": "#e8b695",
+                  "tertiary-fixed": "#c1e9f5",
+                  "surface-variant": "#e2e2e2",
+                  "on-error": "#ffffff",
+                  "tertiary-fixed-dim": "#a6cdd9",
+                  "surface-container-low": "#f3f3f3",
+                  "on-primary-container": "#6a462c",
+                  "surface-tint": "#7c563b",
+                  "on-surface": "#1a1c1c",
+                  "error": "#ba1a1a",
+                  "on-primary": "#ffffff",
+                  "on-primary-fixed-variant": "#623f25",
+                  "secondary-fixed": "#ece0dd",
+                  "on-secondary-fixed-variant": "#4d4543",
+                  "background": "#f9f9f9",
+                  "outline-variant": "#d4c3b9",
+                  "outline": "#82746c",
+                  "on-tertiary-container": "#2e545e",
+                  "surface": "#f9f9f9"
+                },
+                fontFamily: {
+                  "headline": ["Epilogue"],
+                  "body": ["Plus Jakarta Sans"],
+                  "label": ["Plus Jakarta Sans"]
+                },
+                borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+              },
+            },
+          }
+        </script>
+  </Fragment>
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[999] focus:bg-primary focus:text-white focus:px-4 focus:py-2 focus:rounded-full">Saltar al contenido</a>
+  <Header />
+  <main id="main-content">
+  <!-- Hero Section -->
+  <section class="relative px-6 pt-12 pb-20 md:py-32 overflow-hidden">
+  <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12">
+  <div class="flex-1 text-center md:text-left z-10">
+  <span class="inline-block py-1 px-4 rounded-full bg-secondary-container text-on-secondary-container text-sm font-semibold mb-6">Artesanal &amp; Creativo</span>
+  <h1 class="font-headline text-5xl md:text-7xl font-black text-on-surface leading-[1.1] mb-6 tracking-tight">
+                          La dulzura de lo <span class="text-primary">artesanal</span>
+  </h1>
+  <p class="text-on-surface-variant text-lg md:text-xl max-w-lg mb-10 leading-relaxed">
+                          Repostería creativa en el corazón de Colima. Creamos momentos inolvidables con diseños únicos y sabores genuinos.
+                      </p>
+  <div class="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+  <a class="hero-gradient text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:scale-105 transition-transform active:scale-95" href="catalogo.html">
+                              Ver catálogo
+                          </a>
+  <a class="bg-surface-container-high text-on-surface px-8 py-4 rounded-full font-bold text-lg hover:bg-surface-container-highest transition-colors active:scale-95" href="pasteles-personalizados.html#cotizacion">
+                              Cotizar pastel personalizado
+                          </a>
+  </div>
+  </div>
+  <div class="flex-1 relative">
+  <div class="relative w-full aspect-square max-w-md mx-auto">
+  <div class="absolute inset-0 bg-primary-container/30 rounded-full blur-3xl -z-10 animate-pulse"></div>
+  <img alt="Pastel artesanal Hadi Cakes" class="w-full h-full object-cover rounded-xl shadow-2xl rotate-3 hover:rotate-0 transition-transform duration-500" data-alt="Close-up of a premium artisanal multi-layered cake with soft pastel frosting, delicate edible flowers, and gold leaf accents on a ceramic stand" src="assets/images/img-011.jpg" decoding="async" loading="eager" fetchpriority="high">
+  </div>
+  </div>
+  </div>
+  </section>
+  <!-- Best Sellers (Grid) -->
+  <section class="py-24 bg-surface-container-low rounded-t-xl">
+  <div class="max-w-7xl mx-auto px-6">
+  <div class="flex justify-between items-end mb-16">
+  <div>
+  <h2 class="font-headline text-3xl md:text-5xl font-extrabold text-on-surface mb-4">Favoritos de la casa</h2>
+  <p class="text-on-surface-variant max-w-md">Nuestras creaciones más queridas, listas para alegrar tu día.</p>
+  </div>
+  <a class="hidden md:flex items-center gap-2 text-primary font-bold hover:underline" href="catalogo.html">
+                          Explorar todo el menú
+                          <span class="material-symbols-outlined">arrow_forward</span>
+  </a>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+  <!-- Card 1 -->
+  <div class="group bg-surface-container-lowest rounded-lg p-4 transition-all duration-300 hover:-translate-y-2">
+  <div class="aspect-square rounded-DEFAULT overflow-hidden mb-6">
+  <img alt="Cupcake clásico" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Single gourmet vanilla cupcake with swirling pink buttercream frosting and tiny gold sprinkles on a minimal grey background" src="assets/images/img-024.jpg" decoding="async" loading="lazy">
+  </div>
+  <h3 class="font-headline text-xl font-bold mb-1">Cupcake clásico</h3>
+  <p class="text-primary font-bold text-lg mb-4">$45</p>
+  <a class="w-full py-3 px-4 bg-primary-container/20 text-on-primary-container rounded-full font-bold flex items-center justify-center gap-2 group-hover:bg-primary-container transition-colors" href="https://wa.me/523120000000?text=Hola%20Hadi%20Cakes%2C%20quiero%20ordenar%20uno%20de%20sus%20productos." target="_blank" rel="noopener noreferrer">
+  <span class="material-symbols-outlined text-xl">chat</span>
+                              Ordenar por WhatsApp
+                          </a>
+  </div>
+  <!-- Card 2 -->
+  <div class="group bg-surface-container-lowest rounded-lg p-4 transition-all duration-300 hover:-translate-y-2">
+  <div class="aspect-square rounded-DEFAULT overflow-hidden mb-6">
+  <img alt="Caja 6 Cupcakes" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Top view of an open white bakery box containing six assorted artisan cupcakes with various toppings and pastel frosting" src="assets/images/img-004.jpg" decoding="async" loading="lazy">
+  </div>
+  <h3 class="font-headline text-xl font-bold mb-1">Caja 6 Cupcakes</h3>
+  <p class="text-primary font-bold text-lg mb-4">$250</p>
+  <a class="w-full py-3 px-4 bg-primary-container/20 text-on-primary-container rounded-full font-bold flex items-center justify-center gap-2 group-hover:bg-primary-container transition-colors" href="https://wa.me/523120000000?text=Hola%20Hadi%20Cakes%2C%20quiero%20ordenar%20uno%20de%20sus%20productos." target="_blank" rel="noopener noreferrer">
+  <span class="material-symbols-outlined text-xl">chat</span>
+                              Ordenar por WhatsApp
+                          </a>
+  </div>
+  <!-- Card 3 -->
+  <div class="group bg-surface-container-lowest rounded-lg p-4 transition-all duration-300 hover:-translate-y-2">
+  <div class="aspect-square rounded-DEFAULT overflow-hidden mb-6">
+  <img alt="Caja 12 Cupcakes" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="Elegant presentation of twelve beautifully decorated cupcakes in a premium kraft paper box with a transparent window" src="assets/images/img-029.jpg" decoding="async" loading="lazy">
+  </div>
+  <h3 class="font-headline text-xl font-bold mb-1">Caja 12 Cupcakes</h3>
+  <p class="text-primary font-bold text-lg mb-4">$480</p>
+  <a class="w-full py-3 px-4 bg-primary-container/20 text-on-primary-container rounded-full font-bold flex items-center justify-center gap-2 group-hover:bg-primary-container transition-colors" href="https://wa.me/523120000000?text=Hola%20Hadi%20Cakes%2C%20quiero%20ordenar%20uno%20de%20sus%20productos." target="_blank" rel="noopener noreferrer">
+  <span class="material-symbols-outlined text-xl">chat</span>
+                              Ordenar por WhatsApp
+                          </a>
+  </div>
+  <!-- Card 4 -->
+  <div class="group bg-surface-container-lowest rounded-lg p-4 transition-all duration-300 hover:-translate-y-2">
+  <div class="aspect-square rounded-DEFAULT overflow-hidden mb-6">
+  <img alt="Pastel mediano" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" data-alt="A medium sized modern minimalist cake with smooth white buttercream and a simple wreath of fresh berries on top" src="assets/images/img-002.jpg" decoding="async" loading="lazy">
+  </div>
+  <h3 class="font-headline text-xl font-bold mb-1">Pastel mediano</h3>
+  <p class="text-primary font-bold text-lg mb-4">$650</p>
+  <a class="w-full py-3 px-4 bg-primary-container/20 text-on-primary-container rounded-full font-bold flex items-center justify-center gap-2 group-hover:bg-primary-container transition-colors" href="https://wa.me/523120000000?text=Hola%20Hadi%20Cakes%2C%20quiero%20ordenar%20uno%20de%20sus%20productos." target="_blank" rel="noopener noreferrer">
+  <span class="material-symbols-outlined text-xl">chat</span>
+                              Ordenar por WhatsApp
+                          </a>
+  </div>
+  </div>
+  </div>
+  </section>
+  <!-- Cómo Ordenar (Asymmetric Bento) -->
+  <section class="py-24 px-6 max-w-7xl mx-auto">
+  <h2 class="font-headline text-3xl md:text-5xl font-extrabold text-on-surface text-center mb-20">Cómo disfrutar Hadi Cakes</h2>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+  <div class="md:col-span-2 bg-tertiary-container/10 p-10 rounded-xl relative overflow-hidden">
+  <div class="z-10 relative">
+  <div class="w-16 h-16 bg-tertiary-container rounded-full flex items-center justify-center mb-6">
+  <span class="material-symbols-outlined text-on-tertiary-container text-3xl" style="font-variation-settings: 'FILL' 1;">menu_book</span>
+  </div>
+  <h3 class="font-headline text-3xl font-bold mb-4 text-on-tertiary-container">1. Elige tu favorito</h3>
+  <p class="text-on-tertiary-container/80 text-lg max-w-sm">Explora nuestro catálogo digital o solicita un diseño personalizado para tu evento especial.</p>
+  </div>
+  <span class="absolute -right-10 -bottom-10 text-[12rem] font-black text-tertiary-container/10 select-none">01</span>
+  </div>
+  <div class="bg-primary-container/10 p-10 rounded-xl relative overflow-hidden">
+  <div class="z-10 relative">
+  <div class="w-16 h-16 bg-primary-container rounded-full flex items-center justify-center mb-6">
+  <span class="material-symbols-outlined text-on-primary-container text-3xl" style="font-variation-settings: 'FILL' 1;">chat</span>
+  </div>
+  <h3 class="font-headline text-2xl font-bold mb-4 text-on-primary-container">2. Escríbenos</h3>
+  <p class="text-on-primary-container/80">Confirma disponibilidad y detalles por WhatsApp. ¡Estamos listos para atenderte!</p>
+  </div>
+  <span class="absolute -right-6 -bottom-6 text-8xl font-black text-primary-container/10 select-none">02</span>
+  </div>
+  <div class="bg-secondary-container/20 p-10 rounded-xl relative overflow-hidden">
+  <div class="z-10 relative">
+  <div class="w-16 h-16 bg-secondary-container rounded-full flex items-center justify-center mb-6">
+  <span class="material-symbols-outlined text-on-secondary-container text-3xl" style="font-variation-settings: 'FILL' 1;">event_available</span>
+  </div>
+  <h3 class="font-headline text-2xl font-bold mb-4 text-on-secondary-container">3. Reserva</h3>
+  <p class="text-on-secondary-container/80">Aparta tu fecha con un anticipo. Los pedidos personalizados requieren 3-5 días.</p>
+  </div>
+  </div>
+  <div class="md:col-span-2 bg-on-surface text-surface p-10 rounded-xl relative overflow-hidden">
+  <div class="z-10 relative">
+  <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-6">
+  <span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings: 'FILL' 1;">cake</span>
+  </div>
+  <h3 class="font-headline text-3xl font-bold mb-4">4. ¡A disfrutar!</h3>
+  <p class="text-surface/70 text-lg max-w-md">Recoge en nuestro taller o solicita entrega a domicilio en Colima y Villa de Álvarez.</p>
+  </div>
+  <span class="absolute -right-10 -bottom-10 text-[12rem] font-black text-white/5 select-none">04</span>
+  </div>
+  </div>
+  </section>
+  <!-- Gallery/Social (Horizontal Scroll) -->
+  <section class="py-24 bg-surface overflow-hidden">
+  <div class="max-w-7xl mx-auto px-6 mb-12 flex justify-between items-center">
+  <h2 class="font-headline text-3xl font-extrabold">Momentos Hadi</h2>
+  <div class="flex gap-4">
+  <button class="w-12 h-12 rounded-full border border-outline/20 flex items-center justify-center hover:bg-surface-container transition-colors" type="button" aria-label="Anterior">
+  <span class="material-symbols-outlined">chevron_left</span>
+  </button>
+  <button class="w-12 h-12 rounded-full border border-outline/20 flex items-center justify-center hover:bg-surface-container transition-colors" type="button" aria-label="Siguiente">
+  <span class="material-symbols-outlined">chevron_right</span>
+  </button>
+  </div>
+  </div>
+  <div class="flex gap-6 px-6 no-scrollbar overflow-x-auto pb-8">
+  <img alt="Happy family celebrating a child's birthday with a colorful custom dinosaur cake from Hadi Cakes" class="w-80 h-96 object-cover rounded-lg flex-shrink-0 shadow-sm" data-alt="Happy family celebrating a child's birthday with a colorful custom dinosaur cake from Hadi Cakes" src="assets/images/img-010.jpg" decoding="async" loading="lazy">
+  <img alt="Close up of a bride and groom cutting a multi-tier white wedding cake decorated with fresh eucalyptus leaves" class="w-80 h-96 object-cover rounded-lg flex-shrink-0 shadow-sm" data-alt="Close up of a bride and groom cutting a multi-tier white wedding cake decorated with fresh eucalyptus leaves" src="assets/images/img-023.jpg" decoding="async" loading="lazy">
+  <img alt="Assorted colorful birthday cupcakes arranged on a party table with confetti and soft lighting" class="w-80 h-96 object-cover rounded-lg flex-shrink-0 shadow-sm" data-alt="Assorted colorful birthday cupcakes arranged on a party table with confetti and soft lighting" src="assets/images/img-032.jpg" decoding="async" loading="lazy">
+  <img alt="Artisan baker finishing a cake with delicate frosting swirls in a bright sunlit kitchen" class="w-80 h-96 object-cover rounded-lg flex-shrink-0 shadow-sm" data-alt="Artisan baker finishing a cake with delicate frosting swirls in a bright sunlit kitchen" src="assets/images/img-013.jpg" decoding="async" loading="lazy">
+  <img alt="A beautiful chocolate drip cake with fresh strawberries and gold leaf details on a rustic wooden table" class="w-80 h-96 object-cover rounded-lg flex-shrink-0 shadow-sm" data-alt="A beautiful chocolate drip cake with fresh strawberries and gold leaf details on a rustic wooden table" src="assets/images/img-015.jpg" decoding="async" loading="lazy">
+  </div>
+  </section>
+  <!-- Testimonials -->
+  <section class="py-24 bg-surface-container-low">
+  <div class="max-w-7xl mx-auto px-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+  <div>
+  <h2 class="font-headline text-4xl font-extrabold mb-8">Lo que dicen nuestros clientes</h2>
+  <div class="space-y-8">
+  <div class="p-6 bg-surface-container-lowest rounded-lg shadow-sm">
+  <p class="text-on-surface mb-4 italic">"El pastel de mi boda fue tal cual lo soñé. Hadi Cakes entendió perfecto el concepto y el sabor fue increíble, todos los invitados preguntaron dónde lo compramos."</p>
+  <div class="flex items-center gap-3">
+  <div class="w-10 h-10 rounded-full bg-primary-container/30 flex items-center justify-center text-primary font-bold">M</div>
+  <span class="font-bold">Mariana R.</span>
+  </div>
+  </div>
+  <div class="p-6 bg-surface-container-lowest rounded-lg shadow-sm">
+  <p class="text-on-surface mb-4 italic">"Los mejores cupcakes de Colima sin duda. Siempre frescos y los diseños son súper originales. Mi opción #1 para regalitos."</p>
+  <div class="flex items-center gap-3">
+  <div class="w-10 h-10 rounded-full bg-primary-container/30 flex items-center justify-center text-primary font-bold">J</div>
+  <span class="font-bold">Jorge L.</span>
+  </div>
+  </div>
+  </div>
+  </div>
+  <div class="relative">
+  <img alt="Repostería Hadi Cakes" class="w-full aspect-[4/5] object-cover rounded-xl shadow-xl" data-alt="Close-up of elegant dessert table at an event with small artisanal treats and beautiful floral arrangements" src="assets/images/img-018.jpg" decoding="async" loading="lazy">
+  <div class="absolute -bottom-6 -left-6 bg-primary-container p-8 rounded-lg shadow-xl hidden md:block">
+  <p class="text-on-primary-container font-headline text-4xl font-black">+1,200</p>
+  <p class="text-on-primary-container/80 font-bold">Pedidos entregados</p>
+  </div>
+  </div>
+  </div>
+  </div>
+  </section>
+  </main>
+  <Footer />
+  <BottomNav />
+  <!-- Sticky WhatsApp FAB -->
+  <a class="fixed bottom-24 right-6 md:bottom-8 md:right-8 w-16 h-16 bg-[#25D366] text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-transform z-40" href="https://wa.me/523120000000">
+  <span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">chat</span>
+  </a>
+</BaseLayout>

@@ -58,6 +58,9 @@
     "web:live:local-new": "bash -lc 'set -euo pipefail; echo \"Site-new ready at http://127.0.0.1:4174\"; python3 -m http.server 4174 --directory site-new'",
     "web:new:build": "node scripts/web/build-site-new-from-templates.js",
     "web:new:live": "bash -lc 'set -euo pipefail; npm run web:new:build; echo \"Site-new ready at http://127.0.0.1:4174\"; python3 -m http.server 4174 --directory site-new'",
+    "web:new:astro:dev": "npm --prefix site-new-astro run dev",
+    "web:new:astro:build": "ASTRO_TELEMETRY_DISABLED=1 npm --prefix site-new-astro run build",
+    "web:new:astro:preview": "npm --prefix site-new-astro run preview",
     "web:live:local:publish": "bash -lc 'set -euo pipefail; trap \"kill 0\" EXIT; npm run web:publish:webhook:local >/tmp/web-local-webhook.log 2>&1 & for i in $(seq 1 40); do if curl -fsS http://127.0.0.1:8787/health >/dev/null 2>&1; then break; fi; sleep 0.25; done; if ! curl -fsS http://127.0.0.1:8787/health >/dev/null 2>&1; then echo \"local webhook did not start\"; exit 1; fi; WEB_PUBLISH_DRY_RUN=0 npm run web:publish; echo \"Site ready at http://127.0.0.1:4173\"; python3 -m http.server 4173 --directory site/dist'",
     "web:import:facebook": "npx ts-node --transpile-only scripts/web/import-facebook-images.ts"
   },
