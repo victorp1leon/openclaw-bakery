@@ -102,22 +102,7 @@
 </head>
 <body class="bg-background text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
 <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[999] focus:bg-primary focus:text-white focus:px-4 focus:py-2 focus:rounded-full">Saltar al contenido</a>
-<!-- TopAppBar -->
-<header class="docked full-width top-0 sticky z-50 bg-surface/90 dark:bg-surface-dark/90 backdrop-blur-md shadow-[0_12px_32px_rgba(5,5,5,0.05)] h-20">
-<div class="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
-<div class="text-2xl font-black text-[#7C563B] dark:text-[#E8B695] tracking-tight font-headline">Hadi Cakes</div>
-<nav class="hidden md:flex gap-8 items-center">
-<a class="text-[#595959] dark:text-gray-400 font-medium hover:text-[#7C563B] font-headline font-bold text-lg hover:scale-105 transition-transform duration-300" href="catalogo.html">Catálogo</a>
-<a class="text-[#595959] dark:text-gray-400 font-medium hover:text-[#7C563B] font-headline font-bold text-lg hover:scale-105 transition-transform duration-300" href="pasteles-personalizados.html">Personalizados</a>
-<a class="text-[#595959] dark:text-gray-400 font-medium hover:text-[#7C563B] font-headline font-bold text-lg hover:scale-105 transition-transform duration-300" href="como-ordenar.html">Cómo Ordenar</a>
-<a class="text-[#595959] dark:text-gray-400 font-medium hover:text-[#7C563B] font-headline font-bold text-lg hover:scale-105 transition-transform duration-300" href="contacto-cobertura.html">Contacto</a>
-</nav>
-<a class="bg-primary-container text-on-primary-container px-6 py-2.5 rounded-full font-bold text-sm hover:scale-105 transition-transform duration-300 active:scale-95 hidden md:block" href="https://wa.me/523120000000?text=Hola%20Hadi%20Cakes%2C%20quiero%20hacer%20un%20pedido." target="_blank" rel="noopener noreferrer">Pedir por WhatsApp</a>
-<button class="md:hidden text-primary" type="button" aria-label="Abrir menu">
-<span class="material-symbols-outlined" style="font-size: 32px;">menu</span>
-</button>
-</div>
-</header>
+<!-- @include header -->
 <main id="main-content" class="min-h-screen">
 <!-- Hero Section -->
 <section class="relative pt-20 pb-32 overflow-hidden">
@@ -249,46 +234,6 @@
 </div>
 </section>
 </main>
-<!-- Footer -->
-<footer class="w-full rounded-t-[3rem] mt-20 bg-[#f2f2f2] dark:bg-[#1A1C1C]">
-<div class="max-w-7xl mx-auto px-8 py-16 grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left">
-<div>
-<div class="text-xl font-bold text-[#7C563B] font-headline mb-4">Hadi Cakes</div>
-<p class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400">
-                    Repostería artesanal creativa en Colima. Cada pastel cuenta una historia dulce diseñada especialmente para ti.
-                </p>
-</div>
-<div class="flex flex-col gap-3">
-<h4 class="font-headline font-bold text-[#7C563B] mb-2">Explora</h4>
-<a class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 hover:text-[#050505] dark:hover:text-white underline" href="https://instagram.com/hadicakes_colima">Instagram</a>
-<a class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 hover:text-[#050505] dark:hover:text-white underline" href="https://wa.me/523120000000">WhatsApp</a>
-<a class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 hover:text-[#050505] dark:hover:text-white underline" href="contacto-cobertura.html">Ubicación</a>
-<a class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 hover:text-[#050505] dark:hover:text-white underline" href="como-ordenar.html">Términos</a>
-</div>
-<div class="flex flex-col justify-end">
-<p class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400">
-                    © 2024 Hadi Cakes • Repostería Creativa Colima
-                </p>
-</div>
-</div>
-</footer>
-<!-- BottomNavBar (Mobile Only) -->
-<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-4 pt-2 md:hidden bg-white/80 dark:bg-black/80 backdrop-blur-xl rounded-t-[3rem] border-t border-white/10 shadow-[0_-8px_24px_rgba(0,0,0,0.04)]">
-<a class="flex flex-col items-center justify-center text-[#595959] px-4 py-2 hover:bg-[#f2f2f2] dark:hover:bg-gray-800 active:scale-90 duration-200" href="catalogo.html">
-<span class="material-symbols-outlined">cake</span>
-<span class="font-jakarta text-[10px] font-semibold">Catálogo</span>
-</a>
-<a class="flex flex-col items-center justify-center text-[#595959] px-4 py-2 hover:bg-[#f2f2f2] dark:hover:bg-gray-800 active:scale-90 duration-200" href="pasteles-personalizados.html">
-<span class="material-symbols-outlined">auto_awesome</span>
-<span class="font-jakarta text-[10px] font-semibold">Diseños</span>
-</a>
-<a class="flex flex-col items-center justify-center text-[#595959] px-4 py-2 hover:bg-[#f2f2f2] dark:hover:bg-gray-800 active:scale-90 duration-200" href="como-ordenar.html">
-<span class="material-symbols-outlined">calendar_today</span>
-<span class="font-jakarta text-[10px] font-semibold">Pedidos</span>
-</a>
-<a class="flex flex-col items-center justify-center text-[#595959] px-4 py-2 hover:bg-[#f2f2f2] dark:hover:bg-gray-800 active:scale-90 duration-200" href="contacto-cobertura.html">
-<span class="material-symbols-outlined">chat</span>
-<span class="font-jakarta text-[10px] font-semibold">Contacto</span>
-</a>
-</nav>
+<!-- @include footer -->
+<!-- @include bottom-nav -->
 </body></html>

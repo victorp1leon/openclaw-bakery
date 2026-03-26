@@ -36,3 +36,28 @@ Replica estatica del ultimo diseno de Stitch para `HadiCakes` (actualizacion 202
 python3 -m http.server 4174 --directory site-new
 ```
 Abrir `http://127.0.0.1:4174/index.html`.
+
+## Templates reutilizables
+Los bloques compartidos ahora viven en:
+- `site-new/_templates/partials/header.html`
+- `site-new/_templates/partials/footer.html`
+- `site-new/_templates/partials/bottom-nav.html`
+
+Las paginas fuente viven en:
+- `site-new/_templates/pages/*.html`
+
+En esas paginas puedes incluir parciales con:
+```html
+<!-- @include header -->
+```
+
+## Build del sitio desde templates
+Regenera `site-new/*.html` con:
+```bash
+npm run web:new:build
+```
+
+Build + servidor local:
+```bash
+npm run web:new:live
+```

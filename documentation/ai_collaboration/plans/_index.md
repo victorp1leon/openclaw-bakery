@@ -10,6 +10,7 @@ Last Updated: 2026-03-25
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
+| `platform/implementation/hadicakes-site-new-template-partials-v5.md` | Implementation | Complete | 2026-03-25 |
 | `platform/implementation/hadicakes-site-new-pack2-pack3-v4.md` | Implementation | Complete | 2026-03-25 |
 | `platform/implementation/hadicakes-site-new-ux-polish-v3.md` | Implementation | Complete | 2026-03-25 |
 | `platform/implementation/hadicakes-site-new-stitch-replication-v2.md` | Implementation | Complete | 2026-03-25 |
