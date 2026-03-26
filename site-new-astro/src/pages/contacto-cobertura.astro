@@ -117,7 +117,7 @@ import '../styles/pages/contacto-cobertura.css';
   </div>
   <div class="space-y-2">
   <label class="text-sm font-semibold text-secondary ml-1">WhatsApp</label>
-  <input class="w-full bg-surface-container-high border-none rounded-xl p-4 focus:ring-2 focus:ring-primary transition-all placeholder:text-outline" placeholder="312 000 0000" type="tel"/>
+  <input class="w-full bg-surface-container-high border-none rounded-xl p-4 focus:ring-2 focus:ring-primary transition-all placeholder:text-outline" placeholder="312 242 4208" type="tel"/>
   </div>
   </div>
   <div class="space-y-2">
@@ -154,6 +154,10 @@ import '../styles/pages/contacto-cobertura.css';
   <span class="material-symbols-outlined text-primary" data-icon="location_on">location_on</span>
                               Sur y Aledaños
                           </li>
+  <li class="flex items-center gap-3 text-on-surface-variant font-medium">
+  <span class="material-symbols-outlined text-primary" data-icon="home_pin">home_pin</span>
+                              Tekuan 56, Villas de Bugambilias, Villa de Alvarez
+                          </li>
   </ul>
   <!-- Map Image Container -->
   <div class="aspect-video w-full rounded-lg overflow-hidden relative">
@@ -172,10 +176,14 @@ import '../styles/pages/contacto-cobertura.css';
   </div>
   <div class="bg-secondary-fixed p-6 rounded-xl flex flex-col justify-between">
   <span class="material-symbols-outlined text-on-secondary-fixed text-3xl" data-icon="share">share</span>
-  <div class="flex gap-4 mt-4">
-  <a class="text-on-secondary-fixed hover:text-primary transition-colors" href="https://instagram.com/hadicakes_colima">Instagram</a>
-  <a class="text-on-secondary-fixed hover:text-primary transition-colors" href="https://wa.me/523120000000">WhatsApp</a>
+  <div class="flex flex-wrap gap-4 mt-4">
+  <a class="text-on-secondary-fixed hover:text-primary transition-colors" href="https://instagram.com/hadi.cakess" target="_blank" rel="noopener noreferrer">Instagram</a>
+  <a class="text-on-secondary-fixed hover:text-primary transition-colors" href="https://facebook.com/HadiCakess" target="_blank" rel="noopener noreferrer">Facebook</a>
+  <a class="text-on-secondary-fixed hover:text-primary transition-colors" href="https://wa.me/523122424208" target="_blank" rel="noopener noreferrer">WhatsApp</a>
   </div>
+  </div>
+  <div class="md:col-span-2 bg-surface-container-low p-4 rounded-xl border border-outline-variant/40">
+  <img alt="Tarjeta oficial de Hadi Cakes" class="w-full h-auto rounded-lg object-cover" src="/assets/brand/tarjeta.jpg" loading="lazy" decoding="async">
   </div>
   </div>
   </div>
@@ -201,7 +209,7 @@ import '../styles/pages/contacto-cobertura.css';
     form.addEventListener('submit', function (event) {
       event.preventDefault();
       const nombre = form.querySelector('input[placeholder="Tu nombre completo"]')?.value?.trim() || '';
-      const whatsapp = form.querySelector('input[placeholder="312 000 0000"]')?.value?.trim() || '';
+      const whatsapp = form.querySelector('input[placeholder="312 242 4208"]')?.value?.trim() || '';
       const asunto = form.querySelector('input[placeholder="Ej: Cotización para Boda"]')?.value?.trim() || '';
       const mensaje = form.querySelector('textarea[placeholder="¿Cómo te imaginas tu pastel ideal?"]')?.value?.trim() || '';
   
@@ -214,7 +222,7 @@ import '../styles/pages/contacto-cobertura.css';
       ].filter(Boolean);
   
       const text = encodeURIComponent(lines.join('\n'));
-      window.open('https://wa.me/523120000000?text=' + text, '_blank', 'noopener,noreferrer');
+      window.open('https://wa.me/523122424208?text=' + text, '_blank', 'noopener,noreferrer');
     });
   })();
   </script>

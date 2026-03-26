@@ -5,7 +5,7 @@ Last Updated: 2026-03-26
 ## Active Plans
 | Plan | Tipo | Estado | Ultima actualizacion |
 |---|---|---|---|
-
+| `platform/implementation/hadicakes-site-new-astro-brand-assets-alignment-v1.md` | Implementation | In Progress | 2026-03-26 |
 
 ## Completed Plans
 | Plan | Tipo | Estado | Ultima actualizacion |

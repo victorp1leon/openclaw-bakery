@@ -22,10 +22,11 @@
       '@type': 'Bakery',
       name: 'Hadi Cakes',
       url: `${base}/index.html`,
-      logo: `${base}/assets/favicon.svg`,
+      logo: `${base}/assets/brand/logo-principal.svg`,
       sameAs: [
-        'https://instagram.com/hadicakes_colima',
-        'https://wa.me/523120000000'
+        'https://instagram.com/hadi.cakess',
+        'https://facebook.com/HadiCakess',
+        'https://wa.me/523122424208'
       ],
       areaServed: 'Colima, Mexico'
     };
