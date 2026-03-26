@@ -1,232 +1,243 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
-import BottomNav from '../components/BottomNav.astro';
-import '../styles/pages/producto-detalle.css';
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import BottomNav from "../components/BottomNav.astro";
+import {
+  baseUrlFromConfig,
+  buildWhatsAppLink,
+  formatPriceMxn,
+  siteContent
+} from "../lib/site-content";
+import "../styles/pages/producto-detalle.css";
+
+const baseUrl = baseUrlFromConfig();
+const detailProductId = siteContent.siteConfig.detalle_producto_id?.trim();
+const selectedProduct =
+  siteContent.catalogItems.find((item) => item.id === detailProductId) ||
+  siteContent.catalogItems[0];
+
+if (!selectedProduct) {
+  throw new Error("site_content_catalog_items_empty");
+}
+
+const canonicalUrl = `${baseUrl}/producto-detalle.html`;
+const seoTitle = siteContent.siteConfig.seo_titulo_detalle?.trim() || `${selectedProduct.nombre} - ${siteContent.businessName}`;
+const seoDescription =
+  siteContent.siteConfig.seo_descripcion_detalle?.trim() ||
+  `Detalle de ${selectedProduct.nombre}: ingredientes, porciones y pedido por WhatsApp en ${siteContent.businessName}.`;
+const ogImagePath = selectedProduct.imageUrl || siteContent.heroImageUrl || "/assets/images/img-030.jpg";
+const ogImageUrl = ogImagePath.startsWith("http") ? ogImagePath : `${baseUrl}${ogImagePath}`;
+
+const orderMessage =
+  (selectedProduct.ctaPlantilla || `Hola ${siteContent.businessName}, quiero ordenar ${selectedProduct.nombre}.`).replace(
+    /\{\{\s*producto_nombre\s*\}\}/gi,
+    selectedProduct.nombre
+  );
+const orderHref = buildWhatsAppLink(siteContent.whatsapp, orderMessage);
+
+const relatedIds = selectedProduct.productosRelacionados || [];
+const relatedFromIds = relatedIds
+  .map((id) => siteContent.catalogItems.find((item) => item.id === id))
+  .filter((item): item is NonNullable<typeof item> => Boolean(item));
+const relatedProducts = (
+  relatedFromIds.length > 0
+    ? relatedFromIds
+    : siteContent.catalogItems.filter((item) => item.id !== selectedProduct.id)
+).slice(0, 3);
+
+const heroSecondaryImage =
+  siteContent.gallery.find((img) => img !== selectedProduct.imageUrl) ||
+  siteContent.heroImageUrl ||
+  "/assets/images/img-027.jpg";
 ---
 <BaseLayout htmlClass="light" lang="es" bodyClass="bg-background font-body text-on-surface">
   <Fragment slot="head">
-    <!-- SEO Pack2 Start -->
-    <meta name="description" content="Detalle de producto Hadi Cakes: ingredientes, porciones y pedido por WhatsApp para pasteles artesanales en Colima."/>
-    <meta name="robots" content="index,follow"/>
-    <link rel="canonical" href="https://hadicakes.local/producto-detalle.html"/>
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg"/>
-    <meta property="og:title" content="Pastel Mediano - Hadi Cakes"/>
-    <meta property="og:description" content="Detalle de producto Hadi Cakes: ingredientes, porciones y pedido por WhatsApp para pasteles artesanales en Colima."/>
-    <meta property="og:type" content="website"/>
-    <meta property="og:site_name" content="Hadi Cakes"/>
-    <meta property="og:locale" content="es_MX"/>
-    <meta property="og:url" content="https://hadicakes.local/producto-detalle.html"/>
-    <meta property="og:image" content="https://hadicakes.local/assets/images/img-030.jpg"/>
-    <meta name="twitter:card" content="summary_large_image"/>
-    <meta name="twitter:title" content="Pastel Mediano - Hadi Cakes"/>
-    <meta name="twitter:description" content="Detalle de producto Hadi Cakes: ingredientes, porciones y pedido por WhatsApp para pasteles artesanales en Colima."/>
-    <meta name="twitter:image" content="https://hadicakes.local/assets/images/img-030.jpg"/>
-    <!-- SEO Pack2 End -->
-    <title>Pastel Mediano - Hadi Cakes</title>
-    <!-- Google Fonts -->
-    <link href="/assets/vendor/fonts-01.css" rel="stylesheet"/>
-    <!-- Material Symbols -->
-    <link href="/assets/vendor/fonts-04.css" rel="stylesheet"/>
-    <link href="/assets/vendor/fonts-04.css" rel="stylesheet"/>
-    <!-- Tailwind CSS -->
+    <meta name="description" content={seoDescription} />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href={canonicalUrl} />
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+    <meta property="og:title" content={seoTitle} />
+    <meta property="og:description" content={seoDescription} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={siteContent.businessName} />
+    <meta property="og:locale" content="es_MX" />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={seoTitle} />
+    <meta name="twitter:description" content={seoDescription} />
+    <meta name="twitter:image" content={ogImageUrl} />
+    <title>{seoTitle}</title>
+    <link href="/assets/vendor/fonts-01.css" rel="stylesheet" />
+    <link href="/assets/vendor/fonts-04.css" rel="stylesheet" />
     <script is:inline src="/assets/vendor/tailwindcss-cdn.js"></script>
     <script is:inline id="tailwind-config">
-          tailwind.config = {
-            darkMode: "class",
-            theme: {
-              extend: {
-                colors: {
-                  "on-secondary-fixed": "#201a19",
-                  "primary-fixed-dim": "#efbc9b",
-                  "surface-container-high": "#e8e8e8",
-                  "inverse-surface": "#2f3131",
-                  "error-container": "#ffdad6",
-                  "on-secondary": "#ffffff",
-                  "secondary-container": "#e9ddda",
-                  "inverse-primary": "#efbc9b",
-                  "tertiary-container": "#a0c7d3",
-                  "on-tertiary-fixed-variant": "#254c56",
-                  "surface-bright": "#f9f9f9",
-                  "secondary": "#655d5a",
-                  "on-primary-fixed": "#2f1502",
-                  "on-error-container": "#93000a",
-                  "on-surface-variant": "#50443d",
-                  "on-secondary-container": "#69615e",
-                  "surface-container-lowest": "#ffffff",
-                  "secondary-fixed-dim": "#cfc4c1",
-                  "on-background": "#1a1c1c",
-                  "primary": "#7c563b",
-                  "inverse-on-surface": "#f1f1f1",
-                  "primary-fixed": "#ffdcc6",
-                  "surface-dim": "#dadada",
-                  "surface-container-highest": "#e2e2e2",
-                  "tertiary": "#3e646e",
-                  "on-tertiary": "#ffffff",
-                  "surface-container": "#eeeeee",
-                  "on-tertiary-fixed": "#001f26",
-                  "primary-container": "#e8b695",
-                  "tertiary-fixed": "#c1e9f5",
-                  "surface-variant": "#e2e2e2",
-                  "on-error": "#ffffff",
-                  "tertiary-fixed-dim": "#a6cdd9",
-                  "surface-container-low": "#f3f3f3",
-                  "on-primary-container": "#6a462c",
-                  "surface-tint": "#7c563b",
-                  "on-surface": "#1a1c1c",
-                  "error": "#ba1a1a",
-                  "on-primary": "#ffffff",
-                  "on-primary-fixed-variant": "#623f25",
-                  "secondary-fixed": "#ece0dd",
-                  "on-secondary-fixed-variant": "#4d4543",
-                  "background": "#f9f9f9",
-                  "outline-variant": "#d4c3b9",
-                  "outline": "#82746c",
-                  "on-tertiary-container": "#2e545e",
-                  "surface": "#f9f9f9"
-                },
-                fontFamily: {
-                  "headline": ["Epilogue"],
-                  "body": ["Plus Jakarta Sans"],
-                  "label": ["Plus Jakarta Sans"]
-                },
-                borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
-              },
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-secondary-fixed": "#201a19",
+              "primary-fixed-dim": "#efbc9b",
+              "surface-container-high": "#e8e8e8",
+              "inverse-surface": "#2f3131",
+              "error-container": "#ffdad6",
+              "on-secondary": "#ffffff",
+              "secondary-container": "#e9ddda",
+              "inverse-primary": "#efbc9b",
+              "tertiary-container": "#a0c7d3",
+              "on-tertiary-fixed-variant": "#254c56",
+              "surface-bright": "#f9f9f9",
+              secondary: "#655d5a",
+              "on-primary-fixed": "#2f1502",
+              "on-error-container": "#93000a",
+              "on-surface-variant": "#50443d",
+              "on-secondary-container": "#69615e",
+              "surface-container-lowest": "#ffffff",
+              "secondary-fixed-dim": "#cfc4c1",
+              "on-background": "#1a1c1c",
+              primary: "#7c563b",
+              "inverse-on-surface": "#f1f1f1",
+              "primary-fixed": "#ffdcc6",
+              "surface-dim": "#dadada",
+              "surface-container-highest": "#e2e2e2",
+              tertiary: "#3e646e",
+              "on-tertiary": "#ffffff",
+              "surface-container": "#eeeeee",
+              "on-tertiary-fixed": "#001f26",
+              "primary-container": "#e8b695",
+              "tertiary-fixed": "#c1e9f5",
+              "surface-variant": "#e2e2e2",
+              "on-error": "#ffffff",
+              "tertiary-fixed-dim": "#a6cdd9",
+              "surface-container-low": "#f3f3f3",
+              "on-primary-container": "#6a462c",
+              "surface-tint": "#7c563b",
+              "on-surface": "#1a1c1c",
+              error: "#ba1a1a",
+              "on-primary": "#ffffff",
+              "on-primary-fixed-variant": "#623f25",
+              "secondary-fixed": "#ece0dd",
+              "on-secondary-fixed-variant": "#4d4543",
+              background: "#f9f9f9",
+              "outline-variant": "#d4c3b9",
+              outline: "#82746c",
+              "on-tertiary-container": "#2e545e",
+              surface: "#f9f9f9"
             },
+            fontFamily: {
+              headline: ["Epilogue"],
+              body: ["Plus Jakarta Sans"],
+              label: ["Plus Jakarta Sans"]
+            },
+            borderRadius: {
+              DEFAULT: "1rem",
+              lg: "2rem",
+              xl: "3rem",
+              full: "9999px"
+            }
           }
-        </script>
+        }
+      }
+    </script>
   </Fragment>
+
   <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[999] focus:bg-primary focus:text-white focus:px-4 focus:py-2 focus:rounded-full">Saltar al contenido</a>
   <Header />
+
   <main id="main-content" class="max-w-7xl mx-auto px-6 py-12 md:py-20 overflow-visible">
-  <!-- Product Hero Section: Asymmetric Editorial Layout -->
-  <div class="grid grid-cols-1 md:grid-cols-[1.2fr_0.8fr] gap-12 lg:gap-20 items-start">
-  <!-- Left: Hero Imagery with Overlap -->
-  <div class="relative">
-  <div class="aspect-[4/5] bg-surface-container-low rounded-xl overflow-hidden relative group">
-  <img alt="Pastel Mediano Artisanal" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="Close-up of a sophisticated medium-sized artisanal cake with smooth pastel frosting, delicate handmade sugar flowers, and soft studio lighting." src="assets/images/img-030.jpg" decoding="async" loading="eager" fetchpriority="high">
-  <!-- Floating Badge Overlap -->
-  <div class="absolute -bottom-6 -right-6 bg-white p-6 rounded-xl shadow-xl hidden lg:block max-w-[180px]">
-  <div class="flex items-center gap-2 mb-2">
-  <span class="material-symbols-outlined text-[#E8B695]" data-weight="fill" style="font-variation-settings: 'FILL' 1;">stars</span>
-  <span class="text-[10px] font-bold tracking-widest uppercase text-secondary">Calidad Premium</span>
-  </div>
-  <p class="text-xs text-on-surface-variant font-medium leading-relaxed">Cada pastel es una pieza única de repostería creativa.</p>
-  </div>
-  </div>
-  <!-- Secondary Decorative Image (Small) -->
-  <div class="absolute -top-10 -left-10 w-32 h-32 md:w-48 md:h-48 rounded-full border-8 border-background overflow-hidden shadow-2xl hidden md:block">
-  <img alt="Detalle de ingrediente" class="w-full h-full object-cover" data-alt="Macro shot of high-quality vanilla beans and organic chocolate shavings on a marble surface with soft warm light." src="assets/images/img-027.jpg" decoding="async" loading="lazy">
-  </div>
-  </div>
-  <!-- Right: Product Details Canvas -->
-  <div class="flex flex-col gap-8 md:sticky md:top-32">
-  <div class="space-y-4">
-  <div class="flex flex-wrap gap-2">
-  <span class="bg-secondary-container text-on-secondary-container px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide">Hecho a mano</span>
-  <span class="bg-tertiary-container text-on-tertiary-container px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide">Colima local</span>
-  </div>
-  <h1 class="text-5xl md:text-6xl font-black font-headline text-on-surface leading-none tracking-tight">Pastel Mediano</h1>
-  <p class="text-3xl font-bold text-primary">$650 MXN</p>
-  </div>
-  <div class="space-y-6">
-  <div class="space-y-2">
-  <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-secondary">Descripción</label>
-  <p class="text-lg text-on-surface-variant leading-relaxed">
-                              Una obra maestra de nuestra repostería creativa. Bizcocho artesanal disponible en vainilla francesa o chocolate premium, relleno con crema sedosa y decorado totalmente a mano con el estilo único de <span class="text-primary font-bold">Hadi Cakes</span>.
-                          </p>
-  </div>
-  <!-- Custom Selection Options (Glass Tonal) -->
-  <div class="grid grid-cols-2 gap-4">
-  <div class="bg-surface-container-low p-4 rounded-lg flex flex-col gap-1 border-b-2 border-transparent hover:border-primary transition-all cursor-pointer">
-  <span class="text-[10px] font-bold text-secondary uppercase tracking-wider">Sabor</span>
-  <span class="font-semibold text-on-surface">Vainilla Francesa</span>
-  </div>
-  <div class="bg-surface-container-low p-4 rounded-lg flex flex-col gap-1 border-b-2 border-transparent hover:border-primary transition-all cursor-pointer">
-  <span class="text-[10px] font-bold text-secondary uppercase tracking-wider">Porciones</span>
-  <span class="font-semibold text-on-surface">12 - 15 personas</span>
-  </div>
-  </div>
-  </div>
-  <!-- Primary CTA Section -->
-  <div class="pt-6 space-y-4">
-  <a class="w-full bg-primary-container text-on-primary-container h-16 rounded-full flex items-center justify-center gap-3 text-lg font-extrabold shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-300" href="https://wa.me/523122424208?text=Hola%20Hadi%20Cakes%2C%20quiero%20ordenar%20uno%20de%20sus%20productos." target="_blank" rel="noopener noreferrer">
-  <span class="material-symbols-outlined">chat</span>
-                          Ordenar por WhatsApp
-                      </a>
-  <p class="text-center text-xs text-secondary font-medium">
-                          * Tiempo estimado de entrega: 2 a 3 días hábiles.
-                      </p>
-  </div>
-  <!-- Trust Badges (Artisanal List) -->
-  <div class="flex flex-col gap-3 pt-4 border-t border-outline-variant/20">
-  <div class="flex items-center gap-3">
-  <span class="material-symbols-outlined text-primary text-xl">favorite</span>
-  <span class="text-sm font-semibold text-on-surface-variant italic">Recetas 100% originales de la casa</span>
-  </div>
-  <div class="flex items-center gap-3">
-  <span class="material-symbols-outlined text-primary text-xl">local_shipping</span>
-  <span class="text-sm font-semibold text-on-surface-variant italic">Envíos seguros en todo Colima</span>
-  </div>
-  </div>
-  </div>
-  </div>
-  <!-- Recommendations Section: Bento Inspired Grid -->
-  <section class="mt-32">
-  <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
-  <div>
-  <h2 class="text-primary text-sm font-bold uppercase tracking-[0.3em] mb-2">Sugerencias</h2>
-  <h3 class="text-4xl font-black font-headline text-on-surface">También te puede gustar</h3>
-  </div>
-  <a class="text-primary font-bold underline-offset-8 hover:underline flex items-center gap-2 group" href="catalogo.html">
-                      Ver todo el catálogo 
-                      <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
-  </a>
-  </div>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-  <!-- Suggestion Card 1 -->
-  <div class="group cursor-pointer">
-  <div class="aspect-square bg-surface-container-high rounded-xl overflow-hidden mb-6">
-  <img alt="Cupcakes Artesanales" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A collection of gourmet cupcakes with intricate pastel frosting designs and pearl sprinkles on a soft minimalist background." src="assets/images/img-021.jpg" decoding="async" loading="lazy">
-  </div>
-  <div class="space-y-2">
-  <div class="flex justify-between items-center">
-  <h4 class="text-xl font-bold text-on-surface">Caja de Cupcakes</h4>
-  <span class="text-primary font-bold">$320</span>
-  </div>
-  <p class="text-sm text-on-surface-variant">Set de 6 piezas decoradas a mano.</p>
-  </div>
-  </div>
-  <!-- Suggestion Card 2 -->
-  <div class="group cursor-pointer">
-  <div class="aspect-square bg-surface-container-high rounded-xl overflow-hidden mb-6">
-  <img alt="Pastel de Chocolate" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="Elegant tall dark chocolate cake topped with golden edible leaves and fresh berries, dramatic lighting with soft shadows." src="assets/images/img-016.jpg" decoding="async" loading="lazy">
-  </div>
-  <div class="space-y-2">
-  <div class="flex justify-between items-center">
-  <h4 class="text-xl font-bold text-on-surface">Pastel de Gala</h4>
-  <span class="text-primary font-bold">$890</span>
-  </div>
-  <p class="text-sm text-on-surface-variant">Para eventos especiales de 20-25 personas.</p>
-  </div>
-  </div>
-  <!-- Suggestion Card 3 -->
-  <div class="group cursor-pointer">
-  <div class="aspect-square bg-surface-container-high rounded-xl overflow-hidden mb-6">
-  <img alt="Donas Gourmet" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="Artisanal glazed donuts with colorful organic toppings and creative drizzle patterns, bright airy kitchen setting." src="assets/images/img-006.jpg" decoding="async" loading="lazy">
-  </div>
-  <div class="space-y-2">
-  <div class="flex justify-between items-center">
-  <h4 class="text-xl font-bold text-on-surface">Pack Donas</h4>
-  <span class="text-primary font-bold">$240</span>
-  </div>
-  <p class="text-sm text-on-surface-variant">4 sabores exclusivos de temporada.</p>
-  </div>
-  </div>
-  </div>
-  </section>
+    <div class="grid grid-cols-1 md:grid-cols-[1.2fr_0.8fr] gap-12 lg:gap-20 items-start">
+      <div class="relative">
+        <div class="aspect-[4/5] bg-surface-container-low rounded-xl overflow-hidden relative group">
+          <img alt={selectedProduct.nombre} class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" src={selectedProduct.imageUrl} decoding="async" loading="eager" fetchpriority="high" />
+          <div class="absolute -bottom-6 -right-6 bg-white p-6 rounded-xl shadow-xl hidden lg:block max-w-[220px]">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="material-symbols-outlined text-[#E8B695]" style="font-variation-settings: 'FILL' 1;">stars</span>
+              <span class="text-[10px] font-bold tracking-widest uppercase text-secondary">Calidad premium</span>
+            </div>
+            <p class="text-xs text-on-surface-variant font-medium leading-relaxed">
+              Producto sincronizado desde Google Sheets: puedes editar nombre, descripcion, precio y relaciones.
+            </p>
+          </div>
+        </div>
+
+        <div class="absolute -top-10 -left-10 w-32 h-32 md:w-48 md:h-48 rounded-full border-8 border-background overflow-hidden shadow-2xl hidden md:block">
+          <img alt="Detalle de producto" class="w-full h-full object-cover" src={heroSecondaryImage} decoding="async" loading="lazy" />
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-8 md:sticky md:top-32">
+        <div class="space-y-4">
+          <div class="flex flex-wrap gap-2">
+            <span class="bg-secondary-container text-on-secondary-container px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide">Hecho a mano</span>
+            <span class="bg-tertiary-container text-on-tertiary-container px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide">Colima local</span>
+          </div>
+          <h1 class="text-5xl md:text-6xl font-black font-headline text-on-surface leading-none tracking-tight">{selectedProduct.nombre}</h1>
+          <p class="text-3xl font-bold text-primary">{formatPriceMxn(selectedProduct.precio)}</p>
+        </div>
+
+        <div class="space-y-6">
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold uppercase tracking-[0.2em] text-secondary">Descripcion</label>
+            <p class="text-lg text-on-surface-variant leading-relaxed">
+              {selectedProduct.descripcion || "Producto artesanal disponible por pedido. Escríbenos para personalizarlo a tu evento."}
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-surface-container-low p-4 rounded-lg flex flex-col gap-1 border-b-2 border-transparent hover:border-primary transition-all">
+              <span class="text-[10px] font-bold text-secondary uppercase tracking-wider">Categoria</span>
+              <span class="font-semibold text-on-surface">{selectedProduct.categoria || "Especialidades"}</span>
+            </div>
+            <div class="bg-surface-container-low p-4 rounded-lg flex flex-col gap-1 border-b-2 border-transparent hover:border-primary transition-all">
+              <span class="text-[10px] font-bold text-secondary uppercase tracking-wider">Porciones</span>
+              <span class="font-semibold text-on-surface">{selectedProduct.porciones || "Consultar"}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-6 space-y-4">
+          <a class="w-full bg-primary-container text-on-primary-container h-16 rounded-full flex items-center justify-center gap-3 text-lg font-extrabold shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-300" href={orderHref} target="_blank" rel="noopener noreferrer">
+            <span class="material-symbols-outlined">chat</span>
+            {selectedProduct.ctaTexto || siteContent.cta || "Ordenar por WhatsApp"}
+          </a>
+          <p class="text-center text-xs text-secondary font-medium">* Tiempo estimado de entrega: 2 a 3 dias habiles.</p>
+        </div>
+      </div>
+    </div>
+
+    <section class="mt-32">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+        <div>
+          <h2 class="text-primary text-sm font-bold uppercase tracking-[0.3em] mb-2">Sugerencias</h2>
+          <h3 class="text-4xl font-black font-headline text-on-surface">Tambien te puede gustar</h3>
+        </div>
+        <a class="text-primary font-bold underline-offset-8 hover:underline flex items-center gap-2 group" href="catalogo.html">
+          Ver todo el catalogo
+          <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {relatedProducts.map((item) => (
+          <article class="group">
+            <div class="aspect-square bg-surface-container-high rounded-xl overflow-hidden mb-6">
+              <img alt={item.nombre} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src={item.imageUrl} decoding="async" loading="lazy" />
+            </div>
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <h4 class="text-xl font-bold text-on-surface">{item.nombre}</h4>
+                <span class="text-primary font-bold">{formatPriceMxn(item.precio)}</span>
+              </div>
+              <p class="text-sm text-on-surface-variant">{item.descripcion || "Producto artesanal disponible por pedido."}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
   </main>
+
   <Footer />
   <BottomNav />
 </BaseLayout>

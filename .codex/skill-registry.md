@@ -1,11 +1,12 @@
 # Skill Registry
 
-Generated At (UTC): 2026-03-25 22:19:19.564 UTC
+Generated At (UTC): 2026-03-26 22:14:36.838 UTC
 
 ## Skills
 
 | Name | Description | Path |
 |---|---|---|
+| astro-seo-metadata-sync | Keep Astro SEO metadata consistent across pages by removing hardcoded domains and wiring canonical/OG/Twitter URLs to shared base URL config (`baseUrlFromConfig`). Use when pages drift in canonical, og:url, og:image, or twitter:image values. | `.codex/skills/astro-seo-metadata-sync/SKILL.md` |
 | docs-plan-handoff | Maintain collaboration artifacts for complex tasks. Use when work requires creating or updating plans, plans index entries, and session handoff notes. | `.codex/skills/docs-plan-handoff/SKILL.md` |
 | env-validate | Validate and normalize .env for unit, smoke, and live flows. Use when the user asks to check missing variables, duplicate keys, or configuration errors before running bot flows. | `.codex/skills/env-validate/SKILL.md` |
 | external-tool-adapter-safety | Deliver external tool adapters safely (CLI/Python/MCP bridge) with allowlist validation, timeout controls, output redaction, feature flags, and smoke-summary evidence. Use when integrating third-party analysis tools into OpenClaw runtime/tools. | `.codex/skills/external-tool-adapter-safety/SKILL.md` |

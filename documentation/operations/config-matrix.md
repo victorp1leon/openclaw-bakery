@@ -1,7 +1,7 @@
 # Bot Bakery Configuration Matrix
 
 Status: MVP
-Last Updated: 2026-03-17
+Last Updated: 2026-03-26
 
 This matrix documents environment variables, defaults, requiredness, and runtime impact.
 
@@ -98,6 +98,20 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 | `WEB_PUBLISH_DRY_RUN` | `1` | No | web publish adapter, healthcheck | Safe default mode for `web.publish`; no external publish when enabled. |
 | `WEB_CHAT_ENABLE` | `0` | No | conversation runtime, healthcheck | Enables `web` commands through chat runtime (`1`=enabled, `0`=disabled). Security-first default is disabled. |
 | `WEB_CONTENT_PATH` | `site/CONTENT.json` | No | terminal/CI publish script, healthcheck | Repository path for canonical website content JSON. |
+| `WEB_CONTENT_SYNC_PREVIEW` | `0` | No | `scripts/web/sync-content-from-sheets.ts` | Safety gate for content sync (`1` preview/no write, `0` apply/write outputs). |
+| `WEB_CONTENT_SYNC_MOCK_JSON_PATH` | _(unset)_ | No | `scripts/web/sync-content-from-sheets.ts` | Optional local mock source (`{ "tabs": { "<tab>": [["h1"],["v1"]] } }`) to run sync without live Sheets access. |
+| `WEB_CONTENT_SYNC_GWS_COMMAND` | fallback `ORDER_SHEETS_GWS_COMMAND` | No | `scripts/web/sync-content-from-sheets.ts` | Binary used to invoke `googleworkspace/cli` for web-content reads. |
+| `WEB_CONTENT_SYNC_GWS_COMMAND_ARGS` | fallback `ORDER_SHEETS_GWS_COMMAND_ARGS` | No | `scripts/web/sync-content-from-sheets.ts` | Comma-separated prefix args injected before Sheets read subcommands. |
+| `WEB_CONTENT_SYNC_GWS_SPREADSHEET_ID` | fallback `ORDER_SHEETS_GWS_SPREADSHEET_ID`, then `EXPENSE_GWS_SPREADSHEET_ID` | Recommended | `scripts/web/sync-content-from-sheets.ts` | Spreadsheet id containing web-content tabs (`productos`, `favoritos_inicio`, etc.). |
+| `WEB_CONTENT_SYNC_TIMEOUT_MS` | fallback `ORDER_SHEETS_TIMEOUT_MS` | No | `scripts/web/sync-content-from-sheets.ts` | Timeout per `gws` command invocation for web-content sync reads. |
+| `WEB_CONTENT_SYNC_TAB_PRODUCTOS` | `productos` | No | `scripts/web/sync-content-from-sheets.ts` | Tab name for product catalog rows. |
+| `WEB_CONTENT_SYNC_TAB_FAVORITOS` | `favoritos_inicio` | No | `scripts/web/sync-content-from-sheets.ts` | Tab name for home favorites rows. |
+| `WEB_CONTENT_SYNC_TAB_PASOS` | `pasos_compra` | No | `scripts/web/sync-content-from-sheets.ts` | Tab name for ordering steps rows. |
+| `WEB_CONTENT_SYNC_TAB_RESENAS` | `resenas` | No | `scripts/web/sync-content-from-sheets.ts` | Tab name for testimonials/reviews rows. |
+| `WEB_CONTENT_SYNC_TAB_RECURSOS` | `recursos` | No | `scripts/web/sync-content-from-sheets.ts` | Tab name for brand/media resources rows. |
+| `WEB_CONTENT_SYNC_TAB_CONFIGURACION` | `configuracion_sitio` | No | `scripts/web/sync-content-from-sheets.ts` | Tab name for SEO/contact/site configuration rows. |
+| `WEB_CONTENT_SYNC_OUTPUT_PATH` | fallback `WEB_CONTENT_PATH` | No | `scripts/web/sync-content-from-sheets.ts` | Target JSON path for canonical web content output. |
+| `WEB_CONTENT_SYNC_ASTRO_OUTPUT_PATH` | `site-new-astro/src/data/site-content.generated.json` | No | `scripts/web/sync-content-from-sheets.ts` | Target JSON path consumed by Astro pages. |
 | `WEB_PUBLISH_WEBHOOK_URL` | _(unset)_ | Required when `WEB_PUBLISH_DRY_RUN=0` | web publish adapter, healthcheck | Publish endpoint URL for `web.publish` live mode. |
 | `WEB_PUBLISH_API_KEY` | _(unset)_ | Required when `WEB_PUBLISH_DRY_RUN=0` | web publish adapter, healthcheck | Shared secret sent to publish endpoint for authentication. |
 | `WEB_PUBLISH_API_KEY_HEADER` | `x-api-key` | No | web publish adapter | Header name used to send publish API key. |
@@ -206,6 +220,10 @@ This matrix documents environment variables, defaults, requiredness, and runtime
   - `SHEETS_SCHEMA_APPLY=1 SHEETS_SCHEMA_PATH=scripts/sheets/schemas/inventory-tabs.tabs.json npm run sheets:tabs:init:schema`
 - Generic tabs schema validation (required before apply in CI/manual flow):
   - `npm run sheets:tabs:validate:schema`
+- Web content tabs bootstrap (preview):
+  - `npm run sheets:web-content:preview`
+- Web content tabs bootstrap apply:
+  - `SHEETS_SCHEMA_APPLY=1 npm run sheets:web-content:init`
 - Pricing catalog tabs validation (headers + duplicate keys):
   - `npm run sheets:pricing:validate`
 - Dry-run web smoke (safe default): `npm run smoke:web`
@@ -222,6 +240,12 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 - UI smoke (Playwright-core, incluye `web:build`): `npm run smoke:web:ui`
 - Build static site from repository content:
   - `npm run web:build`
+- Sync web content from Sheets/mock to `site/CONTENT.json` + Astro data:
+  - `npm run web:content:sync`
+- Sync web content preview only (no writes):
+  - `npm run web:content:sync:preview`
+- Sync using local mock JSON (recommended for dry validation):
+  - `WEB_CONTENT_SYNC_MOCK_JSON_PATH=/tmp/web-content-tabs.mock.json npm run web:content:sync`
 - One-command local preview (build + serve):
   - `npm run web:live:local`
 - Import public Facebook image URLs into `site/CONTENT.json` gallery (best effort):
@@ -262,6 +286,7 @@ This matrix documents environment variables, defaults, requiredness, and runtime
 - Inventory tabs bootstrap uses the same `gws` path and creates/updates `Inventario` + `MovimientosInventario` headers in the configured spreadsheet.
 - Generic schema bootstrap (`sheets:tabs:init:schema`) provides a manifest-driven path for future tabs using `scripts/sheets/schemas/*.tabs.json`.
 - Generic tabs schema validator (`sheets:tabs:validate:schema`) catches malformed manifest files (missing headers/tabs, duplicate keys/names, invalid row shapes/placeholders) before bootstrap.
+- Web content sync consumes tabs en espanol (`productos`, `favoritos_inicio`, `pasos_compra`, `resenas`, `recursos`, `configuracion_sitio`) and writes both canonical JSON (`site/CONTENT.json`) and Astro generated JSON (`site-new-astro/src/data/site-content.generated.json`).
 - `report.orders` reads Google Sheets via `gws` (`values.get`) using `ORDER_SHEETS_GWS_SPREADSHEET_ID` and a read range derived from `ORDER_SHEETS_GWS_RANGE` (`Pedidos!A1` -> `Pedidos!A:U`), preferring `fecha_hora_entrega_iso` for filtering when that column exists, exposing `trace_ref` and capping preview rows with `ORDER_REPORT_LIMIT`.
 - `order.lookup` reads `Pedidos` via `gws` with the same spreadsheet/range base config and caps preview rows with `ORDER_LOOKUP_LIMIT` (default 10).
 - `shopping.list.generate` reads orders from `Pedidos` via `gws` and resolves recipe profiles from `ORDER_RECIPES_SOURCE`:

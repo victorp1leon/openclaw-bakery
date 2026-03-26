@@ -1,33 +1,44 @@
+---
+import { siteContent, whatsappNumberOnly } from "../lib/site-content";
+
+const logoPrincipal = siteContent.brandAssets?.logoUrl || "/assets/brand/logo-principal.svg";
+const logoBlanco = "/assets/brand/logo-blanco.png";
+const facebookUrl = siteContent.facebookPageUrl || "https://facebook.com/HadiCakess";
+const instagramUrl = siteContent.instagramUrl || "https://instagram.com/hadi.cakess";
+const whatsappUrl = `https://wa.me/${whatsappNumberOnly(siteContent.whatsapp)}`;
+const address = siteContent.contact?.address || "Villa de Alvarez, Colima";
+const telefono = siteContent.whatsapp;
+const businessCardNote = siteContent.brandAssets?.businessCardNote || "Atencion por WhatsApp todos los dias";
+---
 <!-- Footer -->
 <footer class="w-full rounded-t-[3rem] mt-20 bg-[#f2f2f2] dark:bg-[#1A1C1C]">
-<div class="max-w-7xl mx-auto px-8 py-16 grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left">
-<div>
-<div class="mb-4 flex justify-center md:justify-start">
-<img class="h-14 w-auto block dark:hidden" src="/assets/brand/logo-principal.svg" alt="Logo Hadi Cakes" loading="lazy" decoding="async">
-<img class="h-14 w-auto hidden dark:block" src="/assets/brand/logo-blanco.png" alt="Logo Hadi Cakes en blanco" loading="lazy" decoding="async">
-</div>
-<p class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400">
-                    Repostería artesanal creativa en Colima. Cada pastel cuenta una historia dulce diseñada especialmente para ti.
-                </p>
-<p class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 mt-3">
-                    Tekuan 56, Colonia Villas de Bugambilias, Villa de Alvarez, Colima.
-                </p>
-<p class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 mt-1">
-                    Tel. 312 242 4208
-                </p>
-</div>
-<div class="flex flex-col gap-3">
-<h4 class="font-headline font-bold text-[#7C563B] mb-2">Explora</h4>
-<a class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 hover:text-[#050505] dark:hover:text-white underline" href="https://instagram.com/hadi.cakess" target="_blank" rel="noopener noreferrer">Instagram</a>
-<a class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 hover:text-[#050505] dark:hover:text-white underline" href="https://facebook.com/HadiCakess" target="_blank" rel="noopener noreferrer">Facebook</a>
-<a class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 hover:text-[#050505] dark:hover:text-white underline" href="https://wa.me/523122424208" target="_blank" rel="noopener noreferrer">WhatsApp</a>
-<a class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 hover:text-[#050505] dark:hover:text-white underline" href="contacto-cobertura.html">Ubicación</a>
-<a class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 hover:text-[#050505] dark:hover:text-white underline" href="como-ordenar.html">Términos</a>
-</div>
-<div class="flex flex-col justify-end">
-<p class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400">
-                    © 2026 Hadi Cakes • Repostería Creativa Colima
-                </p>
-</div>
-</div>
+  <div class="max-w-7xl mx-auto px-8 py-16 grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left">
+    <div>
+      <div class="mb-4 flex justify-center md:justify-start">
+        <img class="h-14 w-auto block dark:hidden" src={logoPrincipal} alt={`Logo ${siteContent.businessName}`} loading="lazy" decoding="async">
+        <img class="h-14 w-auto hidden dark:block" src={logoBlanco} alt={`Logo ${siteContent.businessName} en blanco`} loading="lazy" decoding="async">
+      </div>
+      <p class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400">
+        Reposteria artesanal creativa en Colima. Cada pastel cuenta una historia dulce disenada especialmente para ti.
+      </p>
+      <p class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 mt-3">{address}</p>
+      <p class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 mt-1">Tel. {telefono}</p>
+      <p class="font-jakarta text-xs leading-relaxed text-[#595959] dark:text-gray-400 mt-2">{businessCardNote}</p>
+    </div>
+
+    <div class="flex flex-col gap-3">
+      <h4 class="font-headline font-bold text-[#7C563B] mb-2">Explora</h4>
+      <a class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 hover:text-[#050505] dark:hover:text-white underline" href={instagramUrl} target="_blank" rel="noopener noreferrer">Instagram</a>
+      <a class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 hover:text-[#050505] dark:hover:text-white underline" href={facebookUrl} target="_blank" rel="noopener noreferrer">Facebook</a>
+      <a class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 hover:text-[#050505] dark:hover:text-white underline" href={whatsappUrl} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+      <a class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 hover:text-[#050505] dark:hover:text-white underline" href="contacto-cobertura.html">Ubicacion</a>
+      <a class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400 hover:text-[#050505] dark:hover:text-white underline" href="como-ordenar.html">Terminos</a>
+    </div>
+
+    <div class="flex flex-col justify-end">
+      <p class="font-jakarta text-sm leading-relaxed text-[#595959] dark:text-gray-400">
+        &copy; 2026 {siteContent.businessName} • Reposteria Creativa Colima
+      </p>
+    </div>
+  </div>
 </footer>

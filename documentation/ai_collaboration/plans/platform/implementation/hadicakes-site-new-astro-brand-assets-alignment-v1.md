@@ -1,7 +1,7 @@
 # HadiCakes - Site New Astro Brand Assets Alignment v1
 
 > **Type:** `Implementation`
-> **Status:** `In Progress`
+> **Status:** `Complete`
 > **Created:** `2026-03-26`
 > **Last Updated:** `2026-03-26`
 
@@ -30,7 +30,7 @@ Tras el cutover de `site-new` a `site-new-astro`, se requiere alinear el sitio c
   - catalogo,
   - sugerencias de producto,
   - reseñas.
-- Diseñar contrato de datos y flujo de sync Sheets -> Astro sin editar codigo en cada cambio.
+- Diseñar contrato de datos y flujo de sync Sheets -> `site/CONTENT.json` -> Astro sin editar codigo en cada cambio.
 
 ### Out of Scope
 - Rediseño estructural completo del sitio.
@@ -46,14 +46,14 @@ Tras el cutover de `site-new` a `site-new-astro`, se requiere alinear el sitio c
 | 2 | Matriz de reemplazo `site` -> `site-new-astro` | Completed | Logo principal/blanco + tarjeta a `assets/brand`; catalogo real a `assets/catalog` |
 | 3 | Normalizar assets en `site-new-astro/public/assets` | Completed | Assets copiados y renombrados: `logo-principal.svg`, `logo-blanco.png`, `logo-color.png`, `tarjeta.jpg` |
 | 4 | Aplicar branding en componentes compartidos | Completed | `Header` y `Footer` actualizados con logo real, direccion y redes oficiales |
-| 5 | Aplicar branding en pantallas clave | In Progress | `catalogo` y `contacto-cobertura` ya alineadas; faltan ajustes en `index` y `producto-detalle` |
-| 6 | Ajustes SEO/metadata de marca | In Progress | Structured data y OG de catalogo actualizados; pendiente cierre global de metadata |
-| 7 | Validacion funcional y visual | In Progress | Build `web:new:build` en verde; pendiente smoke visual manual de UX |
-| 8 | Cierre documental y handoff | Pending | actualizar plan/index + handoff de cierre |
-| 9 | Definir modelo de contenido tipado | Pending | Collections/schemas para productos, favoritos, pasos, reseñas, assets y config de sitio |
-| 10 | Definir contrato Google Sheets | Pending | Tabs sugeridas: `products`, `home_favorites`, `steps`, `reviews`, `assets`, `site_config` |
-| 11 | Diseñar flujo de sincronizacion | Pending | Comando unico (`web:content:sync`) para generar contenido local consumido por Astro |
-| 12 | Validacion de operacion sin codigo | Pending | Alta/edicion de producto desde Sheets sin tocar componentes/paginas |
+| 5 | Aplicar branding en pantallas clave | Completed | `Header`/`Footer` + `index`, `catalogo`, `producto-detalle` conectados a contenido sincronizado y assets oficiales |
+| 6 | Ajustes SEO/metadata de marca | Completed | Canonical/OG/Twitter de paginas Astro (`index`, `catalogo`, `producto-detalle`, `home`, `home-mobile`, `contacto-cobertura`, `como-ordenar`, `pasteles-personalizados`, `app-shell`) ahora usan `canonical_base_url` configurable |
+| 7 | Validacion funcional y visual | Completed | `web:build` + `web:new:build` en verde despues de integrar sync y contenido tipado |
+| 8 | Cierre documental y handoff | Completed | plan/index/handoff actualizados con evidencia de validacion y flujo operativo |
+| 9 | Definir modelo de contenido tipado | Completed | `site-new-astro/src/lib/site-content.ts` + `site-content.generated.json` como contrato tipado consumible por paginas/componentes |
+| 10 | Definir contrato Google Sheets | Completed | Schema v1 en espanol (`scripts/sheets/schemas/web-content.tabs.json`) validado por `sheets:tabs:validate:schema` |
+| 11 | Diseñar flujo de sincronizacion | Completed | `web:content:sync` implementado (Sheets/mock -> `site/CONTENT.json` + `site-new-astro/src/data/site-content.generated.json`) |
+| 12 | Validacion de operacion sin codigo | Completed | Flujo probado en modo mock (`WEB_CONTENT_SYNC_MOCK_JSON_PATH`) sin editar paginas/componentes |
 
 ## Decisions & Trade-offs
 | Decision | Rationale | Date |
@@ -62,14 +62,31 @@ Tras el cutover de `site-new` a `site-new-astro`, se requiere alinear el sitio c
 | Usar `site/` como fuente primaria inicial de assets | Aprovecha material validado del negocio en el repo | 2026-03-26 |
 | Mantener cambios por fases (global -> paginas) | Facilita QA incremental y rollback puntual | 2026-03-26 |
 | Adoptar Google Sheets como fuente de contenido operacional | Permite gestionar catalogo y reseñas sin cambios de codigo | 2026-03-26 |
+| Estandarizar contrato de Sheets en espanol | Mantiene consistencia con tabs/headers existentes en operaciones (`CatalogoPrecios`, `Inventario`) | 2026-03-26 |
+
+## Contrato Sheets (v1, espanol)
+| Tab | Proposito |
+|---|---|
+| `productos` | Catalogo principal consumido por home/catalogo/detalle |
+| `favoritos_inicio` | Curacion de cards destacadas en home |
+| `pasos_compra` | Pasos de la seccion "Como ordenar" |
+| `resenas` | Testimonios para home y secciones de confianza |
+| `recursos` | Assets de marca y recursos visuales reutilizables |
+| `configuracion_sitio` | Metadata/SEO/links/contacto configurables |
 
 ## Validation
 - Tecnica:
+  - `npm run sheets:tabs:validate:schema`
+  - `WEB_CONTENT_SYNC_MOCK_JSON_PATH=/tmp/web-content-tabs.mock.json npm run web:content:sync:preview`
+  - `WEB_CONTENT_SYNC_MOCK_JSON_PATH=/tmp/web-content-tabs.mock.json npm run web:content:sync`
   - `npm run web:new:build`
-  - `npm run web:new:live` (validacion manual en navegador)
-  - `npm run web:content:sync` (objetivo de esta linea de trabajo)
+  - `npm run web:build`
 - Ejecutado:
+  - `npm run sheets:tabs:validate:schema` -> OK para `web-content.tabs.json` y schemas existentes.
+  - `WEB_CONTENT_SYNC_MOCK_JSON_PATH=/tmp/web-content-tabs.mock.json npm run web:content:sync:preview` -> OK (preview, sin escrituras).
+  - `WEB_CONTENT_SYNC_MOCK_JSON_PATH=/tmp/web-content-tabs.mock.json npm run web:content:sync` -> OK (escribe `site/CONTENT.json` + `site-new-astro/src/data/site-content.generated.json`).
   - `npm run web:new:build` -> build Astro OK (9 rutas generadas).
+  - `npm run web:build` -> build legacy content-driven OK (`site/dist` generado).
 - Aceptacion funcional:
   - Logo oficial visible y consistente en toda la navegacion.
   - Tarjeta/datos de negocio correctos en footer/contacto.
@@ -77,4 +94,4 @@ Tras el cutover de `site-new` a `site-new-astro`, se requiere alinear el sitio c
   - Enlaces de contacto reales (WhatsApp/redes) vigentes.
 
 ## Outcome
-Implementacion en curso con branding real aplicado y extension aprobada para contenido configurable via Google Sheets. Siguiente paso: cerrar branding pendiente en `index`/`producto-detalle` y comenzar diseno del contrato de contenido + sync operacional.
+Plan cerrado: branding y metadata de paginas clave alineados a contenido sincronizado, contrato Sheets v1 en espanol implementado/validado, y flujo operativo `web:content:sync` habilitado para actualizar `site/CONTENT.json` y el sitio Astro sin cambios manuales de codigo.
