@@ -23,12 +23,21 @@ Tras el cutover de `site-new` a `site-new-astro`, se requiere alinear el sitio c
 - Actualizar componentes globales (`Header`, `Footer`) y secciones clave con branding oficial.
 - Ajustar metadata visual SEO (iconos/OG imagen principal/canonical real si aplica).
 - Validar consistencia visual desktop/mobile en rutas principales.
+- Definir estrategia de contenido configurable con Google Sheets para:
+  - imagenes del sitio,
+  - favoritos de home,
+  - pasos,
+  - catalogo,
+  - sugerencias de producto,
+  - reseñas.
+- Diseñar contrato de datos y flujo de sync Sheets -> Astro sin editar codigo en cada cambio.
 
 ### Out of Scope
 - Rediseño estructural completo del sitio.
 - Reescritura amplia de copy comercial fuera de bloques de marca.
 - Integracion de CMS u origen remoto de assets.
 - Cambios backend o runtime del bot.
+- Implementacion de panel admin custom en esta fase.
 
 ## Approach
 | # | Paso | Estado | Notas |
@@ -41,6 +50,10 @@ Tras el cutover de `site-new` a `site-new-astro`, se requiere alinear el sitio c
 | 6 | Ajustes SEO/metadata de marca | In Progress | Structured data y OG de catalogo actualizados; pendiente cierre global de metadata |
 | 7 | Validacion funcional y visual | In Progress | Build `web:new:build` en verde; pendiente smoke visual manual de UX |
 | 8 | Cierre documental y handoff | Pending | actualizar plan/index + handoff de cierre |
+| 9 | Definir modelo de contenido tipado | Pending | Collections/schemas para productos, favoritos, pasos, reseñas, assets y config de sitio |
+| 10 | Definir contrato Google Sheets | Pending | Tabs sugeridas: `products`, `home_favorites`, `steps`, `reviews`, `assets`, `site_config` |
+| 11 | Diseñar flujo de sincronizacion | Pending | Comando unico (`web:content:sync`) para generar contenido local consumido por Astro |
+| 12 | Validacion de operacion sin codigo | Pending | Alta/edicion de producto desde Sheets sin tocar componentes/paginas |
 
 ## Decisions & Trade-offs
 | Decision | Rationale | Date |
@@ -48,11 +61,13 @@ Tras el cutover de `site-new` a `site-new-astro`, se requiere alinear el sitio c
 | Priorizar paridad de marca sobre rediseño amplio | Reduce riesgo y acelera salida productiva | 2026-03-26 |
 | Usar `site/` como fuente primaria inicial de assets | Aprovecha material validado del negocio en el repo | 2026-03-26 |
 | Mantener cambios por fases (global -> paginas) | Facilita QA incremental y rollback puntual | 2026-03-26 |
+| Adoptar Google Sheets como fuente de contenido operacional | Permite gestionar catalogo y reseñas sin cambios de codigo | 2026-03-26 |
 
 ## Validation
 - Tecnica:
   - `npm run web:new:build`
   - `npm run web:new:live` (validacion manual en navegador)
+  - `npm run web:content:sync` (objetivo de esta linea de trabajo)
 - Ejecutado:
   - `npm run web:new:build` -> build Astro OK (9 rutas generadas).
 - Aceptacion funcional:
@@ -62,4 +77,4 @@ Tras el cutover de `site-new` a `site-new-astro`, se requiere alinear el sitio c
   - Enlaces de contacto reales (WhatsApp/redes) vigentes.
 
 ## Outcome
-Implementacion en curso con branding real ya aplicado en shell global y paginas clave. Siguiente paso: completar ajustes restantes de branding/metadata en `index` y `producto-detalle`, luego cerrar con QA visual y handoff final.
+Implementacion en curso con branding real aplicado y extension aprobada para contenido configurable via Google Sheets. Siguiente paso: cerrar branding pendiente en `index`/`producto-detalle` y comenzar diseno del contrato de contenido + sync operacional.
